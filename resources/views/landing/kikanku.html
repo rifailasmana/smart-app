@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kikanku - Edisi Hujan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --rain-grey: #607d8b;
+      --rain-dark-grey: #455a64;
+      --rain-soft: #cfd8dc;
+      --warm-accent: #ffccbc; /* Sedikit sentuhan hangat (peach) */
+      --snow-white: #ffffff;
+      --bg-gradient: linear-gradient(180deg, #B0BEC5 0%, #ECEFF1 100%);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Nunito', sans-serif;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      color: #333;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Rain Animation */
+    .rain {
+      position: fixed;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .drop {
+      position: absolute;
+      bottom: 100%;
+      width: 2px;
+      height: 15px;
+      pointer-events: none;
+      background-color: rgba(255, 255, 255, 0.6);
+      animation: fall linear infinite;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(100vh);
+      }
+    }
+
+    .container {
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .screen {
+      display: none;
+      animation: popIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    .active {
+      display: block;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.9); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Cards */
+    .card {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 30px;
+      padding: 30px;
+      box-shadow: 0 15px 35px rgba(96, 125, 139, 0.2);
+      border: 6px solid var(--rain-grey);
+      position: relative;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 25px;
+      background: var(--rain-soft);
+      border-radius: 15px;
+      border: 3px solid var(--rain-grey);
+      z-index: 2;
+    }
+
+    /* Typography */
+    h1, h2, h3 {
+      font-family: 'Fredoka One', cursive;
+      color: var(--rain-dark-grey);
+      margin-bottom: 15px;
+      letter-spacing: 1px;
+    }
+
+    p {
+      font-size: 1.1rem;
+      color: #546e7a;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* Buttons */
+    .btn {
+      background: var(--rain-grey);
+      color: white;
+      font-family: 'Fredoka One', cursive;
+      border: none;
+      padding: 15px 40px;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.3s;
+      box-shadow: 0 6px 0 var(--rain-dark-grey);
+      margin-top: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 0 var(--rain-dark-grey);
+      background: #78909c;
+    }
+
+    .btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 var(--rain-dark-grey);
+    }
+
+    .btn:disabled {
+      background: #cfd8dc;
+      box-shadow: 0 6px 0 #b0bec5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Avatar / Icon */
+    .rain-avatar {
+      width: 120px;
+      height: 120px;
+      background: var(--rain-soft);
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      border: 5px solid white;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      color: var(--rain-dark-grey);
+      position: relative;
+    }
+    
+    .rain-avatar::after {
+      content: "🌧️";
+      font-size: 60px;
+    }
+
+    /* Inputs */
+    .input-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    .input-group label {
+      display: block;
+      font-weight: 700;
+      color: var(--rain-dark-grey);
+      margin-bottom: 5px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid var(--rain-soft);
+      border-radius: 15px;
+      font-size: 1rem;
+      font-family: 'Nunito', sans-serif;
+      transition: 0.3s;
+      background: #fcfcfc;
+    }
+
+    .input-group input:focus {
+      outline: none;
+      border-color: var(--rain-grey);
+      box-shadow: 0 0 0 4px rgba(96, 125, 139, 0.1);
+    }
+
+    /* Quiz Options */
+    .option {
+      background: #f5f7f8;
+      border: 2px solid var(--rain-soft);
+      border-radius: 15px;
+      padding: 15px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      text-align: left;
+    }
+
+    .option:hover {
+      background: white;
+      border-color: var(--rain-grey);
+      transform: scale(1.01);
+    }
+
+    .option.selected {
+      background: var(--rain-grey);
+      border-color: var(--rain-dark-grey);
+      color: white;
+    }
+
+    .option.selected .custom-input {
+      color: white;
+    }
+    
+    .option.selected .custom-input::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .custom-input {
+      border: none;
+      background: transparent;
+      width: 100%;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      color: #333;
+      outline: none;
+    }
+
+    .option-icon {
+      width: 30px;
+      height: 30px;
+      background: white;
+      border-radius: 50%;
+      margin-right: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: var(--rain-grey);
+      flex-shrink: 0;
+    }
+
+    /* Progress Bar */
+    .progress-track {
+      background: #eceff1;
+      height: 12px;
+      border-radius: 10px;
+      margin: 20px 0;
+      overflow: hidden;
+      border: 1px solid white;
+    }
+
+    .progress-fill {
+      background: var(--rain-grey);
+      height: 100%;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    /* Final Screen */
+    .congrats-icon {
+      font-size: 4rem;
+      margin-bottom: 10px;
+      animation: float 3s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+
+    .highlight {
+      background: var(--rain-soft);
+      padding: 0 5px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Rain Animation -->
+  <div class="rain" id="rain"></div>
+
+  <div class="container">
+    
+    <!-- Welcome Screen -->
+    <div id="welcome" class="screen active">
+      <div class="card">
+        <div class="rain-avatar"></div>
+        <h1>Hai Kikan!</h1>
+        <p>Selamat datang di hari yang tenang ini.</p>
+        <p>Di luar mungkin hujan, tapi semoga di sini kamu merasa hangat ya. 🌧️☕</p>
+        <button class="btn" onclick="nextScreen('welcome', 'letter')">Masuk Berteduh ☂️</button>
+      </div>
+    </div>
+
+    <!-- Letter Screen -->
+    <div id="letter" class="screen">
+      <div class="card">
+        <h2>Pesan Kecil 💌</h2>
+        <div style="text-align: left; background: #fff; padding: 20px; border-radius: 15px; border: 1px dashed var(--rain-grey); margin: 15px 0;">
+          <p><strong>Dear Kikan,</strong></p>
+          <p>Seperti hujan yang turun tanpa beban, aku harap kamu juga bisa melepaskan semua lelahmu hari ini.</p>
+          <p>Nggak perlu buru-buru, pelan-pelan saja. Bernapas, istirahat, dan ingat kalau kamu selalu punya tempat untuk pulang.</p>
+          <p>Oh ya sama 1 lagi, 
+            <span style="color:#B97FA6;">
+              rencana hari ini nggak jalan bukan karena kamu kurang usaha.
+              Kadang waktu nggak berpihak meski kita sudah siap, tanpa perlu merasakan beban apa pun.
+            </span>
+          </p>
+          <p>Semoga kamu bisa mengerti yaa cantik..</p>
+          <p>Semoga kuis kecil ini bisa nemenin kamu santai sejenak.</p>
+          <p style="text-align: right;">- Peluk Hangat dari Jauh 🤗</p>
+        </div>
+        <button class="btn" onclick="nextScreen('letter', 'intro-quiz')">Mulai Cerita 📖</button>
+      </div>
+    </div>
+
+    <!-- Intro Quiz -->
+    <div id="intro-quiz" class="screen">
+      <div class="card">
+        <h3>Cerita Hujanmu ☔</h3>
+        <p>Sebelum mulai, cerita dikit dong tentang hari ini...</p>
+        
+        <div class="input-group">
+          <label>Apa suara yang paling menenangkan buat kamu hari ini?</label>
+          <input type="text" id="intro_sound" placeholder="Suara hujan? Musik lofi? Atau sunyi?">
+        </div>
+
+        <div class="input-group">
+          <label>Kalau lelahmu punya bentuk, dia bakal kayak apa?</label>
+          <input type="text" id="intro_tired" placeholder="Awan mendung? Batu berat?">
+        </div>
+
+        <div class="input-group">
+          <label>Satu hal yang bikin kamu merasa 'cukup' hari ini?</label>
+          <input type="text" id="intro_enough" placeholder="Bisa makan enak? Tidur siang?">
+        </div>
+
+        <div class="input-group">
+          <label>Kalau kamu bisa kirim pesan ke langit, kamu mau bilang apa?</label>
+          <input type="text" id="intro_sky" placeholder="Terima kasih? Atau... tolong?">
+        </div>
+
+        <div class="input-group">
+          <label>Kalau kikan bisa berhentiin waktu.. Apa yang mau kikan lakukan?</label>
+          <input type="text" id="intro_time" placeholder="Tidur lebih lama? Atau diem aja?">
+        </div>
+
+        <button class="btn" onclick="validateAndProceed()">Lanjut Ke Hati ❤️</button>
+      </div>
+    </div>
+
+    <!-- Main Quiz -->
+    <div id="quiz" class="screen">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: bold; color: var(--rain-dark-grey);">
+            Pertanyaan <span id="q-num">1</span>
+          </span>
+          <span style="font-size: 1.5rem;">🌥️</span>
+        </div>
+        
+        <div class="progress-track">
+          <div id="progress" class="progress-fill"></div>
+        </div>
+
+        <h2 id="q-text" style="font-size: 1.3rem;">Loading...</h2>
+
+        <div id="options-container">
+          <!-- Options here -->
+        </div>
+
+        <button id="next-btn" class="btn" style="width: 100%; display: none;" onclick="nextQuestion()">LANJUT</button>
+      </div>
+    </div>
+
+    <!-- Final Screen -->
+    <div id="final" class="screen">
+      <div class="card">
+        <div class="congrats-icon">🌈✨</div>
+        <h1>Pelangi Muncul!</h1>
+        <p>Terima kasih sudah berbagi cerita, Kikan.</p>
+        <p>Ingat ya, setelah hujan deras pun, langit pasti akan cerah lagi. Sama kayak kamu.</p>
+        <p>Istirahat yang cukup, jangan lupa selimutan. Kamu berharga! 💙</p>
+        <div style="margin-top: 20px; font-size: 0.8rem; color: #888;">
+          Jangan lupa kabarin kalau udah selesai yaaa...
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- RAIN ANIMATION SETUP ---
+    function createRain() {
+      const rainContainer = document.getElementById('rain');
+      const dropCount = 50; 
+      for(let i=0; i<dropCount; i++) {
+        const drop = document.createElement('div');
+        drop.classList.add('drop');
+        drop.style.left = Math.random() * 100 + 'vw';
+        drop.style.animationDuration = Math.random() * 1 + 0.5 + 's';
+        drop.style.animationDelay = Math.random() * 2 + 's';
+        rainContainer.appendChild(drop);
+      }
+    }
+    createRain();
+
+    // --- DATA KUIS ---
+    const questions = [
+      {
+        q: "Kalau hujan bisa ngomong, kira-kira dia bilang apa ke Kikan?",
+        opts: ["'Istirahat dulu ya, nggak usah lari.'", "'Nangis aja gapapa, aku temenin.'", "'Lihat, bumi jadi sejuk kan karena aku?'"]
+      },
+      {
+        q: "Apa yang paling Kikan butuhin saat udara lagi dingin kayak gini?",
+        opts: ["Selimut tebal yang super lembut", "Pelukan hangat yang lamaaa banget", "Sup hangat atau makanan berkuah"]
+      },
+      {
+        q: "Bayangin Kikan jadi awan, Kikan mau jadi awan yang kayak gimana?",
+        opts: ["Awan putih yang diam tenang", "Awan mendung yang siap ngelepasin beban", "Awan senja yang warnanya cantik"]
+      },
+      {
+        q: "Kalau hidup lagi kerasa berat, Kikan biasanya cari ketenangan di mana?",
+        opts: ["Di dalam kamar, sendirian & sunyi", "Dengerin lagu yang liriknya 'ngertiin' banget", "Cerita ke orang tersayang"]
+      },
+      {
+        q: "Apa arti 'rumah' buat Kikan saat ini?",
+        opts: ["Tempat di mana bisa jadi diri sendiri", "Seseorang yang bikin rasa aman", "Suasana yang nggak berisik"]
+      },
+      {
+        q: "Satu kata yang pengen Kikan denger sekarang?",
+        opts: ["'Kamu udah hebat kok.'", "'Sini, cerita sama aku.'", "'Tenang, semua bakal baik-baik aja.'"]
+      },
+      {
+        q: "Kalau kikan lagi cape dan nggak bisa ngobrol, Lebih nyaman?",
+        opts: ["Ditemenin tapi diem-dieman", "Dipuk-puk bentar terus ditinggal tidur", "Video call sampe ketiduran"]
+      },
+      {
+        q: "Hujan itu ngajarin kita kalau...",
+        opts: ["Jatuh berkali-kali itu gapapa", "Langit juga butuh menangis biar lega", "Setelah dingin pasti ada hangat"]
+      },
+      {
+        q: "Apa hal sederhana yang bikin hati Kikan hangat?",
+        opts: ["Dapet kabar manis tiba-tiba", "Makan makanan kesukaan", "Liat video kucing/bayi lucu"]
+      },
+      {
+        q: "Tentang kehadiran Kikan itu dalam bentuk apa?",
+        opts: ["Selalu ada walau gak diminta", "Pendengar yang baik", "Penghibur dikala sedih"]
+      },
+      // --- TAMBAHAN PERTANYAAN SPESIAL BUAT KIKAN ---
+      {
+        q: "Kalau Kikan lagi merasa 'kurang', tolong ingat satu hal ini ya...",
+        opts: ["Kikan itu udah lebih dari cukup!", "Dunia beruntung banget punya Kikan", "Kurang dikit itu manusiawi, cantik"]
+      },
+      {
+        q: "Tau nggak, hal apa yang paling bikin orang betah di dekat Kikan?",
+        opts: ["Ketulusan hati Kikan yang kerasa banget", "Cara Kikan menghargai orang lain", "Senyum Kikan yang bikin adem"]
+      },
+      {
+        q: "Kalau besok rasanya berat lagi, Kikan harus yakin kalau...",
+        opts: ["Kikan punya kekuatan buat ngelewatinnya", "Kikan nggak sendirian, ada yang dukung", "Habis hujan badai, pasti ada pelangi"]
+      },
+      {
+        q: "Satu fakta mutlak tentang Kikan yang nggak bisa dibantah...",
+        opts: ["Kikan itu wanita yang kuat banget", "Kikan cantik, luar dan dalam", "Kikan pantas dapetin hal-hal baik"]
+      },
+      {
+        q: "Di mata orang-orang yang tulus sayang Kikan, Kikan itu kayak...",
+        opts: ["Matahari pagi yang ngangetin", "Rumah yang bikin pengen pulang", "Bintang yang tetep bersinar walau gelap"]
+      },
+      {
+        q: "Kapan Kikan merasa chat ini cuman harus diliat dan tidak harus dijawab?",
+        opts: ["Pas lagi capek banget", "Pas lagi pengen sendiri", "Pas bingung mau bales apa"]
+      },
+      {
+        q: "Jangan pernah lupa kalau senyum Kikan itu...",
+        opts: ["Bisa ngubah mood orang jadi baik", "Cantiknya nambah berkali-kali lipat", "Bukti kalau Kikan lebih besar dari masalahnya"]
+      },
+      {
+        q: "Apapun yang dunia bilang, Kikan itu...",
+        opts: ["Sangat berharga tanpa syarat", "Punya jalan suksesnya sendiri", "Nggak perlu dibandingin sama siapapun"]
+      },
+      {
+        q: "Kalau Kikan takut sama masa depan, inget aja kalau...",
+        opts: ["Tangan Tuhan selalu megangin Kikan", "Takdir baik udah ngantri buat ketemu Kikan", "Kikan punya kemampuan buat hadapin apa aja"]
+      },
+      {
+        q: "Pesan rahasia semesta buat Kikan hari ini...",
+        opts: ["'Kamu dicintai lebih dari yang kamu sadari'", "'Terima kasih sudah bertahan sejauh ini'", "'Bahagia itu hak mutlak kamu, ambil ya!'"]
+      }
+    ];
+
+    let currentQ = 0;
+    let answers = {};
+    let customAnswers = {}; 
+    let introData = {};
+
+    // --- GOOGLE FORM CONFIG ---
+    const GFORM_CONFIG = {
+      url: "https://docs.google.com/forms/d/e/1FAIpQLSfsNlIFrAkaMrSgYCWSRDXa_raOoXbRTG6CuY-mCUFAyuiKRw/formResponse", 
+      mapping: {
+        // Intro
+        intro_sound: "entry.546588986",
+        intro_tired: "entry.1495892311",
+        intro_enough: "entry.46159181",
+        intro_sky: "entry.1861504188",
+        intro_time: "entry.1221797655",
+
+        // Quiz
+        quiz_0: "entry.1665557712",
+        quiz_1: "entry.2046968909",
+        quiz_2: "entry.871603410",
+        quiz_3: "entry.618410880",
+        quiz_4: "entry.294913397",
+        quiz_5: "entry.781387469",
+        quiz_6: "entry.917429396",
+        quiz_7: "entry.292249931",
+        quiz_8: "entry.854162067",
+        quiz_9: "entry.2082730181",
+        quiz_10: "entry.2020825596",
+        quiz_11: "entry.1612307619",
+        quiz_12: "entry.988120245",
+        quiz_13: "entry.1045888699",
+        quiz_14: "entry.1552981022",
+        quiz_15: "entry.471627562",
+        quiz_16: "entry.743809646",
+        quiz_17: "entry.1884682777",
+        quiz_18: "entry.275190861",
+        quiz_19: "entry.891540338",
+      }
+    };
+
+    function nextScreen(current, next) {
+      document.getElementById(current).classList.remove('active');
+      document.getElementById(next).classList.add('active');
+    }
+
+    function validateAndProceed() {
+      const sound = document.getElementById('intro_sound').value;
+      const tired = document.getElementById('intro_tired').value;
+      const enough = document.getElementById('intro_enough').value;
+      const sky = document.getElementById('intro_sky').value;
+      const time = document.getElementById('intro_time').value;
+
+      if(!sound || !tired || !enough || !sky || !time) {
+        alert("Isi dulu ya cantik, pelan-pelan aja ngetiknya... 🌧️");
+        return;
+      }
+
+      introData = { sound, tired, enough, sky, time };
+      nextScreen('intro-quiz', 'quiz');
+      loadQuestion(0);
+    }
+
+    function loadQuestion(index) {
+      currentQ = index;
+      const q = questions[index];
+      
+      document.getElementById('q-num').innerText = index + 1;
+      document.getElementById('q-text').innerText = q.q;
+      
+      // Progress
+      const pct = ((index) / questions.length) * 100;
+      document.getElementById('progress').style.width = pct + "%";
+
+      // Options
+      const container = document.getElementById('options-container');
+      container.innerHTML = '';
+
+      q.opts.forEach((opt, i) => {
+        const div = document.createElement('div');
+        div.className = 'option';
+        if(answers[index] && answers[index].includes(i)) {
+          div.classList.add('selected');
+        }
+        div.onclick = () => toggleAnswer(index, i, div);
+        
+        div.innerHTML = `
+          <div class="option-icon">${String.fromCharCode(65+i)}</div>
+          <div>${opt}</div>
+        `;
+        container.appendChild(div);
+      });
+
+      // Custom Option (Index 3 / D) - Selalu ada sesuai request
+      const customDiv = document.createElement('div');
+      customDiv.className = 'option';
+      customDiv.id = `opt-custom-${index}`;
+      
+      if(answers[index] && answers[index].includes(3)) {
+        customDiv.classList.add('selected');
+      }
+
+      const customText = customAnswers[index] || '';
+
+      customDiv.innerHTML = `
+        <div class="option-icon">D</div>
+        <input type="text" 
+               class="custom-input" 
+               placeholder="Tulis jawabanmu sendiri di sini..." 
+               value="${customText}"
+               oninput="handleCustomInput(${index}, this.value)"
+               onclick="event.stopPropagation()">
+      `;
+      
+      customDiv.onclick = () => customDiv.querySelector('input').focus();
+      container.appendChild(customDiv);
+
+      updateNextBtn();
+    }
+
+    function handleCustomInput(qIndex, value) {
+        customAnswers[qIndex] = value;
+        
+        if(!answers[qIndex]) answers[qIndex] = [];
+        const optIndex = 3; 
+        
+        const idx = answers[qIndex].indexOf(optIndex);
+        const div = document.getElementById(`opt-custom-${qIndex}`);
+
+        if(value.trim().length > 0) {
+            if(idx === -1) {
+                answers[qIndex].push(optIndex);
+                if(div) div.classList.add('selected');
+            }
+        } else {
+            if(idx > -1) {
+                answers[qIndex].splice(idx, 1);
+                if(div) div.classList.remove('selected');
+            }
+        }
+        
+        updateNextBtn();
+    }
+
+    function toggleAnswer(qIndex, optIndex, element) {
+      // Multi select logic enabled (bisa pilih banyak)
+      if(!answers[qIndex]) answers[qIndex] = [];
+      
+      const idx = answers[qIndex].indexOf(optIndex);
+      if(idx > -1) {
+        answers[qIndex].splice(idx, 1);
+        element.classList.remove('selected');
+      } else {
+        answers[qIndex].push(optIndex);
+        element.classList.add('selected');
+      }
+
+      updateNextBtn();
+    }
+
+    function updateNextBtn() {
+      const btn = document.getElementById('next-btn');
+      if(answers[currentQ] && answers[currentQ].length > 0) {
+        btn.style.display = 'block';
+        if(currentQ === questions.length - 1) {
+          btn.innerText = "KIRIM HARAPAN 💌";
+        } else {
+          btn.innerText = "LANJUT ➡️";
+        }
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+
+    function nextQuestion() {
+      if(currentQ < questions.length - 1) {
+        loadQuestion(currentQ + 1);
+      } else {
+        submitQuiz();
+      }
+    }
+
+    function submitQuiz() {
+      document.getElementById('progress').style.width = "100%";
+      
+      // Logic kirim ke GForm (Hidden Iframe) - Disiapkan jika ada URL
+      if(GFORM_CONFIG.url) {
+        const form = document.createElement('form');
+        form.action = GFORM_CONFIG.url;
+        form.method = 'POST';
+        form.target = 'hidden_iframe';
+        form.style.display = 'none';
+
+        if(!document.getElementById('hidden_iframe')) {
+            const iframe = document.createElement('iframe');
+            iframe.name = 'hidden_iframe';
+            iframe.id = 'hidden_iframe';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+        }
+
+        const addInput = (name, value) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+        };
+
+        const map = GFORM_CONFIG.mapping;
+        
+        // 1. Add Intro Data
+        if(map.intro_sound) addInput(map.intro_sound, introData.sound);
+        if(map.intro_tired) addInput(map.intro_tired, introData.tired);
+        if(map.intro_enough) addInput(map.intro_enough, introData.enough);
+        if(map.intro_sky) addInput(map.intro_sky, introData.sky);
+        if(map.intro_time) addInput(map.intro_time, introData.time);
+
+        // 2. Add Quiz Answers
+        questions.forEach((q, index) => {
+            const key = `quiz_${index}`;
+            if(map[key] && answers[index]) {
+                const selectedOpts = answers[index].map(optIdx => {
+                    if(optIdx === 3) {
+                        return customAnswers[index] || "";
+                    }
+                    return q.opts[optIdx];
+                });
+                addInput(map[key], selectedOpts.join(", "));
+            }
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+      }
+
+      setTimeout(() => {
+        nextScreen('quiz', 'final');
+      }, 1000);
+    }
+  </script>
+</body>
+</html>

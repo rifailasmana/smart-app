@@ -1,0 +1,12 @@
+# SmartOrder - Subdomain Configuration
+# Add these entries to C:\Windows\System32\drivers\etc\hosts for local testing
+
+127.0.0.1 smartorder.local
+127.0.0.1 bali.smartorder.local
+127.0.0.1 jakbar.smartorder.local
+127.0.0.1 kitchen.smartorder.local
+
+# After adding these entries, restart your browser and test:
+# - Landing: http://smartorder.local:8080
+# - Customer Menu (Bali): http://bali.smartorder.local:8080/menu
+# - Customer Menu (JakBar): http://jakbar.smartorder.local:8080/menu
