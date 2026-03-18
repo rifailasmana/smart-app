@@ -34,6 +34,9 @@
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold">Daftar Karyawan & Role</h5>
                     <div class="d-flex gap-2">
+                        <a href="{{ route('hrd.shifts') }}" class="btn btn-outline-brand btn-sm rounded-pill px-3">
+                            <i class="fas fa-calendar-alt me-1"></i> Penjadwalan Shift
+                        </a>
                         <button class="btn btn-outline-dark btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#roleManagementModal">
                             <i class="fas fa-user-tag me-1"></i> Role Management
                         </button>

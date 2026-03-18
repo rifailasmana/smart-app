@@ -83,13 +83,9 @@ Route::get('/system-upgrade-terminal', function () {
         Illuminate\Support\Facades\Schema::table('orders', function (Illuminate\Database\Schema\Blueprint $table) {
             $table->string('stage', 32)->default('DRAFT')->after('status');
             $table->timestamp('submitted_to_cashier_at')->nullable()->after('stage');
-            $table->unsignedBigInteger('cashier_user_id')->nullable()->after('submitted_to_cashier_at');
-            $table->timestamp('paid_at')->nullable()->after('cashier_user_id');
+            $table->timestamp('paid_at')->nullable()->after('submitted_to_cashier_at');
             $table->timestamp('sent_to_kitchen_at')->nullable()->after('paid_at');
             $table->timestamp('kitchen_done_at')->nullable()->after('sent_to_kitchen_at');
-            
-            // Add foreign key manually to avoid blueprint errors in some environments
-            // $table->foreign('cashier_user_id')->references('id')->on('users');
         });
         return "System Upgrade Complete: Terminal columns added to orders table.";
     }
@@ -285,14 +281,14 @@ Route::middleware('guest')->group(function () {
                     $subdomain = strtolower($warung->slug ?? $warung->code ?? 'default');
                     $baseUrl = $protocol . '://' . $subdomain . '.' . $domain . $portSuffix;
                     $dashboardRoute = match($user->role) {
-                        'owner' => '/dashboard/owner',
-                        'kasir' => '/dashboard/kasir',
-                        'waiter' => '/dashboard/waiter',
-                        'dapur', 'kitchen' => '/dashboard/kitchen',
+                        'owner' => '/terminal',
+                        'kasir' => '/terminal/kasir',
+                        'waiter' => '/terminal/waiter',
+                        'dapur', 'kitchen' => '/terminal/kitchen',
                         'hrd' => '/dashboard/hrd',
                         'manager' => '/dashboard/manager',
                         'inventory' => '/dashboard/inventory',
-                        default => '/dashboard',
+                        default => '/terminal',
                     };
                     
                     return redirect($baseUrl . $dashboardRoute);
@@ -516,14 +512,24 @@ Route::middleware('auth')->group(function () {
         Route::post('/inventory/ingredient', [App\Http\Controllers\InventoryController::class, 'storeIngredient'])->name('inventory.ingredient.store');
         Route::post('/inventory/stock', [App\Http\Controllers\InventoryController::class, 'updateStock'])->name('inventory.stock.update');
         Route::get('/inventory/hpp/{menuItem}', [App\Http\Controllers\InventoryController::class, 'getHPP'])->name('inventory.hpp');
+        
+        // Recipe Routes
+        Route::get('/inventory/menu/{menuItem}/recipes', [App\Http\Controllers\RecipeController::class, 'index'])->name('inventory.recipes.index');
+        Route::post('/inventory/menu/{menuItem}/recipes', [App\Http\Controllers\RecipeController::class, 'store'])->name('inventory.recipes.store');
+        Route::delete('/inventory/recipes/{id}', [App\Http\Controllers\RecipeController::class, 'destroy'])->name('inventory.recipes.destroy');
     });
 
     // HRD Routes
-    Route::middleware('role:hrd,owner,admin')->group(function () {
+    Route::middleware('role:hrd,manager,owner,admin')->group(function () {
         Route::get('/dashboard/hrd', [App\Http\Controllers\HRDController::class, 'index'])->name('dashboard.hrd');
-        Route::get('/dashboard/hrd/attendance', [App\Http\Controllers\HRDController::class, 'attendance'])->name('dashboard.hrd.attendance');
-        Route::get('/dashboard/hrd/payroll', [App\Http\Controllers\HRDController::class, 'payroll'])->name('dashboard.hrd.payroll');
-        Route::post('/dashboard/hrd/payroll/generate', [App\Http\Controllers\HRDController::class, 'generatePayroll'])->name('dashboard.hrd.payroll.generate');
+        Route::get('/hrd/attendance', [App\Http\Controllers\HRDController::class, 'attendance'])->name('hrd.attendance');
+        Route::get('/hrd/payroll', [App\Http\Controllers\HRDController::class, 'payroll'])->name('hrd.payroll');
+        Route::post('/hrd/payroll/generate', [App\Http\Controllers\HRDController::class, 'generatePayroll'])->name('hrd.payroll.generate');
+        
+        // Shift Routes
+        Route::get('/hrd/shifts', [App\Http\Controllers\HRDController::class, 'shifts'])->name('hrd.shifts');
+        Route::post('/hrd/shifts', [App\Http\Controllers\HRDController::class, 'storeShift'])->name('hrd.shifts.store');
+        Route::delete('/hrd/shifts/{id}', [App\Http\Controllers\HRDController::class, 'destroyShift'])->name('hrd.shifts.destroy');
     });
 
     // Manager Routes
@@ -547,6 +553,24 @@ Route::middleware('auth')->group(function () {
             'timestamp' => now(),
             'service' => 'SmartOrder'
         ]);
+    });
+
+    // ===== TERMINAL MODE ROUTES (PWA Full-screen) =====
+    Route::prefix('terminal')->group(function () {
+        Route::get('/', [App\Http\Controllers\TerminalController::class, 'index'])->name('terminal.index');
+        Route::get('/waiter', [App\Http\Controllers\TerminalController::class, 'waiter'])->name('terminal.waiter');
+        Route::get('/kasir', [App\Http\Controllers\TerminalController::class, 'kasir'])->name('terminal.kasir');
+        Route::get('/kitchen', [App\Http\Controllers\TerminalController::class, 'kitchen'])->name('terminal.kitchen');
+        
+        // API routes within terminal prefix for easier management
+        Route::get('/orders', [App\Http\Controllers\TerminalController::class, 'getOrders']);
+        Route::get('/tables/{table}/draft', [App\Http\Controllers\TerminalController::class, 'getTableDraft']);
+        Route::post('/orders', [App\Http\Controllers\TerminalController::class, 'storeOrder']);
+        Route::post('/orders/{order}/submit-to-cashier', [App\Http\Controllers\TerminalController::class, 'submitToCashier']);
+        Route::post('/orders/{order}/split', [App\Http\Controllers\TerminalController::class, 'splitOrder']);
+        Route::post('/orders/{order}/approve-and-pay', [App\Http\Controllers\TerminalController::class, 'approveAndPay']);
+        Route::post('/orders/{order}/kitchen-status', [App\Http\Controllers\TerminalController::class, 'updateKitchenStatus']);
+        Route::post('/coupons/check', [App\Http\Controllers\TerminalController::class, 'checkCoupon']);
     });
 
     Route::post('/order-items/{item}/status', [DashboardController::class, 'updateOrderItemStatus'])->name('order-items.status');

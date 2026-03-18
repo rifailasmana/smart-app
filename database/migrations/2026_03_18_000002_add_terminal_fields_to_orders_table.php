@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::table('orders', function (Blueprint $table) {
             $table->string('stage', 32)->default('DRAFT')->after('status');
             $table->timestamp('submitted_to_cashier_at')->nullable()->after('stage');
-            $table->foreignId('cashier_user_id')->nullable()->constrained('users')->after('submitted_to_cashier_at');
-            $table->timestamp('paid_at')->nullable()->after('cashier_user_id');
+            $table->timestamp('paid_at')->nullable()->after('submitted_to_cashier_at');
             $table->timestamp('sent_to_kitchen_at')->nullable()->after('paid_at');
             $table->timestamp('kitchen_done_at')->nullable()->after('sent_to_kitchen_at');
         });

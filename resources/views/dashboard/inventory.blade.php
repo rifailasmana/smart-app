@@ -34,64 +34,121 @@
     </div>
 
     <div class="row g-4">
-        <!-- Stock Table -->
+        <!-- Main Panel: Tabs for Inventory & Recipes -->
         <div class="col-12 col-xl-8">
             <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold">Inventaris Bahan Baku</h5>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-outline-brand btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#adjustmentModal">
-                            <i class="fas fa-sliders-h me-1"></i> Adjustment
-                        </button>
-                        <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addIngredientModal">
-                            <i class="fas fa-plus me-1"></i> Tambah Bahan
-                        </button>
-                    </div>
+                <div class="card-header bg-white py-3">
+                    <ul class="nav nav-pills card-header-pills" id="inventoryTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active rounded-pill px-4 fw-bold" id="stock-tab" data-bs-toggle="tab" data-bs-target="#stock-content" type="button" role="tab">
+                                <i class="bi bi-box-seam me-2"></i> Stok Bahan
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link rounded-pill px-4 fw-bold" id="recipes-tab" data-bs-toggle="tab" data-bs-target="#recipes-content" type="button" role="tab">
+                                <i class="bi bi-journal-text me-2"></i> Resep Menu
+                            </button>
+                        </li>
+                    </ul>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light">
-                            <tr>
-                                <th class="px-4">Nama Bahan</th>
-                                <th>Stok Saat Ini</th>
-                                <th>Satuan</th>
-                                <th>Status</th>
-                                <th class="text-end px-4">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($ingredients as $item)
-                            <tr>
-                                <td class="px-4">
-                                    <div class="fw-bold text-dark">{{ $item->name }}</div>
-                                    <small class="text-muted">HPP: Rp {{ number_format($item->avg_price, 0, ',', '.') }}</small>
-                                </td>
-                                <td class="fw-bold text-dark">{{ number_format($item->stock, 2) }}</td>
-                                <td><span class="badge bg-light text-dark border rounded-pill px-3">{{ $item->unit }}</span></td>
-                                <td>
-                                    @if($item->stock <= $item->min_stock)
-                                        <span class="badge bg-danger text-white rounded-pill px-3">LOW STOCK</span>
-                                    @else
-                                        <span class="badge bg-success text-white rounded-pill px-3">AMAN</span>
-                                    @endif
-                                </td>
-                                <td class="text-end px-4">
-                                    <div class="dropdown">
-                                        <button class="btn btn-light btn-sm rounded-circle border" type="button" data-bs-toggle="dropdown">
-                                            <i class="fas fa-ellipsis-v"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3">
-                                            <li><a class="dropdown-item" href="#" onclick="openUpdateStockModal({{ $item->id }}, '{{ $item->name }}')"><i class="fas fa-plus-circle me-2 text-success"></i> Barang Masuk</a></li>
-                                            <li><a class="dropdown-item" href="#"><i class="fas fa-minus-circle me-2 text-danger"></i> Pakai Bahan</a></li>
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#"><i class="fas fa-trash me-2"></i> Hapus</a></li>
-                                        </ul>
-                                    </div>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                
+                <div class="tab-content" id="inventoryTabsContent">
+                    <!-- Tab 1: Stock Bahan -->
+                    <div class="tab-pane fade show active" id="stock-content" role="tabpanel">
+                        <div class="p-3 d-flex justify-content-between align-items-center bg-light border-bottom">
+                            <h6 class="mb-0 fw-bold text-muted">Daftar Bahan Baku</h6>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-brand btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#adjustmentModal">
+                                    <i class="fas fa-sliders-h me-1"></i> Adjustment
+                                </button>
+                                <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addIngredientModal">
+                                    <i class="fas fa-plus me-1"></i> Tambah Bahan
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-4">Nama Bahan</th>
+                                        <th class="text-center">Stok</th>
+                                        <th class="text-center">Satuan</th>
+                                        <th class="text-center">Status</th>
+                                        <th class="text-end pe-4">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($ingredients as $item)
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="fw-bold text-dark">{{ $item->name }}</div>
+                                            <small class="text-muted">HPP: Rp {{ number_format($item->avg_price, 0, ',', '.') }}</small>
+                                        </td>
+                                        <td class="text-center fw-bold text-dark">{{ number_format($item->stock, 2) }}</td>
+                                        <td class="text-center"><span class="badge bg-light text-dark border rounded-pill px-3">{{ $item->unit }}</span></td>
+                                        <td class="text-center">
+                                            @if($item->stock <= $item->min_stock)
+                                                <span class="badge bg-danger text-white rounded-pill px-3">LOW STOCK</span>
+                                            @else
+                                                <span class="badge bg-success text-white rounded-pill px-3">AMAN</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <button class="btn btn-sm btn-light border rounded-circle" onclick="openUpdateStockModal({{ $item->id }}, '{{ $item->name }}')">
+                                                <i class="fas fa-plus text-success"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Resep Menu -->
+                    <div class="tab-pane fade" id="recipes-content" role="tabpanel">
+                        <div class="p-3 bg-light border-bottom">
+                            <h6 class="mb-0 fw-bold text-muted">Pengaturan Resep & Kalkulasi HPP</h6>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-4">Menu Item</th>
+                                        <th class="text-center">Kategori</th>
+                                        <th class="text-center">Harga Jual</th>
+                                        <th class="text-center">Estimasi HPP</th>
+                                        <th class="text-center">Margin (%)</th>
+                                        <th class="text-end pe-4">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($menuItems as $item)
+                                        @php
+                                            $hpp = $item->recipes->sum(fn($r) => $r->ingredient->last_price * $r->quantity);
+                                            $margin = $item->price > 0 ? (($item->price - $hpp) / $item->price) * 100 : 0;
+                                        @endphp
+                                        <tr>
+                                            <td class="ps-4 fw-bold text-dark">{{ $item->name }}</td>
+                                            <td class="text-center small">{{ $item->category }}</td>
+                                            <td class="text-center fw-bold">{{ number_format($item->price, 0, ',', '.') }}</td>
+                                            <td class="text-center">{{ number_format($hpp, 0, ',', '.') }}</td>
+                                            <td class="text-center">
+                                                <span class="badge {{ $margin > 30 ? 'bg-success-soft text-success' : 'bg-warning-soft text-warning' }}">
+                                                    {{ number_format($margin, 1) }}%
+                                                </span>
+                                            </td>
+                                            <td class="text-end pe-4">
+                                                <a href="{{ route('inventory.recipes.index', $item->id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                                    <i class="bi bi-journal-plus"></i> Atur Resep
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

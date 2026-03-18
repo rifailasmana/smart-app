@@ -1,21 +1,33 @@
 {
-    "name": "SmartOrder App",
-    "short_name": "SmartOrder",
-    "description": "Aplikasi Pemesanan Restoran Digital",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#f8fafc",
-    "theme_color": "#3b82f6",
-    "icons": [
-        {
-            "src": "https://cdn-icons-png.flaticon.com/512/1046/1046747.png",
-            "sizes": "192x192",
-            "type": "image/png"
-        },
-        {
-            "src": "https://cdn-icons-png.flaticon.com/512/1046/1046747.png",
-            "sizes": "512x512",
-            "type": "image/png"
-        }
-    ]
+  "name": "SmartOrder Terminal",
+  "short_name": "Terminal",
+  "description": "SmartOrder Terminal for Waiter, Kasir, and Kitchen",
+  "start_url": "/terminal",
+  "display": "fullscreen",
+  "background_color": "#0B1220",
+  "theme_color": "#FF8C00",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/562/562678.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/562/562678.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "food"],
+  "screenshots": [
+    {
+      "src": "https://via.placeholder.com/1366x768/0B1220/FFFFFF?text=Terminal+Mode",
+      "sizes": "1366x768",
+      "type": "image/png",
+      "label": "Terminal Selection"
+    }
+  ]
 }

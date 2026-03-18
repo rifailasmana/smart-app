@@ -28,6 +28,17 @@ class Order extends Model
         'kasir_id',
         'waiter_id',
         'kitchen_id',
+        'stage',
+        'submitted_to_cashier_at',
+        'paid_at',
+        'sent_to_kitchen_at',
+        'kitchen_done_at',
+        'guest_category',
+        'order_type',
+        'reservation_name',
+        'reservation_code',
+        'merged_table_ids',
+        'is_split_bill',
     ];
 
     protected $casts = [

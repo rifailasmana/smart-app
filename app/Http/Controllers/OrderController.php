@@ -527,6 +527,13 @@ class OrderController extends Controller
             'kasir_id' => $user->id,
         ]);
 
+        // Deduct stock based on recipe
+        try {
+            \App\Http\Controllers\RecipeController::deductStockForOrder($order);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Stock deduction failed for Order #{$order->id}: " . $e->getMessage());
+        }
+
         // Send notification
         NotificationService::sendOrderNotification($order, 'payment');
 

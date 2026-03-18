@@ -63,4 +63,52 @@ class HRDController extends Controller
 
         return back()->with('success', 'Payroll draft generated for ' . $month);
     }
+
+    public function shifts(Request $request)
+    {
+        $warungId = auth()->user()->warung_id;
+        $date = $request->get('date', today()->toDateString());
+        
+        $shifts = \App\Models\StaffShift::with('user')
+            ->where('warung_id', $warungId)
+            ->whereDate('started_at', $date)
+            ->get();
+            
+        $employees = User::where('warung_id', $warungId)->get();
+        
+        return view('dashboard.hrd.shifts', compact('shifts', 'date', 'employees'));
+    }
+
+    public function storeShift(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'role' => 'required|string',
+            'start_time' => 'required',
+            'end_time' => 'required',
+            'date' => 'required|date',
+        ]);
+
+        $warungId = auth()->user()->warung_id;
+        $startedAt = Carbon::parse($request->date . ' ' . $request->start_time);
+        $endedAt = Carbon::parse($request->date . ' ' . $request->end_time);
+
+        \App\Models\StaffShift::create([
+            'user_id' => $request->user_id,
+            'warung_id' => $warungId,
+            'role' => $request->role,
+            'started_at' => $startedAt,
+            'ended_at' => $endedAt,
+        ]);
+
+        return back()->with('success', 'Jadwal shift berhasil ditambahkan');
+    }
+
+    public function destroyShift($id)
+    {
+        $shift = \App\Models\StaffShift::findOrFail($id);
+        $shift->delete();
+        
+        return back()->with('success', 'Jadwal shift berhasil dihapus');
+    }
 }

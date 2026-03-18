@@ -346,19 +346,19 @@
                 @endif
 
                 @if(auth()->user()->isCashier())
-                <a href="{{ route('dashboard.kasir') }}" class="nav-item {{ request()->routeIs('dashboard.kasir') ? 'active' : '' }}">
+                <a href="{{ route('terminal.kasir') }}" class="nav-item {{ request()->routeIs('terminal.kasir') ? 'active' : '' }}">
                     <i class="fas fa-cash-register"></i> <span>Cashier POS</span>
                 </a>
                 @endif
 
                 @if(auth()->user()->isWaiter())
-                <a href="{{ route('dashboard.waiter') }}" class="nav-item {{ request()->routeIs('dashboard.waiter') ? 'active' : '' }}">
+                <a href="{{ route('terminal.waiter') }}" class="nav-item {{ request()->routeIs('terminal.waiter') ? 'active' : '' }}">
                     <i class="fas fa-concierge-bell"></i> <span>Waiter Service</span>
                 </a>
                 @endif
 
                 @if(auth()->user()->isKitchen())
-                <a href="{{ route('dashboard.kitchen') }}" class="nav-item {{ request()->routeIs('dashboard.kitchen') ? 'active' : '' }}">
+                <a href="{{ route('terminal.kitchen') }}" class="nav-item {{ request()->routeIs('terminal.kitchen') ? 'active' : '' }}">
                     <i class="fas fa-fire"></i> <span>Kitchen KDS</span>
                 </a>
                 @endif
