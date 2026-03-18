@@ -78,6 +78,24 @@ Route::get('/system-upgrade-username', function () {
     return "System Upgrade Complete: Username column added and Users updated.";
 });
 
+Route::get('/system-upgrade-terminal', function () {
+    if (!Illuminate\Support\Facades\Schema::hasColumn('orders', 'stage')) {
+        Illuminate\Support\Facades\Schema::table('orders', function (Illuminate\Database\Schema\Blueprint $table) {
+            $table->string('stage', 32)->default('DRAFT')->after('status');
+            $table->timestamp('submitted_to_cashier_at')->nullable()->after('stage');
+            $table->unsignedBigInteger('cashier_user_id')->nullable()->after('submitted_to_cashier_at');
+            $table->timestamp('paid_at')->nullable()->after('cashier_user_id');
+            $table->timestamp('sent_to_kitchen_at')->nullable()->after('paid_at');
+            $table->timestamp('kitchen_done_at')->nullable()->after('sent_to_kitchen_at');
+            
+            // Add foreign key manually to avoid blueprint errors in some environments
+            // $table->foreign('cashier_user_id')->references('id')->on('users');
+        });
+        return "System Upgrade Complete: Terminal columns added to orders table.";
+    }
+    return "Terminal columns already exist.";
+});
+
 // ===== PUBLIC ROUTES (Landing & Authentication) =====
 
 Route::domain('smartapp.local')->group(function () {
