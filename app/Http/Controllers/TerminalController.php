@@ -112,38 +112,52 @@ class TerminalController extends Controller
      */
     public function storeOrder(Request $request)
     {
-        $user = auth()->user();
-        
-        $validated = $request->validate([
-            'order_id' => 'nullable|exists:orders,id',
-            'table_id' => 'required|exists:restaurant_tables,id',
-            'guest_category' => 'nullable|string',
-            'order_type' => 'nullable|string',
-            'reservation_name' => 'nullable|string',
-            'reservation_code' => 'nullable|string',
-            'merged_table_ids' => 'nullable|string', // Expecting JSON array
-            'items' => 'required|array',
-            'items.*.menu_item_id' => 'required|exists:menu_items,id',
-            'items.*.qty' => 'required|integer|min:1',
-            'items.*.note' => 'nullable|string',
-        ]);
+        return DB::transaction(function() use ($request) {
+            $user = auth()->user();
+            
+            $validated = $request->validate([
+                'order_id' => 'nullable|exists:orders,id',
+                'table_id' => 'required|exists:restaurant_tables,id',
+                'guest_category' => 'nullable|string',
+                'order_type' => 'nullable|string',
+                'reservation_name' => 'nullable|required_if:guest_category,RESERVED|string',
+                'reservation_code' => 'nullable|required_if:guest_category,RESERVED|string',
+                'merged_table_ids' => 'nullable|string',
+                'items' => 'required|array',
+                'items.*.menu_item_id' => 'required|exists:menu_items,id',
+                'items.*.qty' => 'required|integer|min:1',
+                'items.*.note' => 'nullable|string',
+            ], [
+                'reservation_name.required_if' => 'Nama reservasi wajib diisi untuk kategori Reserved.',
+                'reservation_code.required_if' => 'Kode reservasi wajib diisi untuk kategori Reserved.',
+            ]);
 
-        return DB::transaction(function() use ($user, $validated) {
             if (isset($validated['order_id'])) {
                 $order = Order::findOrFail($validated['order_id']);
                 if ($order->stage !== 'DRAFT') {
-                    return response()->json(['error' => 'Can only update DRAFT orders'], 400);
+                    return response()->json(['error' => 'Hanya draft yang dapat diperbarui'], 400);
                 }
-                // Clear existing items to rewrite them
+                // Clear old items
                 $order->items()->delete();
             } else {
+                // Check if table is already occupied by non-draft order
+                $existingActive = Order::where('table_id', $validated['table_id'])
+                    ->where('warung_id', $user->warung_id)
+                    ->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY'])
+                    ->first();
+                
+                if ($existingActive) {
+                    return response()->json(['error' => 'Meja sedang digunakan oleh pesanan lain'], 400);
+                }
+
                 $order = Order::create([
                     'warung_id' => $user->warung_id,
-                    'table_id' => $validated['table_id'],
                     'waiter_id' => $user->id,
+                    'customer_name' => $validated['reservation_name'] ?? 'Guest',
+                    'code' => 'T' . strtoupper(uniqid()),
+                    'table_id' => $validated['table_id'],
                     'stage' => 'DRAFT',
                     'status' => 'pending',
-                    'code' => 'T' . strtoupper(uniqid()),
                     'subtotal' => 0,
                     'total' => 0,
                     'guest_category' => $validated['guest_category'] ?? 'REGULER',
@@ -172,6 +186,7 @@ class TerminalController extends Controller
 
             $order->update([
                 'table_id' => $validated['table_id'],
+                'customer_name' => $validated['reservation_name'] ?? $order->customer_name ?? 'Guest',
                 'subtotal' => $total,
                 'total' => $total,
                 'guest_category' => $validated['guest_category'] ?? $order->guest_category,
@@ -181,18 +196,39 @@ class TerminalController extends Controller
                 'merged_table_ids' => $validated['merged_table_ids'] ?? $order->merged_table_ids,
             ]);
 
-            // Update tables status to occupied
-            $tableIds = [$validated['table_id']];
-            if ($order->merged_table_ids) {
-                $mergedIds = json_decode($order->merged_table_ids, true);
-                if (is_array($mergedIds)) {
-                    $tableIds = array_merge($tableIds, $mergedIds);
-                }
-            }
-            RestaurantTable::whereIn('id', $tableIds)->update(['status' => 'occupied']);
+            // Sync table status
+            $this->syncTableStatuses($order);
 
             return response()->json($order->load('items'));
         });
+    }
+
+    private function syncTableStatuses($order)
+    {
+        $tableIds = [$order->table_id];
+        if ($order->merged_table_ids) {
+            $mergedIds = json_decode($order->merged_table_ids, true);
+            if (is_array($mergedIds)) {
+                $tableIds = array_merge($tableIds, $mergedIds);
+            }
+        }
+        
+        if ($order->stage === 'DONE' || $order->stage === 'VOID') {
+            // Check if tables have other active orders before freeing
+            foreach ($tableIds as $tid) {
+                $hasOther = Order::where('table_id', $tid)
+                    ->where('warung_id', $order->warung_id)
+                    ->whereNotIn('stage', ['DONE', 'VOID'])
+                    ->where('id', '!=', $order->id)
+                    ->exists();
+                
+                if (!$hasOther) {
+                    RestaurantTable::where('id', $tid)->update(['status' => 'available']);
+                }
+            }
+        } else {
+            RestaurantTable::whereIn('id', $tableIds)->update(['status' => 'occupied']);
+        }
     }
 
     /**
@@ -216,11 +252,12 @@ class TerminalController extends Controller
     public function submitToCashier(Order $order)
     {
         if ($order->stage !== 'DRAFT') {
-            return response()->json(['error' => 'Order is not in DRAFT stage'], 400);
+            return response()->json(['error' => 'Pesanan bukan dalam status DRAFT'], 400);
         }
 
         $order->update([
             'stage' => 'WAITING_CASHIER',
+            'waiter_id' => $order->waiter_id ?? auth()->id(),
             'submitted_to_cashier_at' => now(),
         ]);
 
@@ -230,65 +267,90 @@ class TerminalController extends Controller
     /**
      * Approve and pay (gatekeeper step 2)
      */
-    public function approveAndPay(Request $request, Order $order)
+    public function approveAndPay(Request $request, $orderId)
     {
         $user = auth()->user();
         
         $validated = $request->validate([
+            'table_id' => 'required|exists:restaurant_tables,id',
             'payment_method' => 'required|in:cash,qris,card,other',
             'amount_paid' => 'required|numeric',
+            'customer_name' => 'nullable|string',
             'coupon_code' => 'nullable|string',
+            'voucher_code' => 'nullable|string',
             'discount_percent' => 'nullable|numeric|min:0|max:100',
-            'items' => 'nullable|array', // Optional: edit items during approval
+            'guest_category' => 'nullable|string',
+            'order_type' => 'nullable|string',
+            'items' => 'required|array',
             'items.*.menu_item_id' => 'required|exists:menu_items,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.note' => 'nullable|string',
         ]);
 
-        if (!in_array($order->stage, ['WAITING_CASHIER', 'CASHIER_APPROVED'])) {
-            return response()->json(['error' => 'Order cannot be paid in current stage'], 400);
-        }
-
-        return DB::transaction(function() use ($user, $order, $validated) {
-            // If items were edited
-            if (isset($validated['items'])) {
-                $order->items()->delete();
-                $total = 0;
-                foreach ($validated['items'] as $itemData) {
-                    $menuItem = MenuItem::find($itemData['menu_item_id']);
-                    $subtotal = $menuItem->price * $itemData['qty'];
-                    
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'menu_item_id' => $menuItem->id,
-                        'menu_name' => $menuItem->name,
-                        'qty' => $itemData['qty'],
-                        'price' => $menuItem->price,
-                        'note' => $itemData['note'] ?? null,
-                    ]);
-                    $total += $subtotal;
-                }
-                $order->update([
-                    'subtotal' => $total,
-                    'total' => $total,
+        return DB::transaction(function() use ($user, $orderId, $validated) {
+            if ($orderId === 'new') {
+                $order = Order::create([
+                    'warung_id' => $user->warung_id,
+                    'table_id' => $validated['table_id'],
+                    'kasir_id' => $user->id,
+                    'customer_name' => 'Walk-in',
+                    'stage' => 'READY_FOR_KITCHEN',
+                    'status' => 'paid',
+                    'code' => 'POS-' . strtoupper(uniqid()),
+                    'subtotal' => 0,
+                    'total' => 0,
+                    'guest_category' => $validated['guest_category'] ?? 'REGULER',
+                    'order_type' => $validated['order_type'] ?? 'TAKE_AWAY',
                 ]);
+            } else {
+                $order = Order::findOrFail($orderId);
+                if (!in_array($order->stage, ['WAITING_CASHIER', 'CASHIER_APPROVED', 'DRAFT'])) {
+                    return response()->json(['error' => 'Order cannot be paid in current stage'], 400);
+                }
+            }
+
+            // Sync items
+            $order->items()->delete();
+            $subtotal = 0;
+            foreach ($validated['items'] as $itemData) {
+                $menuItem = MenuItem::find($itemData['menu_item_id']);
+                $itemSubtotal = $menuItem->price * $itemData['qty'];
+                
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'menu_item_id' => $menuItem->id,
+                    'menu_name' => $menuItem->name,
+                    'qty' => $itemData['qty'],
+                    'price' => $menuItem->price,
+                    'note' => $itemData['note'] ?? null,
+                ]);
+                $subtotal += $itemSubtotal;
             }
 
             $discountAmount = 0;
             if (isset($validated['discount_percent']) && $validated['discount_percent'] > 0) {
-                $discountAmount = $order->total * ($validated['discount_percent'] / 100);
+                $discountAmount = $subtotal * ($validated['discount_percent'] / 100);
             }
 
             $order->update([
                 'stage' => 'READY_FOR_KITCHEN',
                 'status' => 'paid',
+                'customer_name' => $validated['customer_name'] ?? $order->customer_name,
                 'paid_at' => now(),
+                'ordered_at' => now(),
                 'kasir_id' => $user->id,
-                'payment_method' => $validated['payment_method'] === 'cash' ? 'kasir' : 'gateway',
+                'payment_method' => match($validated['payment_method']) {
+                    'cash' => 'kasir',
+                    'qris' => 'qris',
+                    default => 'gateway',
+                },
                 'sent_to_kitchen_at' => now(),
+                'subtotal' => $subtotal,
                 'discount' => $discountAmount,
-                'total' => $order->total - $discountAmount,
-                'notes' => $validated['coupon_code'] ? "Kupon: " . $validated['coupon_code'] : $order->notes,
+                'total' => $subtotal - $discountAmount,
+                'guest_category' => $validated['guest_category'] ?? $order->guest_category,
+                'order_type' => $validated['order_type'] ?? $order->order_type,
+                'notes' => ($validated['coupon_code'] ? "Kupon: " . $validated['coupon_code'] : $order->notes),
             ]);
 
             // Mark coupon as used
@@ -296,7 +358,18 @@ class TerminalController extends Controller
                 \App\Models\Coupon::where('code', $validated['coupon_code'])->increment('uses');
             }
 
-            // Deduct stock based on recipe
+            // Mark voucher as used
+            if (isset($validated['voucher_code'])) {
+                $v = \App\Models\Voucher::where('code', $validated['voucher_code'])->first();
+                if ($v) {
+                    $v->update(['is_used' => true, 'used_at' => now()]);
+                }
+            }
+
+            // Sync table status
+            $this->syncTableStatuses($order);
+
+            // Deduct stock
             try {
                 \App\Http\Controllers\RecipeController::deductStockForOrder($order);
             } catch (\Exception $e) {
@@ -312,46 +385,38 @@ class TerminalController extends Controller
      */
     public function updateKitchenStatus(Request $request, Order $order)
     {
+        $user = auth()->user();
         $validated = $request->validate([
             'status' => 'required|in:COOKING,READY,DONE',
         ]);
 
-        $order->update([
+        $updateData = [
             'stage' => $validated['status'],
             'status' => match($validated['status']) {
                 'COOKING' => 'preparing',
                 'READY' => 'ready',
                 'DONE' => 'served',
             }
-        ]);
+        ];
+
+        if ($validated['status'] === 'COOKING') {
+            $updateData['kitchen_id'] = $user->id;
+            $updateData['cooking_at'] = now();
+        }
 
         if ($validated['status'] === 'DONE') {
-            $order->update(['kitchen_done_at' => now()]);
-            
-            // Free the tables ONLY IF no other active orders exist for these tables
-            $tableIds = [$order->table_id];
-            if ($order->merged_table_ids) {
-                $mergedIds = json_decode($order->merged_table_ids, true);
-                if (is_array($mergedIds)) {
-                    $tableIds = array_merge($tableIds, $mergedIds);
-                }
-            }
+            $updateData['kitchen_done_at'] = now();
+        }
 
-            foreach ($tableIds as $tId) {
-                $otherActiveOrders = Order::where('warung_id', $order->warung_id)
-                    ->where('id', '!=', $order->id)
-                    ->where('stage', '!=', 'DONE')
-                    ->where(function($q) use ($tId) {
-                        $q->where('table_id', $tId)
-                          ->orWhereJsonContains('merged_table_ids', (int)$tId)
-                          ->orWhereJsonContains('merged_table_ids', (string)$tId);
-                    })
-                    ->exists();
+        if ($validated['status'] === 'DONE') {
+            $updateData['served_at'] = now();
+        }
 
-                if (!$otherActiveOrders) {
-                    RestaurantTable::where('id', $tId)->update(['status' => 'available']);
-                }
-            }
+        $order->update($updateData);
+
+        if ($validated['status'] === 'DONE') {
+            // Sync table status
+            $this->syncTableStatuses($order);
         }
 
         return response()->json(['success' => true, 'order' => $order]);
@@ -373,10 +438,11 @@ class TerminalController extends Controller
             $newOrder = Order::create([
                 'warung_id' => $order->warung_id,
                 'table_id' => $order->table_id,
+                'customer_name' => $order->customer_name ?? 'Split Bill',
                 'waiter_id' => $order->waiter_id,
                 'stage' => $order->stage,
                 'status' => $order->status,
-                'code' => $order->code . '-S' . rand(10, 99), // Add random suffix to avoid duplicates if multiple splits
+                'code' => $order->code . '-S' . rand(10, 99),
                 'subtotal' => 0,
                 'total' => 0,
                 'guest_category' => $order->guest_category,
@@ -433,6 +499,195 @@ class TerminalController extends Controller
                 'new_order' => $newOrder->load('items')
             ]);
         });
+    }
+
+    /**
+     * Merge items from another table's order into this one
+     */
+    public function mergeOrder(Request $request, Order $order)
+    {
+        $validated = $request->validate([
+            'source_table_id' => 'required|exists:restaurant_tables,id',
+        ]);
+
+        return DB::transaction(function() use ($order, $validated) {
+            $sourceOrder = Order::where('table_id', $validated['source_table_id'])
+                ->whereIn('stage', ['DRAFT', 'WAITING_CASHIER'])
+                ->first();
+
+            if (!$sourceOrder) {
+                return response()->json(['error' => 'Tidak ada pesanan aktif di meja tersebut'], 404);
+            }
+
+            // Move items
+            foreach ($sourceOrder->items as $item) {
+                // Check if item already exists in target order to combine qty
+                $existing = OrderItem::where('order_id', $order->id)
+                    ->where('menu_item_id', $item->menu_item_id)
+                    ->where('note', $item->note)
+                    ->first();
+
+                if ($existing) {
+                    $existing->increment('qty', $item->qty);
+                    $item->delete();
+                } else {
+                    $item->update(['order_id' => $order->id]);
+                }
+            }
+
+            // Record merged table ID
+            $merged = json_decode($order->merged_table_ids, true) ?: [];
+            if (!in_array($validated['source_table_id'], $merged)) {
+                $merged[] = (int)$validated['source_table_id'];
+                $order->update(['merged_table_ids' => json_encode($merged)]);
+            }
+
+            // Recalculate subtotal/total
+            $newSubtotal = $order->items()->sum(DB::raw('price * qty'));
+            $order->update(['subtotal' => $newSubtotal, 'total' => $newSubtotal]);
+
+            // Delete empty source order
+            $sourceOrder->delete();
+
+            return response()->json(['success' => true, 'order' => $order->load('items')]);
+        });
+    }
+
+    /**
+     * Void an order (manager authorization required)
+     */
+    public function voidOrder(Request $request, Order $order)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:255',
+            'pin' => 'required|string', // Manager PIN
+        ]);
+
+        // Simple PIN check for now, in production this should check against a manager user
+        if ($validated['pin'] !== '1234') { 
+            return response()->json(['error' => 'PIN Manager tidak valid'], 403);
+        }
+
+        return DB::transaction(function() use ($order, $validated) {
+            $order->update([
+                'stage' => 'VOID',
+                'status' => 'void',
+                'notes' => ($order->notes ? $order->notes . " | " : "") . "VOID: " . $validated['reason'],
+            ]);
+
+            // If it was already paid, we might need to handle refund logic here
+            // For now, just mark as void.
+
+            // Restore stock if it was already deducted
+            if ($order->sent_to_kitchen_at) {
+                // Logic to restore stock could go here
+            }
+
+            // Sync table status
+            $this->syncTableStatuses($order);
+
+            return response()->json(['success' => true]);
+        });
+    }
+
+    /**
+     * Get transaction history for today
+     */
+    public function history()
+    {
+        $user = auth()->user();
+        $orders = Order::with(['table', 'items', 'waiter', 'kasir', 'kitchen'])
+            ->where('warung_id', $user->warung_id)
+            ->whereDate('created_at', now()->toDateString())
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        return response()->json($orders);
+    }
+
+    /**
+     * Get summary report for today
+     */
+    public function reports()
+    {
+        $user = auth()->user();
+        $today = now()->toDateString();
+        
+        $totalSales = Order::where('warung_id', $user->warung_id)
+            ->whereDate('created_at', $today)
+            ->whereIn('status', ['paid', 'served'])
+            ->sum('total');
+            
+        $orderCount = Order::where('warung_id', $user->warung_id)
+            ->whereDate('created_at', $today)
+            ->whereIn('status', ['paid', 'served'])
+            ->count();
+
+        $voidCount = Order::where('warung_id', $user->warung_id)
+            ->whereDate('created_at', $today)
+            ->where('stage', 'VOID')
+            ->count();
+
+        $categorySales = DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->join('menu_items', 'order_items.menu_item_id', '=', 'menu_items.id')
+            ->where('orders.warung_id', $user->warung_id)
+            ->whereDate('orders.created_at', $today)
+            ->whereIn('orders.status', ['paid', 'served'])
+            ->select('menu_items.category', DB::raw('SUM(order_items.price * order_items.qty) as total'))
+            ->groupBy('menu_items.category')
+            ->get();
+
+        return response()->json([
+            'date' => $today,
+            'total_sales' => $totalSales,
+            'order_count' => $orderCount,
+            'void_count' => $voidCount,
+            'category_sales' => $categorySales,
+        ]);
+    }
+
+    /**
+     * Check and apply voucher
+     */
+    public function checkVoucher(Request $request)
+    {
+        $request->validate([
+            'code' => 'required|string',
+            'cart_categories' => 'required|array'
+        ]);
+        
+        $voucher = \App\Models\Voucher::where('code', $request->code)
+            ->where('warung_id', auth()->user()->warung_id)
+            ->first();
+
+        if (!$voucher) {
+            return response()->json(['error' => 'Voucher tidak ditemukan'], 404);
+        }
+
+        if ($voucher->is_used) {
+            return response()->json(['error' => 'Voucher Sudah Kadaluwarsa'], 400);
+        }
+
+        if ($voucher->category_restriction) {
+            $restrictedCats = array_map('trim', explode(',', $voucher->category_restriction));
+            $found = false;
+            foreach ($request->cart_categories as $cartCat) {
+                if (in_array($cartCat, $restrictedCats)) {
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                return response()->json(['error' => 'Voucher tidak sesuai kategori item (Butuh: ' . $voucher->category_restriction . ')'], 400);
+            }
+        }
+
+        return response()->json([
+            'code' => $voucher->code,
+            'type' => $voucher->type,
+            'value' => $voucher->value
+        ]);
     }
 
     /**

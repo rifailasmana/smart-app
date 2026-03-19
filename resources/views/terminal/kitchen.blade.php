@@ -22,6 +22,90 @@
         </span>
     );
 
+    const OrderTicket = ({ order, onUpdateStatus }) => {
+        const stageColors = {
+            'READY_FOR_KITCHEN': 'border-orange-500 bg-orange-50/30',
+            'COOKING': 'border-blue-500 bg-blue-50/30',
+            'READY': 'border-green-500 bg-green-50/30',
+            'DONE': 'border-gray-300 bg-gray-50'
+        };
+
+        return (
+            <div className={`border-2 rounded-[2.5rem] flex flex-col h-full shadow-lg transition-all hover:shadow-2xl overflow-hidden ${stageColors[order.stage] || 'border-terminal-border'}`}>
+                <div className="p-6 border-b border-inherit bg-white/50">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <div className="text-3xl font-black uppercase tracking-tighter text-terminal-text">Meja {order.table?.name}</div>
+                            <div className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mt-1">#{order.code}</div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-xs font-black text-terminal-text uppercase tracking-widest">{order.order_type}</div>
+                            <div className="text-[10px] font-bold text-terminal-muted">{new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <span className="px-3 py-1 rounded-full bg-white border border-inherit text-[10px] font-black uppercase tracking-widest text-terminal-text">
+                            {order.guest_category}
+                        </span>
+                        {order.is_split_bill && (
+                            <span className="px-3 py-1 rounded-full bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest shadow-sm">SPLIT</span>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-white/20">
+                    {order.items.map((item, idx) => (
+                        <div key={idx} className="flex gap-4 items-start">
+                            <div className="w-10 h-10 rounded-2xl bg-white border border-inherit flex items-center justify-center font-black text-xl shadow-sm text-terminal-text">
+                                {item.qty}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="font-black text-lg leading-tight break-words text-terminal-text uppercase">{item.menu_name}</div>
+                                {item.note && (
+                                    <div className="mt-1 p-2 rounded-xl bg-orange-100/50 border border-orange-200 text-orange-700 text-xs font-bold italic">
+                                        <i className="bi bi-pencil-fill mr-1.5"></i>{item.note}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="p-6 border-t border-inherit bg-white/50">
+                    {order.stage === 'READY_FOR_KITCHEN' && (
+                        <button 
+                            onClick={() => onUpdateStatus(order.id, 'COOKING')}
+                            className="w-full py-5 bg-orange-500 text-white font-black rounded-[1.5rem] hover:bg-orange-600 transition-all active:scale-95 shadow-xl shadow-orange-500/20 text-lg uppercase tracking-widest"
+                        >
+                            <i className="bi bi-fire mr-2"></i> MULAI MASAK
+                        </button>
+                    )}
+                    {order.stage === 'COOKING' && (
+                        <button 
+                            onClick={() => onUpdateStatus(order.id, 'READY')}
+                            className="w-full py-5 bg-blue-500 text-white font-black rounded-[1.5rem] hover:bg-blue-600 transition-all active:scale-95 shadow-xl shadow-blue-500/20 text-lg uppercase tracking-widest"
+                        >
+                            <i className="bi bi-check-circle mr-2"></i> SELESAI MASAK
+                        </button>
+                    )}
+                    {order.stage === 'READY' && (
+                        <button 
+                            onClick={() => onUpdateStatus(order.id, 'DONE')}
+                            className="w-full py-5 bg-green-500 text-white font-black rounded-[1.5rem] hover:bg-green-600 transition-all active:scale-95 shadow-xl shadow-green-500/20 text-lg uppercase tracking-widest"
+                        >
+                            <i className="bi bi-person-check mr-2"></i> SUDAH DISAJIKAN
+                        </button>
+                    )}
+                    {order.stage === 'DONE' && (
+                        <div className="text-center py-4 bg-gray-100 rounded-[1.5rem] border border-gray-200">
+                            <span className="text-gray-400 font-black uppercase tracking-widest text-sm">PESANAN SELESAI</span>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     const KitchenHeader = () => {
         const [soundEnabled, setSoundEnabled] = useState(true);
         const [filterWithNotes, setFilterWithNotes] = useState(false);
@@ -65,7 +149,10 @@
 
         const fetchOrders = useCallback(async () => {
             try {
-                const response = await fetch('/terminal/orders?role=kitchen');
+                const response = await fetch('/terminal/orders?role=kitchen', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) throw new Error('Failed to fetch orders');
                 const data = await response.json();
                 
                 setOrders(prev => {
@@ -80,7 +167,7 @@
                     return data;
                 });
             } catch (e) {
-                console.error('Failed to fetch kitchen orders');
+                console.error('Failed to fetch kitchen orders', e);
             }
         }, [soundEnabled]);
 
@@ -105,12 +192,20 @@
             try {
                 const response = await fetch(`/terminal/orders/${orderId}/kitchen-status`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                    },
                     body: JSON.stringify({ status: newStatus })
                 });
                 if (response.ok) fetchOrders();
+                else {
+                    const data = await response.json();
+                    alert('Gagal: ' + (data.error || data.message || 'Gagal mengupdate status tiket.'));
+                }
             } catch (e) {
-                alert('Gagal mengupdate status tiket.');
+                alert('Error: ' + e.message);
             }
         };
 

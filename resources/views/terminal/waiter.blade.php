@@ -72,7 +72,10 @@
 
         const fetchActiveOrders = useCallback(async () => {
             try {
-                const response = await fetch('/terminal/orders?role=waiter');
+                const response = await fetch('/terminal/orders?role=waiter', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) throw new Error('Network response was not ok');
                 const data = await response.json();
                 setActiveOrders(data);
                 setTables(prev => prev.map(t => {
@@ -93,7 +96,7 @@
                         is_merged_child: !!mergedOrder && mergedOrder.table_id !== t.id
                     };
                 }));
-            } catch (e) { console.error('Failed to fetch orders'); }
+            } catch (e) { console.error('Failed to fetch orders', e); }
         }, []);
 
         useEffect(() => {
@@ -144,7 +147,10 @@
             
             setIsLoading(true);
             try {
-                const response = await fetch(`/terminal/tables/${table.id}/draft`);
+                const response = await fetch(`/terminal/tables/${table.id}/draft`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!response.ok) throw new Error('Failed to load draft');
                 const draft = await response.json();
                 if (draft) {
                     setActiveOrderId(draft.id);
@@ -168,7 +174,7 @@
                     setShowGuestModal(true);
                 }
             } catch (e) { 
-                console.error('Failed to load draft'); 
+                console.error('Failed to load draft', e); 
                 setShowGuestModal(true);
             }
             finally { setIsLoading(false); }
@@ -187,7 +193,11 @@
             try {
                 const response = await fetch('/terminal/orders', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                    },
                     body: JSON.stringify({
                         order_id: activeOrderId,
                         table_id: activeTable.id,
@@ -200,13 +210,12 @@
                     })
                 });
                 
+                const data = await response.json();
                 if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error || 'Gagal menyimpan');
+                    throw new Error(data.error || data.message || 'Gagal menyimpan');
                 }
 
-                const order = await response.json();
-                setActiveOrderId(order.id);
+                setActiveOrderId(data.id);
                 alert('Draft berhasil disimpan!');
                 fetchActiveOrders();
             } catch (e) { alert('Gagal: ' + e.message); }
@@ -228,7 +237,11 @@
                 // 1. Save first to ensure latest items are stored
                 const saveResponse = await fetch('/terminal/orders', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                    },
                     body: JSON.stringify({
                         order_id: activeOrderId,
                         table_id: activeTable.id,
@@ -241,22 +254,22 @@
                     })
                 });
                 
+                const saveData = await saveResponse.json();
                 if (!saveResponse.ok) {
-                    const err = await saveResponse.json();
-                    throw new Error(err.error || 'Gagal menyimpan pesanan sebelum dikirim');
+                    throw new Error(saveData.error || saveData.message || 'Gagal menyimpan pesanan sebelum dikirim');
                 }
 
-                const order = await saveResponse.json();
-                
                 // 2. Submit to cashier
-                const submitRes = await fetch(`/terminal/orders/${order.id}/submit-to-cashier`, {
+                const submitRes = await fetch(`/terminal/orders/${saveData.id}/submit-to-cashier`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}' 
                     }
                 });
                 
+                const submitData = await submitRes.json();
                 if (submitRes.ok) {
                     alert('Pesanan terkirim ke kasir!');
                     setActiveTable(null); 
@@ -265,8 +278,7 @@
                     setMergedTables([]);
                     fetchActiveOrders();
                 } else {
-                    const err = await submitRes.json();
-                    throw new Error(err.error || 'Gagal mengirim ke kasir');
+                    throw new Error(submitData.error || submitData.message || 'Gagal mengirim ke kasir');
                 }
             } catch (e) { alert('Gagal: ' + e.message); }
             finally { setIsLoading(false); }
@@ -324,11 +336,14 @@
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 content-start custom-scrollbar">
                                     {filteredTables.map(table => (
-                                        <div key={table.id} className={`aspect-square rounded-[2rem] border-2 flex flex-col items-center justify-center cursor-pointer transition-all relative group active:scale-95 shadow-sm ${activeTable?.id === table.id ? 'border-terminal-accent bg-terminal-accent/10 shadow-[0_0_30px_rgba(255,140,0,0.15)]' : table.is_merged_child ? 'border-terminal-muted bg-terminal-bg opacity-60' : table.has_draft ? 'border-terminal-warning bg-terminal-warning/5' : table.status === 'occupied' ? 'border-terminal-danger bg-terminal-danger/5 shadow-[0_0_20px_rgba(239,68,68,0.1)]' : 'border-terminal-border bg-white hover:border-terminal-accent/50 hover:shadow-md'}`} onClick={() => handleSelectTable(table)}>
-                                            {table.has_draft && <div className="absolute top-4 right-4"><Badge color="bg-terminal-warning">DRAFT</Badge></div>}
+                                        <div key={table.id} className={`aspect-square rounded-[2rem] border-2 flex flex-col items-center justify-center cursor-pointer transition-all relative group active:scale-95 shadow-sm ${activeTable?.id === table.id ? 'border-orange-500 bg-orange-50 shadow-[0_0_30px_rgba(255,140,0,0.15)]' : table.is_merged_child ? 'border-terminal-muted bg-terminal-bg opacity-60' : table.has_draft ? 'border-orange-300 bg-orange-50/50' : table.status === 'occupied' ? 'border-orange-200 bg-orange-50/30 shadow-[0_0_20px_rgba(255,140,0,0.05)]' : 'border-terminal-border bg-white hover:border-orange-300 hover:shadow-md'}`} onClick={() => handleSelectTable(table)}>
+                                            {table.has_draft && <div className="absolute top-4 right-4"><Badge color="bg-orange-500 text-white">DRAFT</Badge></div>}
                                             {table.is_merged_child && <div className="absolute top-4 right-4"><Badge color="bg-terminal-muted">MERGED</Badge></div>}
-                                            <div className="text-4xl font-black mb-1 group-hover:scale-110 transition-transform text-terminal-text">{table.name}</div>
-                                            <div className="text-terminal-muted text-xs font-bold uppercase tracking-widest">{table.seats} Kursi</div>
+                                            <div className={`text-4xl font-black mb-1 group-hover:scale-110 transition-transform ${activeTable?.id === table.id || table.status === 'occupied' || table.has_draft ? 'text-orange-600' : 'text-terminal-text'}`}>{table.name}</div>
+                                            <div className="text-terminal-muted text-[10px] font-black uppercase tracking-widest">{table.status === 'occupied' ? 'Terisi' : table.has_draft ? 'Draft' : `${table.seats} Kursi`}</div>
+                                            {(table.status === 'occupied' || table.has_draft) && !table.is_merged_child && (
+                                                <div className="mt-2 w-2 h-2 rounded-full bg-orange-500 animate-ping"></div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -427,14 +442,47 @@
                     </div>
 
                     <div className="p-6 border-t border-terminal-border bg-terminal-bg/50">
+                        <div className="mb-4">
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <i className="bi bi-person-fill absolute left-3 top-1/2 -translate-y-1/2 text-orange-400"></i>
+                                    <input 
+                                        type="text" 
+                                        className="w-full bg-white border border-orange-100 rounded-xl pl-10 pr-4 py-2 text-xs font-black uppercase focus:outline-none shadow-sm"
+                                        placeholder="NAMA TAMU"
+                                        value={reservationName}
+                                        onChange={e => setReservationName(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="mt-2 flex gap-2">
+                                <select 
+                                    className="flex-1 bg-white border border-terminal-border rounded-xl px-3 py-2 text-[10px] font-black uppercase focus:outline-none shadow-sm text-orange-600 border-orange-100"
+                                    value={guestCategory}
+                                    onChange={e => setGuestCategory(e.target.value)}
+                                >
+                                    <option value="REGULER">Reguler</option>
+                                    <option value="RESERVED">Reserved</option>
+                                    <option value="MAJAR_PRIORITY">Priority</option>
+                                    <option value="MAJAR_OWNER">Owner</option>
+                                </select>
+                                <button 
+                                    onClick={() => setShowMergeModal(true)}
+                                    className="w-10 h-10 rounded-xl border border-terminal-border flex items-center justify-center text-terminal-muted hover:text-orange-500 hover:border-orange-500 bg-white shadow-sm transition-all"
+                                    title="Gabung Meja"
+                                >
+                                    <i className="bi bi-diagram-2"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div className="flex justify-between items-center mb-6">
                             <div className="text-xs font-black text-terminal-muted uppercase tracking-widest">Total</div>
                             <div className="text-3xl font-black text-terminal-text">{formatPrice(orderTotal)}</div>
                         </div>
-                        <div className="flex flex-col gap-3">
-                            <Button variant="secondary" className="w-full py-4 text-sm" icon="bi-save" onClick={handleSaveDraft} disabled={isLoading || !activeTable || orderItems.length === 0}>SIMPAN</Button>
-                            <Button variant="primary" className="w-full py-4 text-sm" icon="bi-send-check" onClick={handleSubmitToCashier} disabled={isLoading || !activeTable || orderItems.length === 0}>KIRIM KE KASIR</Button>
-                        </div>
+                            <div className="flex flex-col gap-3">
+                                <Button variant="secondary" className="w-full py-4 text-sm font-black uppercase tracking-widest border-2 border-orange-100 hover:border-orange-500" icon="bi-save" onClick={handleSaveDraft} disabled={isLoading || !activeTable || orderItems.length === 0}>SIMPAN DRAFT</Button>
+                                <Button variant="primary" className="w-full py-5 text-lg font-black uppercase tracking-widest bg-orange-500 border-none shadow-xl shadow-orange-500/20 hover:bg-orange-600" icon="bi-send-check" onClick={handleSubmitToCashier} disabled={isLoading || !activeTable || orderItems.length === 0}>KIRIM KE KASIR</Button>
+                            </div>
                     </div>
                 </div>
 

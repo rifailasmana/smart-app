@@ -29,10 +29,13 @@ class Order extends Model
         'waiter_id',
         'kitchen_id',
         'stage',
+        'ordered_at',
         'submitted_to_cashier_at',
         'paid_at',
+        'cooking_at',
         'sent_to_kitchen_at',
         'kitchen_done_at',
+        'served_at',
         'guest_category',
         'order_type',
         'reservation_name',
@@ -47,6 +50,10 @@ class Order extends Model
         'diskon_manual' => 'decimal:2',
         'total' => 'decimal:2',
     ];
+
+    public function waiter() { return $this->belongsTo(User::class, 'waiter_id'); }
+    public function kasir() { return $this->belongsTo(User::class, 'kasir_id'); }
+    public function kitchen() { return $this->belongsTo(User::class, 'kitchen_id'); }
 
     public function warung()
     {

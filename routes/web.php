@@ -341,6 +341,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('/menu-items/{id}', [MenuItemController::class, 'destroy'])->name('menu.destroy');
         Route::post('/menu-items/refresh-all-stock', [MenuItemController::class, 'refreshAllStock'])->name('menu.refresh-all-stock');
         
+        // Voucher Management
+        Route::get('/manage/vouchers', [App\Http\Controllers\VoucherController::class, 'index'])->name('manage.vouchers.index');
+        Route::post('/manage/vouchers', [App\Http\Controllers\VoucherController::class, 'store'])->name('manage.vouchers.store');
+        Route::delete('/manage/vouchers/{voucher}', [App\Http\Controllers\VoucherController::class, 'destroy'])->name('manage.vouchers.destroy');
+
         // Google Sheet Sync
         Route::post('/google-sheet/sync', [OrderController::class, 'syncToGoogleSheet'])->name('google-sheet.sync');
         
@@ -568,9 +573,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/orders', [App\Http\Controllers\TerminalController::class, 'storeOrder']);
         Route::post('/orders/{order}/submit-to-cashier', [App\Http\Controllers\TerminalController::class, 'submitToCashier']);
         Route::post('/orders/{order}/split', [App\Http\Controllers\TerminalController::class, 'splitOrder']);
+        Route::post('/orders/{order}/merge', [App\Http\Controllers\TerminalController::class, 'mergeOrder']);
         Route::post('/orders/{order}/approve-and-pay', [App\Http\Controllers\TerminalController::class, 'approveAndPay']);
         Route::post('/orders/{order}/kitchen-status', [App\Http\Controllers\TerminalController::class, 'updateKitchenStatus']);
+        Route::get('/orders/history', [App\Http\Controllers\TerminalController::class, 'history']);
+        Route::get('/reports/summary', [App\Http\Controllers\TerminalController::class, 'reports']);
+        Route::post('/orders/{order}/void', [App\Http\Controllers\TerminalController::class, 'voidOrder']);
         Route::post('/coupons/check', [App\Http\Controllers\TerminalController::class, 'checkCoupon']);
+        Route::post('/vouchers/check', [App\Http\Controllers\TerminalController::class, 'checkVoucher']);
     });
 
     Route::post('/order-items/{item}/status', [DashboardController::class, 'updateOrderItemStatus'])->name('order-items.status');
