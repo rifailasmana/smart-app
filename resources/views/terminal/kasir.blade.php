@@ -448,7 +448,7 @@
                                     <span className="font-black text-terminal-text">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(cat.total)}</span>
                                 </div>
                                 <div className="h-3 bg-terminal-bg rounded-full overflow-hidden border border-terminal-border">
-                                    <div className="h-full bg-orange-500 rounded-full" style={{ width: `${(cat.total / (reportData.total_sales || 1)) * 100}%` }}></div>
+                                    <div className="h-full bg-orange-500 rounded-full" style=@{{ width: `${(cat.total / (reportData.total_sales || 1)) * 100}%` }}></div>
                                 </div>
                             </div>
                         ))}
