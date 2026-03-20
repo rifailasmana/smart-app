@@ -4,35 +4,40 @@
 @section('terminal_role', 'WAITER')
 
 @section('header_extra')
-<div class="flex items-center gap-4 border-l border-gray-700 pl-4">
-    <div class="flex items-center gap-2">
-        <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">System: Online</span>
+    <div class="flex items-center gap-4 border-l border-gray-700 pl-4">
+        <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">System: Online</span>
+        </div>
     </div>
-</div>
 @endsection
 
 @section('content')
-<div id="waiter-root" class="w-full h-full">
-    <div style="margin:auto; max-width: 520px; padding: 24px; text-align:center;">
-        <div style="font-weight: 800; font-size: 20px; letter-spacing: .02em;">Memuat Terminal Waiter…</div>
-        <div style="margin-top: 8px; opacity: .75; font-size: 14px; line-height: 1.4;">Jika layar tetap kosong, coba muat ulang.</div>
-        <div style="margin-top: 16px; display:flex; gap: 10px; justify-content:center; flex-wrap: wrap;">
-            <button type="button" onclick="location.reload()" style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: #fff; font-weight: 700;">Muat Ulang</button>
-            <a href="{{ route('terminal.index') }}" style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: transparent; font-weight: 700; text-decoration:none; color: inherit;">Pilih Terminal</a>
+    <div class="w-full h-full" id="waiter-root">
+        <div style="margin:auto; max-width: 520px; padding: 24px; text-align:center;">
+            <div style="font-weight: 800; font-size: 20px; letter-spacing: .02em;">Memuat Terminal Waiter…</div>
+            <div style="margin-top: 8px; opacity: .75; font-size: 14px; line-height: 1.4;">Jika layar tetap kosong, coba muat
+                ulang.</div>
+            <div style="margin-top: 16px; display:flex; gap: 10px; justify-content:center; flex-wrap: wrap;">
+                <button type="button"
+                    style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: #fff; font-weight: 700;"
+                    onclick="location.reload()">Muat Ulang</button>
+                <a href="{{ route('terminal.index') }}"
+                    style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: transparent; font-weight: 700; text-decoration:none; color: inherit;">Pilih
+                    Terminal</a>
+            </div>
         </div>
     </div>
-</div>
 @endsection
 
 @section('extra_js')
-<script type="text/babel" data-presets="env,react" data-plugins="proposal-optional-chaining,proposal-nullish-coalescing-operator">
+    <script type="text/babel" data-presets="env,react" data-plugins="proposal-optional-chaining,proposal-nullish-coalescing-operator">
     const { useState, useEffect, useMemo, useCallback } = React;
 
     // --- Components ---
 
     const SidebarIcon = ({ icon, label, active = false, onClick }) => (
-        <div 
+        <div
             onClick={onClick}
             className={`relative flex flex-col items-center justify-center w-full py-5 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
         >
@@ -45,7 +50,7 @@
     );
 
     const OrderTypeCard = ({ icon, title, subtitle, onClick, color = "orange" }) => (
-        <div 
+        <div
             onClick={onClick}
             className="w-full max-w-[340px] aspect-square bg-white rounded-[2.5rem] p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 transform hover:-translate-y-3 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] group border-2 border-transparent hover:border-orange-100"
         >
@@ -70,7 +75,7 @@
         const isClickable = table.status === 'available' && table.capacity >= guestCount;
 
         return (
-            <div 
+            <div
                 onClick={() => isClickable && onClick(table)}
                 className={`relative p-6 rounded-[2rem] border-2 transition-all duration-300 flex flex-col justify-between aspect-video ${active ? 'border-orange-500 bg-orange-50 shadow-lg' : config.border + ' ' + config.bg} ${isClickable ? 'cursor-pointer hover:shadow-md' : 'opacity-60 cursor-not-allowed'}`}
             >
@@ -102,18 +107,18 @@
             <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">Selamat Datang!</h1>
             <p className="text-xl text-gray-400 font-medium mb-16 tracking-tight">Pilih jenis pesanan Anda untuk memulai</p>
             <div className="flex gap-10 w-full max-w-4xl px-6">
-                <OrderTypeCard 
-                    icon="bi-shop" 
-                    title="Dine In" 
-                    subtitle="Makan di tempat" 
-                    onClick={() => onSelect('DINE_IN')} 
+                <OrderTypeCard
+                    icon="bi-shop"
+                    title="Dine In"
+                    subtitle="Makan di tempat"
+                    onClick={() => onSelect('DINE_IN')}
                     color="orange"
                 />
-                <OrderTypeCard 
-                    icon="bi-bag-heart-fill" 
-                    title="Take Away" 
-                    subtitle="Dibawa pulang" 
-                    onClick={() => onSelect('TAKE_AWAY')} 
+                <OrderTypeCard
+                    icon="bi-bag-heart-fill"
+                    title="Take Away"
+                    subtitle="Dibawa pulang"
+                    onClick={() => onSelect('TAKE_AWAY')}
                     color="green"
                 />
             </div>
@@ -127,12 +132,12 @@
                 <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm mb-10 transition-colors">
                     <i className="bi bi-arrow-left"></i> Kembali
                 </button>
-                
+
                 <div className="flex items-center gap-3 mb-2">
                     <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs">2</div>
                     <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pilih Meja</h2>
                 </div>
-                
+
                 <div className="mt-8">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">Jumlah Tamu</label>
                     <div className="flex items-center justify-between bg-gray-50 rounded-3xl p-4 border border-gray-100 mb-6">
@@ -144,10 +149,10 @@
                             <i className="bi bi-plus-lg text-xl"></i>
                         </button>
                     </div>
-                    
+
                     <div className="grid grid-cols-4 gap-2 mb-10">
                         {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
-                            <button 
+                            <button
                                 key={n}
                                 onClick={() => setGuestCount(n)}
                                 className={`py-3 rounded-xl font-black transition-all ${guestCount === n ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
@@ -179,21 +184,21 @@
                         {tables.filter(t => t.status === 'available' && t.capacity >= guestCount).length} tersedia
                     </div>
                 </div>
-                
+
                 <div className="flex-1 overflow-y-auto pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
                     {tables.map(table => (
-                        <TableCard 
-                            key={table.id} 
-                            table={table} 
-                            active={selectedTable?.id === table.id} 
+                        <TableCard
+                            key={table.id}
+                            table={table}
+                            active={selectedTable?.id === table.id}
                             guestCount={guestCount}
-                            onClick={onSelect} 
+                            onClick={onSelect}
                         />
                     ))}
                 </div>
 
                 <div className="mt-8 flex justify-end">
-                    <button 
+                    <button
                         disabled={!selectedTable}
                         onClick={onContinue}
                         className="px-12 py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-orange-500/20 disabled:opacity-30 disabled:shadow-none transition-all active:scale-95"
@@ -261,7 +266,7 @@
                     {/* Category Tabs */}
                     <div className="flex gap-3 mb-8 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
                         {['Semua', ...categories].map(cat => (
-                            <button 
+                            <button
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
                                 className={`px-8 py-3 rounded-2xl font-black text-sm transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white text-gray-400 hover:bg-gray-100'}`}
@@ -274,7 +279,7 @@
                     {/* Menu Grid */}
                     <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
                         {filteredMenu.map(item => (
-                            <div 
+                            <div
                                 key={item.id}
                                 onClick={() => addToCart(item)}
                                 className="bg-white rounded-[2rem] p-5 flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group"
@@ -338,7 +343,7 @@
                             <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">Total Bill</span>
                             <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
                         </div>
-                        <button 
+                        <button
                             disabled={cart.length === 0}
                             className="w-full py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-orange-500/30 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none mt-4"
                         >
@@ -387,9 +392,9 @@
                     return <OrderHistoryView onBack={() => setView('ORDER_TYPE')} />;
                 case 'TABLE_SELECT':
                     return (
-                        <TableSelectionView 
-                            tables={ @json($tables) } 
-                            guestCount={guestCount} 
+                        <TableSelectionView
+                            tables={ @json($tables) }
+                            guestCount={guestCount}
                             setGuestCount={setGuestCount}
                             selectedTable={selectedTable}
                             onSelect={handleSelectTable}
@@ -399,7 +404,7 @@
                     );
                 case 'MENU':
                     return (
-                        <MenuView 
+                        <MenuView
                             menuItems={ @json($menuItems) }
                             categories={ @json($categories) }
                             orderType={orderType}
@@ -507,7 +512,7 @@
                                     {order.stage.replace(/_/g, ' ')}
                                 </span>
                             </div>
-                            
+
                             <div className="flex-1 space-y-2 mb-6">
                                 {order.items.map((item, idx) => (
                                     <div key={idx} className="flex justify-between text-sm">
@@ -589,24 +594,28 @@
 
 </script>
 
-<style>
-    /* Custom Scrollbar */
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #E5E7EB;
-        border-radius: 10px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #D1D5DB;
-    }
-    .no-scrollbar::-webkit-scrollbar {
-        display: none;
-    }
-</style>
+    <style>
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #E5E7EB;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #D1D5DB;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
 @endsection

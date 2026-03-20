@@ -4,17 +4,17 @@
 @section('terminal_role', 'DAPUR')
 
 @section('header_extra')
-<div class="flex items-center gap-6 border-l border-gray-700 pl-6">
-    <div id="kitchen-header-root"></div>
-</div>
+    <div class="flex items-center gap-6 border-l border-gray-700 pl-6">
+        <div id="kitchen-header-root"></div>
+    </div>
 @endsection
 
 @section('content')
-<div id="kitchen-root" class="w-full h-full"></div>
+    <div class="w-full h-full" id="kitchen-root"></div>
 @endsection
 
 @section('extra_js')
-<script type="text/babel">
+    <script type="text/babel">
     const { useState, useEffect, useMemo, useCallback } = React;
 
     // --- Components ---
@@ -90,7 +90,7 @@
                 </div>
 
                 <div className="p-6 bg-gray-50/50 border-t border-gray-100">
-                    <button 
+                    <button
                         onClick={() => onUpdateStatus(order.id, order.stage === 'READY_FOR_KITCHEN' ? 'COOKING' : order.stage === 'COOKING' ? 'READY' : 'DONE')}
                         className={`w-full py-5 ${config.btnColor} text-white font-black rounded-[1.5rem] transition-all active:scale-95 shadow-lg text-lg uppercase tracking-widest hover:opacity-90`}
                     >
@@ -130,10 +130,10 @@
             try {
                 const response = await fetch(`/terminal/orders/${orderId}/kitchen-status`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
+                    headers: {
+                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     body: JSON.stringify({ status: newStatus })
                 });
@@ -169,7 +169,7 @@
                                     {orders.filter(o => o.stage === col.id).length}
                                 </div>
                             </div>
-                            
+
                             <div className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar">
                                 {orders.filter(o => o.stage === col.id).length === 0 ? (
                                     <div className="h-full flex flex-col items-center justify-center opacity-10 py-20">
@@ -177,10 +177,10 @@
                                     </div>
                                 ) : (
                                     orders.filter(o => o.stage === col.id).map(order => (
-                                        <OrderTicket 
-                                            key={order.id} 
-                                            order={order} 
-                                            onUpdateStatus={handleUpdateStatus} 
+                                        <OrderTicket
+                                            key={order.id}
+                                            order={order}
+                                            onUpdateStatus={handleUpdateStatus}
                                         />
                                     ))
                                 )}
@@ -220,7 +220,7 @@
 
     // --- Reuse Status & History Components ---
     // (Note: In a real project these should be in shared JS files, but for blade we duplicate or use a shared layout)
-    
+
     const OrderStatusView = ({ role, onBack }) => {
         const [orders, setOrders] = useState([]);
         const [loading, setLoading] = useState(true);
@@ -329,19 +329,22 @@
     root.render(<KitchenTerminal />);
 </script>
 
-<style>
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #E5E7EB;
-        border-radius: 10px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #D1D5DB;
-    }
-</style>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #E5E7EB;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #D1D5DB;
+        }
+    </style>
 @endsection

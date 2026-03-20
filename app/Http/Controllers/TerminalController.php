@@ -26,12 +26,12 @@ class TerminalController extends Controller
     {
         $user = auth()->user();
         $warung = Warung::find($user->warung_id);
-        
+
         // Get all staff for quick switch
         $staff = User::where('warung_id', $user->warung_id)
             ->whereIn('role', ['waiter', 'kasir', 'dapur', 'kitchen', 'owner'])
             ->get();
-            
+
         return view('terminal.index', compact('user', 'warung', 'staff'));
     }
 
@@ -49,7 +49,7 @@ class TerminalController extends Controller
             ->distinct()
             ->pluck('category')
             ->filter();
-        
+
         return view('terminal.waiter', compact('user', 'warung', 'tables', 'menuItems', 'categories'));
     }
 
@@ -67,7 +67,7 @@ class TerminalController extends Controller
             ->pluck('category')
             ->filter();
         $tables = RestaurantTable::where('warung_id', $user->warung_id)->get();
-        
+
         return view('terminal.kasir', compact('user', 'warung', 'menuItems', 'categories', 'tables'));
     }
 
@@ -79,7 +79,7 @@ class TerminalController extends Controller
         $user = auth()->user();
         $warung = Warung::find($user->warung_id);
         $tables = RestaurantTable::where('warung_id', $user->warung_id)->get();
-        
+
         return view('terminal.kitchen', compact('user', 'warung', 'tables'));
     }
 
@@ -92,7 +92,7 @@ class TerminalController extends Controller
     {
         $user = auth()->user();
         $role = $request->query('role'); // waiter, kasir, kitchen
-        
+
         $query = Order::where('warung_id', $user->warung_id)
             ->with(['table', 'items']);
 
@@ -115,9 +115,9 @@ class TerminalController extends Controller
      */
     public function storeOrder(Request $request)
     {
-        return DB::transaction(function() use ($request) {
+        return DB::transaction(function () use ($request) {
             $user = auth()->user();
-            
+
             $validated = $request->validate([
                 'order_id' => 'nullable|exists:orders,id',
                 'table_id' => 'required|exists:restaurant_tables,id',
@@ -148,7 +148,7 @@ class TerminalController extends Controller
                     ->where('warung_id', $user->warung_id)
                     ->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY'])
                     ->first();
-                
+
                 if ($existingActive) {
                     return response()->json(['error' => 'Meja sedang digunakan oleh pesanan lain'], 400);
                 }
@@ -175,7 +175,7 @@ class TerminalController extends Controller
             foreach ($validated['items'] as $itemData) {
                 $menuItem = MenuItem::find($itemData['menu_item_id']);
                 $subtotal = $menuItem->price * $itemData['qty'];
-                
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'menu_item_id' => $menuItem->id,
@@ -215,7 +215,7 @@ class TerminalController extends Controller
                 $tableIds = array_merge($tableIds, $mergedIds);
             }
         }
-        
+
         if ($order->stage === 'DONE' || $order->stage === 'VOID') {
             // Check if tables have other active orders before freeing
             foreach ($tableIds as $tid) {
@@ -224,7 +224,7 @@ class TerminalController extends Controller
                     ->whereNotIn('stage', ['DONE', 'VOID'])
                     ->where('id', '!=', $order->id)
                     ->exists();
-                
+
                 if (!$hasOther) {
                     RestaurantTable::where('id', $tid)->update(['status' => 'available']);
                 }
@@ -273,7 +273,7 @@ class TerminalController extends Controller
     public function approveAndPay(Request $request, $orderId)
     {
         $user = auth()->user();
-        
+
         $validated = $request->validate([
             'table_id' => 'required|exists:restaurant_tables,id',
             'payment_method' => 'required|in:cash,qris,card,other',
@@ -290,7 +290,7 @@ class TerminalController extends Controller
             'items.*.note' => 'nullable|string',
         ]);
 
-        return DB::transaction(function() use ($user, $orderId, $validated) {
+        return DB::transaction(function () use ($user, $orderId, $validated) {
             if ($orderId === 'new') {
                 $order = Order::create([
                     'warung_id' => $user->warung_id,
@@ -318,7 +318,7 @@ class TerminalController extends Controller
             foreach ($validated['items'] as $itemData) {
                 $menuItem = MenuItem::find($itemData['menu_item_id']);
                 $itemSubtotal = $menuItem->price * $itemData['qty'];
-                
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'menu_item_id' => $menuItem->id,
@@ -342,7 +342,7 @@ class TerminalController extends Controller
                 'paid_at' => now(),
                 'ordered_at' => now(),
                 'kasir_id' => $user->id,
-                'payment_method' => match($validated['payment_method']) {
+                'payment_method' => match ($validated['payment_method']) {
                     'cash' => 'kasir',
                     'qris' => 'qris',
                     default => 'gateway',
@@ -477,7 +477,7 @@ class TerminalController extends Controller
             'items.*.qty' => 'required|integer|min:1',
         ]);
 
-        return DB::transaction(function() use ($order, $validated) {
+        return DB::transaction(function () use ($order, $validated) {
             // 1. Create new order (copy details)
             $newOrder = Order::create([
                 'warung_id' => $order->warung_id,
@@ -500,7 +500,7 @@ class TerminalController extends Controller
             $newSubtotal = 0;
             foreach ($validated['items'] as $itemData) {
                 $item = OrderItem::find($itemData['order_item_id']);
-                
+
                 // If moving full qty
                 if ($item->qty <= $itemData['qty']) {
                     $item->update(['order_id' => $newOrder->id]);
@@ -508,7 +508,7 @@ class TerminalController extends Controller
                 } else {
                     // Split qty
                     $newSubtotal += ($item->price * $itemData['qty']);
-                    
+
                     // Create new item for new order
                     OrderItem::create([
                         'order_id' => $newOrder->id,
@@ -554,7 +554,7 @@ class TerminalController extends Controller
             'source_table_id' => 'required|exists:restaurant_tables,id',
         ]);
 
-        return DB::transaction(function() use ($order, $validated) {
+        return DB::transaction(function () use ($order, $validated) {
             $sourceOrder = Order::where('table_id', $validated['source_table_id'])
                 ->whereIn('stage', ['DRAFT', 'WAITING_CASHIER'])
                 ->first();
@@ -608,11 +608,11 @@ class TerminalController extends Controller
         ]);
 
         // Simple PIN check for now, in production this should check against a manager user
-        if ($validated['pin'] !== '1234') { 
+        if ($validated['pin'] !== '1234') {
             return response()->json(['error' => 'PIN Manager tidak valid'], 403);
         }
 
-        return DB::transaction(function() use ($order, $validated) {
+        return DB::transaction(function () use ($order, $validated) {
             $order->update([
                 'stage' => 'VOID',
                 'status' => 'void',
@@ -645,7 +645,7 @@ class TerminalController extends Controller
             ->whereDate('created_at', now()->toDateString())
             ->orderBy('created_at', 'desc')
             ->get();
-        
+
         return response()->json($orders);
     }
 
@@ -656,12 +656,12 @@ class TerminalController extends Controller
     {
         $user = auth()->user();
         $today = now()->toDateString();
-        
+
         $totalSales = Order::where('warung_id', $user->warung_id)
             ->whereDate('created_at', $today)
             ->whereIn('status', ['paid', 'served'])
             ->sum('total');
-            
+
         $orderCount = Order::where('warung_id', $user->warung_id)
             ->whereDate('created_at', $today)
             ->whereIn('status', ['paid', 'served'])
@@ -700,7 +700,7 @@ class TerminalController extends Controller
             'code' => 'required|string',
             'cart_categories' => 'required|array'
         ]);
-        
+
         $voucher = \App\Models\Voucher::where('code', $request->code)
             ->where('warung_id', auth()->user()->warung_id)
             ->first();
@@ -740,7 +740,7 @@ class TerminalController extends Controller
     public function checkCoupon(Request $request)
     {
         $request->validate(['code' => 'required|string']);
-        
+
         $coupon = \App\Models\Coupon::where('code', $request->code)
             ->where('expires_at', '>', now())
             ->whereRaw('uses < max_uses')

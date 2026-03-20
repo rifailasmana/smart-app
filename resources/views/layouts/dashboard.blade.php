@@ -1,29 +1,30 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Majar Signature')</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ asset('css/app.css') }}" rel="stylesheet">
     <style>
         :root {
             --sidebar-width: 260px;
             --brand-orange: #FF8C00;
             --brand-yellow: #FFC107;
             --brand-gradient: linear-gradient(135deg, #FF8C00, #FFC107);
-            --sidebar-bg: #1a1a1a;
+            --sidebar-bg: #062e22;
             --sidebar-text: #e0e0e0;
             --sidebar-active: #ffffff;
             --dashboard-bg: #f8f9fa;
             --accent-orange: var(--brand-orange);
             --accent-yellow: var(--brand-yellow);
-            --card-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
             --radius-lg: 1.25rem;
             --radius-md: 0.75rem;
         }
@@ -50,7 +51,7 @@
             height: 100vh;
             z-index: 1000;
             transition: all 0.3s ease;
-            box-shadow: 4px 0 25px rgba(0,0,0,0.15);
+            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
         }
 
         .sidebar-brand {
@@ -60,7 +61,7 @@
             color: #fff;
             letter-spacing: 0.5px;
             text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             margin-bottom: 1rem;
         }
 
@@ -116,12 +117,13 @@
         }
 
         .dashboard-header {
-            background: #fff;
+            background: #062e22;
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+            color: #fff;
             position: sticky;
             top: 0;
             z-index: 900;
@@ -145,13 +147,13 @@
         .dashboard-title-main {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #1a1a1a;
+            color: #fff;
             line-height: 1.2;
         }
 
         .dashboard-title-sub {
             font-size: 0.8rem;
-            color: #6c757d;
+            color: rgba(255, 255, 255, 0.75);
         }
 
         .dashboard-header-right {
@@ -211,7 +213,7 @@
 
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
         }
 
         .btn-primary {
@@ -269,16 +271,21 @@
             .dashboard-sidebar {
                 width: 80px;
             }
-            .sidebar-brand span, .nav-item span {
+
+            .sidebar-brand span,
+            .nav-item span {
                 display: none;
             }
+
             .dashboard-shell {
                 margin-left: 80px;
             }
+
             .nav-item {
                 justify-content: center;
                 padding: 1rem;
             }
+
             .nav-item i {
                 margin-right: 0;
                 font-size: 1.3rem;
@@ -289,9 +296,11 @@
             .dashboard-sidebar {
                 transform: translateX(-100%);
             }
+
             .dashboard-shell {
                 margin-left: 0;
             }
+
             .dashboard-root.sidebar-open .dashboard-sidebar {
                 transform: translateX(0);
                 width: 260px;
@@ -301,6 +310,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ asset('js/app.js') }}"></script>
 </head>
+
 <body>
     <div class="dashboard-root">
         <aside class="dashboard-sidebar shadow">
@@ -308,148 +318,181 @@
                 <span class="highlight">MAJAR</span> SIGNATURE
             </div>
             <nav class="sidebar-nav">
-                <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                <a class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}"
+                    href="{{ route('dashboard') }}">
                     <i class="fas fa-home"></i> <span>Home</span>
                 </a>
 
-                @if(auth()->user()->role === 'admin')
-                <a href="{{ route('admin.warungs') }}" class="nav-item {{ request()->routeIs('admin.warungs') ? 'active' : '' }}">
-                    <i class="fas fa-tools"></i> <span>Admin Warungs</span>
-                </a>
-                <a href="{{ route('admin.diagnostics') }}" class="nav-item {{ request()->routeIs('admin.diagnostics') ? 'active' : '' }}">
-                    <i class="fas fa-shield-alt"></i> <span>Diagnostics</span>
-                </a>
-
+                @if (auth()->user()->role === 'admin')
+                    <a class="nav-item {{ request()->routeIs('admin.warungs') ? 'active' : '' }}"
+                        href="{{ route('admin.warungs') }}">
+                        <i class="fas fa-tools"></i> <span>Admin Warungs</span>
+                    </a>
+                    <a class="nav-item {{ request()->routeIs('admin.diagnostics') ? 'active' : '' }}"
+                        href="{{ route('admin.diagnostics') }}">
+                        <i class="fas fa-shield-alt"></i> <span>Diagnostics</span>
+                    </a>
                 @elseif(auth()->user()->role === 'owner')
-                <a href="{{ route('dashboard.owner') }}" class="nav-item {{ request()->routeIs('dashboard.owner') && !request()->has('tab') ? 'active' : '' }}">
-                    <i class="fas fa-crown"></i> <span>Dashboard</span>
-                </a>
-                <a href="{{ route('dashboard.owner') }}?tab=analytics" class="nav-item {{ request()->get('tab') === 'analytics' ? 'active' : '' }}">
-                    <i class="fas fa-chart-pie"></i> <span>Analytics</span>
-                </a>
-                <a href="{{ route('dashboard.owner') }}?tab=inventory" class="nav-item {{ request()->get('tab') === 'inventory' ? 'active' : '' }}">
-                    <i class="fas fa-boxes"></i> <span>Inventory</span>
-                </a>
-                <a href="{{ route('dashboard.owner') }}?tab=approval" class="nav-item {{ request()->get('tab') === 'approval' ? 'active' : '' }}">
-                    <i class="fas fa-check-double"></i> <span>Approval</span>
-                </a>
-                <a href="{{ route('dashboard.owner') }}?tab=employees" class="nav-item {{ request()->get('tab') === 'employees' ? 'active' : '' }}">
-                    <i class="fas fa-users-cog"></i> <span>Employees</span>
-                </a>
-                <a href="{{ route('dashboard.owner') }}?tab=menu" class="nav-item {{ request()->get('tab') === 'menu' ? 'active' : '' }}">
-                    <i class="fas fa-utensils"></i> <span>Menu Control</span>
-                </a>
-                <a href="{{ route('dashboard.owner') }}?tab=coupon" class="nav-item {{ request()->get('tab') === 'coupon' ? 'active' : '' }}">
-                    <i class="fas fa-ticket-alt"></i> <span>Coupon</span>
-                </a>
-                <a href="{{ route('dashboard.owner') }}?tab=settings" class="nav-item {{ request()->get('tab') === 'settings' ? 'active' : '' }}">
-                    <i class="fas fa-cogs"></i> <span>Settings</span>
-                </a>
-
+                    <a class="nav-item {{ request()->routeIs('dashboard.owner') && !request()->has('tab') ? 'active' : '' }}"
+                        href="{{ route('dashboard.owner') }}">
+                        <i class="fas fa-crown"></i> <span>Dashboard</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'analytics' ? 'active' : '' }}"
+                        href="{{ route('dashboard.owner') }}?tab=analytics">
+                        <i class="fas fa-chart-pie"></i> <span>Analytics</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'inventory' ? 'active' : '' }}"
+                        href="{{ route('dashboard.owner') }}?tab=inventory">
+                        <i class="fas fa-boxes"></i> <span>Inventory</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'approval' ? 'active' : '' }}"
+                        href="{{ route('dashboard.owner') }}?tab=approval">
+                        <i class="fas fa-check-double"></i> <span>Approval</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'employees' ? 'active' : '' }}"
+                        href="{{ route('dashboard.owner') }}?tab=employees">
+                        <i class="fas fa-users-cog"></i> <span>Employees</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'menu' ? 'active' : '' }}"
+                        href="{{ route('dashboard.owner') }}?tab=menu">
+                        <i class="fas fa-utensils"></i> <span>Menu Control</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'coupon' ? 'active' : '' }}"
+                        href="{{ route('dashboard.owner') }}?tab=coupon">
+                        <i class="fas fa-ticket-alt"></i> <span>Coupon</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'settings' ? 'active' : '' }}"
+                        href="{{ route('dashboard.owner') }}?tab=settings">
+                        <i class="fas fa-cogs"></i> <span>Settings</span>
+                    </a>
                 @elseif(auth()->user()->role === 'hrd')
-                <a href="{{ route('dashboard.hrd') }}" class="nav-item {{ request()->routeIs('dashboard.hrd') && !request()->has('tab') ? 'active' : '' }}">
-                    <i class="fas fa-chart-line"></i> <span>Dashboard</span>
-                </a>
-                <a href="{{ route('dashboard.hrd') }}?tab=employees" class="nav-item {{ request()->get('tab') === 'employees' ? 'active' : '' }}">
-                    <i class="fas fa-users"></i> <span>Karyawan</span>
-                </a>
-                <a href="{{ route('dashboard.hrd') }}?tab=attendance" class="nav-item {{ request()->get('tab') === 'attendance' ? 'active' : '' }}">
-                    <i class="fas fa-clock"></i> <span>Absensi & Shift</span>
-                </a>
-                <a href="{{ route('dashboard.hrd') }}?tab=payroll" class="nav-item {{ request()->get('tab') === 'payroll' ? 'active' : '' }}">
-                    <i class="fas fa-money-check-alt"></i> <span>Payroll</span>
-                </a>
-                <a href="{{ route('dashboard.hrd') }}?tab=performance" class="nav-item {{ request()->get('tab') === 'performance' ? 'active' : '' }}">
-                    <i class="fas fa-award"></i> <span>Evaluasi</span>
-                </a>
-                <a href="{{ route('dashboard.hrd') }}?tab=access" class="nav-item {{ request()->get('tab') === 'access' ? 'active' : '' }}">
-                    <i class="fas fa-key"></i> <span>Access Control</span>
-                </a>
-
+                    <a class="nav-item {{ request()->routeIs('dashboard.hrd') && !request()->has('tab') ? 'active' : '' }}"
+                        href="{{ route('dashboard.hrd') }}">
+                        <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'employees' ? 'active' : '' }}"
+                        href="{{ route('dashboard.hrd') }}?tab=employees">
+                        <i class="fas fa-users"></i> <span>Karyawan</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'attendance' ? 'active' : '' }}"
+                        href="{{ route('dashboard.hrd') }}?tab=attendance">
+                        <i class="fas fa-clock"></i> <span>Absensi & Shift</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'payroll' ? 'active' : '' }}"
+                        href="{{ route('dashboard.hrd') }}?tab=payroll">
+                        <i class="fas fa-money-check-alt"></i> <span>Payroll</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'performance' ? 'active' : '' }}"
+                        href="{{ route('dashboard.hrd') }}?tab=performance">
+                        <i class="fas fa-award"></i> <span>Evaluasi</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'access' ? 'active' : '' }}"
+                        href="{{ route('dashboard.hrd') }}?tab=access">
+                        <i class="fas fa-key"></i> <span>Access Control</span>
+                    </a>
                 @elseif(auth()->user()->role === 'manager')
-                <a href="{{ route('dashboard.manager') }}" class="nav-item {{ request()->routeIs('dashboard.manager') && !request()->has('tab') ? 'active' : '' }}">
-                    <i class="fas fa-chart-line"></i> <span>Dashboard</span>
-                </a>
-                <a href="{{ route('dashboard.manager') }}?tab=sales" class="nav-item {{ request()->get('tab') === 'sales' ? 'active' : '' }}">
-                    <i class="fas fa-shopping-bag"></i> <span>Sales Monitoring</span>
-                </a>
-                <a href="{{ route('dashboard.manager') }}?tab=menu" class="nav-item {{ request()->get('tab') === 'menu' ? 'active' : '' }}">
-                    <i class="fas fa-utensils"></i> <span>Menu Management</span>
-                </a>
-                <a href="{{ route('dashboard.manager') }}?tab=approval" class="nav-item {{ request()->get('tab') === 'approval' ? 'active' : '' }}">
-                    <i class="fas fa-check-circle"></i> <span>Approval Center</span>
-                </a>
-                <a href="{{ route('dashboard.manager') }}?tab=staff" class="nav-item {{ request()->get('tab') === 'staff' ? 'active' : '' }}">
-                    <i class="fas fa-users"></i> <span>Staff Monitoring</span>
-                </a>
-                <a href="{{ route('dashboard.manager') }}?tab=inventory" class="nav-item {{ request()->get('tab') === 'inventory' ? 'active' : '' }}">
-                    <i class="fas fa-boxes"></i> <span>Inventory Control</span>
-                </a>
-                <a href="{{ route('dashboard.manager') }}?tab=coupon" class="nav-item {{ request()->get('tab') === 'coupon' ? 'active' : '' }}">
-                    <i class="fas fa-ticket-alt"></i> <span>Coupon Control</span>
-                </a>
-                <a href="{{ route('dashboard.manager') }}?tab=orders" class="nav-item {{ request()->get('tab') === 'orders' ? 'active' : '' }}">
-                    <i class="fas fa-desktop"></i> <span>Order Monitoring</span>
-                </a>
-                <a href="{{ route('dashboard.manager') }}?tab=tables" class="nav-item {{ request()->get('tab') === 'tables' ? 'active' : '' }}">
-                    <i class="fas fa-th-large"></i> <span>Table Management</span>
-                </a>
-
+                    <a class="nav-item {{ request()->routeIs('dashboard.manager') && !request()->has('tab') ? 'active' : '' }}"
+                        href="{{ route('dashboard.manager') }}">
+                        <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'sales' ? 'active' : '' }}"
+                        href="{{ route('dashboard.manager') }}?tab=sales">
+                        <i class="fas fa-shopping-bag"></i> <span>Sales Monitoring</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'menu' ? 'active' : '' }}"
+                        href="{{ route('dashboard.manager') }}?tab=menu">
+                        <i class="fas fa-utensils"></i> <span>Menu Management</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'approval' ? 'active' : '' }}"
+                        href="{{ route('dashboard.manager') }}?tab=approval">
+                        <i class="fas fa-check-circle"></i> <span>Approval Center</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'staff' ? 'active' : '' }}"
+                        href="{{ route('dashboard.manager') }}?tab=staff">
+                        <i class="fas fa-users"></i> <span>Staff Monitoring</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'inventory' ? 'active' : '' }}"
+                        href="{{ route('dashboard.manager') }}?tab=inventory">
+                        <i class="fas fa-boxes"></i> <span>Inventory Control</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'coupon' ? 'active' : '' }}"
+                        href="{{ route('dashboard.manager') }}?tab=coupon">
+                        <i class="fas fa-ticket-alt"></i> <span>Coupon Control</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'orders' ? 'active' : '' }}"
+                        href="{{ route('dashboard.manager') }}?tab=orders">
+                        <i class="fas fa-desktop"></i> <span>Order Monitoring</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'tables' ? 'active' : '' }}"
+                        href="{{ route('dashboard.manager') }}?tab=tables">
+                        <i class="fas fa-th-large"></i> <span>Table Management</span>
+                    </a>
                 @elseif(auth()->user()->role === 'inventory')
-                <a href="{{ route('dashboard.inventory') }}" class="nav-item {{ request()->routeIs('dashboard.inventory') && !request()->has('tab') ? 'active' : '' }}">
-                    <i class="fas fa-chart-line"></i> <span>Dashboard</span>
-                </a>
-                <a href="{{ route('dashboard.inventory') }}?tab=items" class="nav-item {{ request()->get('tab') === 'items' ? 'active' : '' }}">
-                    <i class="fas fa-boxes"></i> <span>Data Barang</span>
-                </a>
-                <a href="{{ route('dashboard.inventory') }}?tab=overview" class="nav-item {{ request()->get('tab') === 'overview' ? 'active' : '' }}">
-                    <i class="fas fa-wave-square"></i> <span>Stock Overview</span>
-                </a>
-                <a href="{{ route('dashboard.inventory') }}?tab=incoming" class="nav-item {{ request()->get('tab') === 'incoming' ? 'active' : '' }}">
-                    <i class="fas fa-file-import"></i> <span>Incoming</span>
-                </a>
-                <a href="{{ route('dashboard.inventory') }}?tab=usage" class="nav-item {{ request()->get('tab') === 'usage' ? 'active' : '' }}">
-                    <i class="fas fa-utensils"></i> <span>Usage</span>
-                </a>
-                <a href="{{ route('dashboard.inventory') }}?tab=adjustment" class="nav-item {{ request()->get('tab') === 'adjustment' ? 'active' : '' }}">
-                    <i class="fas fa-sliders-h"></i> <span>Adjustment</span>
-                </a>
-                <a href="{{ route('inventory.history') }}" class="nav-item {{ request()->routeIs('inventory.history') ? 'active' : '' }}">
-                    <i class="fas fa-history"></i> <span>Riwayat</span>
-                </a>
-                <a href="{{ route('dashboard.inventory') }}?tab=alert" class="nav-item {{ request()->get('tab') === 'alert' ? 'active' : '' }}">
-                    <i class="fas fa-exclamation-triangle"></i> <span>Alert</span>
-                </a>
-                <a href="{{ route('dashboard.inventory') }}?tab=suppliers" class="nav-item {{ request()->get('tab') === 'suppliers' ? 'active' : '' }}">
-                    <i class="fas fa-truck"></i> <span>Supplier</span>
-                </a>
-                <a href="{{ route('inventory.requests') }}" class="nav-item {{ request()->routeIs('inventory.requests') ? 'active' : '' }}">
-                    <i class="fas fa-clipboard-list"></i> <span>Request</span>
-                </a>
-                <a href="{{ route('dashboard.inventory') }}?tab=recipes" class="nav-item {{ request()->get('tab') === 'recipes' ? 'active' : '' }}">
-                    <i class="fas fa-book-open"></i> <span>Resep</span>
-                </a>
-
+                    <a class="nav-item {{ request()->routeIs('dashboard.inventory') && !request()->has('tab') ? 'active' : '' }}"
+                        href="{{ route('dashboard.inventory') }}">
+                        <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'items' ? 'active' : '' }}"
+                        href="{{ route('dashboard.inventory') }}?tab=items">
+                        <i class="fas fa-boxes"></i> <span>Data Barang</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'overview' ? 'active' : '' }}"
+                        href="{{ route('dashboard.inventory') }}?tab=overview">
+                        <i class="fas fa-wave-square"></i> <span>Stock Overview</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'incoming' ? 'active' : '' }}"
+                        href="{{ route('dashboard.inventory') }}?tab=incoming">
+                        <i class="fas fa-file-import"></i> <span>Incoming</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'usage' ? 'active' : '' }}"
+                        href="{{ route('dashboard.inventory') }}?tab=usage">
+                        <i class="fas fa-utensils"></i> <span>Usage</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'adjustment' ? 'active' : '' }}"
+                        href="{{ route('dashboard.inventory') }}?tab=adjustment">
+                        <i class="fas fa-sliders-h"></i> <span>Adjustment</span>
+                    </a>
+                    <a class="nav-item {{ request()->routeIs('inventory.history') ? 'active' : '' }}"
+                        href="{{ route('inventory.history') }}">
+                        <i class="fas fa-history"></i> <span>Riwayat</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'alert' ? 'active' : '' }}"
+                        href="{{ route('dashboard.inventory') }}?tab=alert">
+                        <i class="fas fa-exclamation-triangle"></i> <span>Alert</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'suppliers' ? 'active' : '' }}"
+                        href="{{ route('dashboard.inventory') }}?tab=suppliers">
+                        <i class="fas fa-truck"></i> <span>Supplier</span>
+                    </a>
+                    <a class="nav-item {{ request()->routeIs('inventory.requests') ? 'active' : '' }}"
+                        href="{{ route('inventory.requests') }}">
+                        <i class="fas fa-clipboard-list"></i> <span>Request</span>
+                    </a>
+                    <a class="nav-item {{ request()->get('tab') === 'recipes' ? 'active' : '' }}"
+                        href="{{ route('dashboard.inventory') }}?tab=recipes">
+                        <i class="fas fa-book-open"></i> <span>Resep</span>
+                    </a>
                 @elseif(auth()->user()->role === 'kasir')
-                <a href="{{ route('terminal.kasir') }}" class="nav-item {{ request()->routeIs('terminal.kasir') ? 'active' : '' }}">
-                    <i class="fas fa-cash-register"></i> <span>Cashier POS</span>
-                </a>
-
+                    <a class="nav-item {{ request()->routeIs('terminal.kasir') ? 'active' : '' }}"
+                        href="{{ route('terminal.kasir') }}">
+                        <i class="fas fa-cash-register"></i> <span>Cashier POS</span>
+                    </a>
                 @elseif(auth()->user()->role === 'waiter')
-                <a href="{{ route('terminal.waiter') }}" class="nav-item {{ request()->routeIs('terminal.waiter') ? 'active' : '' }}">
-                    <i class="fas fa-concierge-bell"></i> <span>Waiter Service</span>
-                </a>
-
+                    <a class="nav-item {{ request()->routeIs('terminal.waiter') ? 'active' : '' }}"
+                        href="{{ route('terminal.waiter') }}">
+                        <i class="fas fa-concierge-bell"></i> <span>Waiter Service</span>
+                    </a>
                 @elseif(auth()->user()->role === 'kitchen' || auth()->user()->role === 'dapur')
-                <a href="{{ route('terminal.kitchen') }}" class="nav-item {{ request()->routeIs('terminal.kitchen') ? 'active' : '' }}">
-                    <i class="fas fa-fire"></i> <span>Kitchen KDS</span>
-                </a>
+                    <a class="nav-item {{ request()->routeIs('terminal.kitchen') ? 'active' : '' }}"
+                        href="{{ route('terminal.kitchen') }}">
+                        <i class="fas fa-fire"></i> <span>Kitchen KDS</span>
+                    </a>
                 @endif
 
                 <div class="mt-auto pt-4">
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <button type="submit" class="nav-item border-0 bg-transparent w-100 text-start text-danger">
+                        <button class="nav-item border-0 bg-transparent w-100 text-start text-danger" type="submit">
                             <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
                         </button>
                     </form>
@@ -461,10 +504,12 @@
             <main class="dashboard-main">
                 <header class="dashboard-header">
                     <div class="dashboard-header-left">
-                        <button type="button" class="btn btn-outline-brand btn-sm d-inline-flex d-lg-none" id="sidebarToggle" aria-label="Toggle sidebar">
+                        <button class="btn btn-outline-brand btn-sm d-inline-flex d-lg-none" id="sidebarToggle"
+                            type="button" aria-label="Toggle sidebar">
                             <i class="fas fa-bars"></i>
                         </button>
-                        <div class="dashboard-logo" style="background: linear-gradient(135deg, var(--accent-orange), var(--accent-yellow)); color: #000; font-weight: 800;">
+                        <div class="dashboard-logo"
+                            style="background: linear-gradient(135deg, var(--accent-orange), var(--accent-yellow)); color: #000; font-weight: 800;">
                             MS
                         </div>
                         <div class="dashboard-title">
@@ -481,12 +526,12 @@
                             @php
                                 $warung = auth()->user()->warung;
                                 $clockEnabled = optional($warung)->enable_system_clock !== false;
-                                $clockFormat = $warung ? ($warung->system_clock_format ?? '24h') : '24h';
+                                $clockFormat = $warung ? $warung->system_clock_format ?? '24h' : '24h';
                             @endphp
-                            @if($clockEnabled)
+                            @if ($clockEnabled)
                                 <div class="dashboard-clock" data-clock-format="{{ $clockFormat }}">
                                     <div class="dashboard-clock-time" id="system-clock"></div>
-                                    @if($warung)
+                                    @if ($warung)
                                         <div class="dashboard-clock-warung">{{ $warung->name }}</div>
                                     @endif
                                 </div>
@@ -502,7 +547,7 @@
                             </div>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <button type="submit" class="btn btn-outline-brand btn-sm">
+                                <button class="btn btn-outline-brand btn-sm" type="submit">
                                     <span>Logout</span>
                                 </button>
                             </form>
@@ -519,35 +564,36 @@
                 <footer class="dashboard-footer">
                     <div>© {{ date('Y') }} Majar Signature. All rights reserved.</div>
                     <div>
-                        <a href="#" class="link-muted">Help & Support</a>
+                        <a class="link-muted" href="#">Help & Support</a>
                     </div>
                 </footer>
             </main>
         </div>
     </div>
 
-    <div id="confirm-modal-backdrop" class="modal-backdrop">
+    <div class="modal-backdrop" id="confirm-modal-backdrop">
         <div class="modal-panel">
             <div class="modal-header">
                 <div data-confirm-title>Konfirmasi</div>
-                <button type="button" class="toast-close" data-confirm-no>×</button>
+                <button class="toast-close" data-confirm-no type="button">×</button>
             </div>
             <div class="modal-body" data-confirm-body></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline btn-sm" data-confirm-no>Batal</button>
-                <button type="button" class="btn btn-danger btn-sm" data-confirm-yes>Ya, lanjutkan</button>
+                <button class="btn btn-outline btn-sm" data-confirm-no type="button">Batal</button>
+                <button class="btn btn-danger btn-sm" data-confirm-yes type="button">Ya, lanjutkan</button>
             </div>
         </div>
     </div>
     <script>
-        (function () {
+        (function() {
             const root = document.querySelector('.dashboard-root');
             const btn = document.getElementById('sidebarToggle');
             if (!root || !btn) return;
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', function() {
                 root.classList.toggle('sidebar-open');
             });
         })();
     </script>
 </body>
+
 </html>

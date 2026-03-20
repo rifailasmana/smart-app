@@ -56,7 +56,7 @@ Route::get('/system-upgrade-username', function () {
                 // Sanitize
                 $base = preg_replace('/[^a-z0-9]/', '', strtolower($base));
                 if (empty($base)) $base = 'user' . $user->id;
-                
+
                 $username = $base;
                 $counter = 1;
                 while (App\Models\User::where('username', $username)->where('id', '!=', $user->id)->exists()) {
@@ -69,12 +69,12 @@ Route::get('/system-upgrade-username', function () {
                 // But for safety let's only change if it's a demo account or if we really need to.
                 // The user said: "username lain bisa mengikuti dan kamu taroh di login page untuk semua usernamenya dan password biar aku liat"
                 // So I should set a standard password for them.
-                $user->password = Illuminate\Support\Facades\Hash::make('password'); 
+                $user->password = Illuminate\Support\Facades\Hash::make('password');
             }
         }
         $user->save();
     }
-    
+
     return "System Upgrade Complete: Username column added and Users updated.";
 });
 
@@ -95,7 +95,9 @@ Route::get('/system-upgrade-terminal', function () {
 // ===== PUBLIC ROUTES (Landing & Authentication) =====
 
 Route::domain('smartapp.local')->group(function () {
-    Route::get('/', [LandingController::class, 'index'])
+    Route::get('/', function () {
+        return redirect()->route('login');
+    })
         ->middleware('auth.subdomain.redirect')
         ->name('landing');
 });
@@ -144,6 +146,11 @@ Route::domain('{warung_code}.smartorder.com')->group(function () {
     });
 });
 
+// Default entry route for main host/local access
+Route::get('/', function () {
+    return redirect()->route('login');
+})->middleware('auth.subdomain.redirect');
+
 // ===== PUBLIC ROUTES (Landing & Customer Ordering) =====
 
 Route::get('/menu', [OrderController::class, 'create'])->name('order.menu');
@@ -161,18 +168,18 @@ Route::middleware('guest')->group(function () {
         // --- SELF HEALING DEMO DATA ---
         try {
             $log = [];
-            
+
             // 1. Fix Admin
             $admin = App\Models\User::where('email', 'admin@smartorder.local')->first();
             if ($admin) {
-                if ($admin->username !== 'admin') { 
-                    $admin->username = 'admin'; 
+                if ($admin->username !== 'admin') {
+                    $admin->username = 'admin';
                     $admin->password = Illuminate\Support\Facades\Hash::make('admin');
                     $admin->save();
                     $log[] = "Admin updated.";
                 }
             } else {
-                 App\Models\User::create([
+                App\Models\User::create([
                     'name' => 'Rifai',
                     'username' => 'admin',
                     'email' => 'admin@smartorder.local',
@@ -185,8 +192,8 @@ Route::middleware('guest')->group(function () {
             // 2. Fix Owner Bambang
             $owner = App\Models\User::where('email', 'owner@bali.local')->first();
             if ($owner) {
-                if ($owner->username !== 'bambangbali') { 
-                    $owner->username = 'bambangbali'; 
+                if ($owner->username !== 'bambangbali') {
+                    $owner->username = 'bambangbali';
                     $owner->password = Illuminate\Support\Facades\Hash::make('bali');
                     $owner->save();
                     $log[] = "Owner updated.";
@@ -195,7 +202,7 @@ Route::middleware('guest')->group(function () {
 
             // 3. Fix Others (Ensure they have usernames)
             $others = App\Models\User::whereNull('username')->orWhere('username', '')->get();
-            foreach($others as $u) {
+            foreach ($others as $u) {
                 $base = '';
                 // Specific assignments based on name/role if known
                 if (stripos($u->name, 'siti') !== false) $base = 'siti';
@@ -206,17 +213,16 @@ Route::middleware('guest')->group(function () {
                     $base = preg_replace('/[^a-z0-9]/', '', strtolower($base));
                     if (empty($base)) $base = strtolower(explode(' ', $u->name)[0]);
                 }
-                
+
                 $u->username = $base;
                 $u->password = Illuminate\Support\Facades\Hash::make('password');
                 $u->save();
                 $log[] = "Updated {$u->name} to {$base}";
             }
-            
+
             if (!empty($log)) {
                 file_put_contents(storage_path('logs/username_fix.log'), implode("\n", $log) . "\n", FILE_APPEND);
             }
-
         } catch (\Exception $e) {
             file_put_contents(storage_path('logs/username_fix_error.log'), $e->getMessage() . "\n" . $e->getTraceAsString(), FILE_APPEND);
         }
@@ -227,8 +233,9 @@ Route::middleware('guest')->group(function () {
             $demoUsers = App\Models\User::whereIn('role', ['admin', 'owner', 'kasir', 'dapur', 'waiter'])
                 ->orderByRaw("FIELD(role, 'admin', 'owner', 'kasir', 'dapur', 'waiter')")
                 ->get();
-        } catch(\Exception $e) {}
-        
+        } catch (\Exception $e) {
+        }
+
         return view('auth.login', compact('demoUsers'));
     })->name('login');
 
@@ -241,7 +248,7 @@ Route::middleware('guest')->group(function () {
 
         if (Auth::attempt($credentials)) {
             request()->session()->regenerate();
-            
+
             $user = Auth::user();
 
             if (in_array($user->role, ['kasir', 'waiter', 'dapur', 'kitchen'])) {
@@ -256,12 +263,12 @@ Route::middleware('guest')->group(function () {
                     'started_at' => now(),
                 ]);
             }
-            
+
             // Admin tetap ke halaman admin warungs
             if ($user->role === 'admin') {
                 return redirect('/admin/warungs');
             }
-            
+
             if ($user->warung_id) {
                 $warung = Warung::find($user->warung_id);
                 if ($warung) {
@@ -280,7 +287,7 @@ Route::middleware('guest')->group(function () {
                     }
                     $subdomain = strtolower($warung->slug ?? $warung->code ?? 'default');
                     $baseUrl = $protocol . '://' . $subdomain . '.' . $domain . $portSuffix;
-                    $dashboardRoute = match($user->role) {
+                    $dashboardRoute = match ($user->role) {
                         'owner' => '/terminal',
                         'kasir' => '/terminal/kasir',
                         'waiter' => '/terminal/waiter',
@@ -290,11 +297,11 @@ Route::middleware('guest')->group(function () {
                         'inventory' => '/dashboard/inventory',
                         default => '/terminal',
                     };
-                    
+
                     return redirect($baseUrl . $dashboardRoute);
                 }
             }
-            
+
             return redirect()->route('dashboard');
         }
 
@@ -310,14 +317,14 @@ Route::middleware('auth')->group(function () {
     // Di main domain, redirect ke subdomain (via middleware)
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        
+
         // Admin di main domain redirect ke /admin/warungs
         if ($user->role === 'admin') {
             return redirect('/admin/warungs');
         }
-        
+
         // Map roles to dashboard views (di subdomain)
-        return match($user->role) {
+        return match ($user->role) {
             'owner' => redirect()->route('dashboard.owner'),
             'kasir' => redirect()->route('dashboard.kasir'),
             'waiter' => redirect()->route('dashboard.waiter'),
@@ -334,7 +341,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard/owner', [App\Http\Controllers\OwnerController::class, 'index'])->name('dashboard.owner');
         Route::post('/owner/menu/price/{menuItem}', [App\Http\Controllers\OwnerController::class, 'updatePricing'])->name('owner.menu.price');
         Route::post('/owner/menu/toggle/{menuItem}', [App\Http\Controllers\OwnerController::class, 'toggleMenu'])->name('owner.menu.toggle');
-        
+
         // Route admin dashboard lama (redirect ke /admin/warungs)
         Route::get('/dashboard/admin', function () {
             return redirect('/admin/warungs');
@@ -342,7 +349,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/menu-items', [MenuItemController::class, 'store'])->name('menu.store');
         Route::delete('/menu-items/{id}', [MenuItemController::class, 'destroy'])->name('menu.destroy');
         Route::post('/menu-items/refresh-all-stock', [MenuItemController::class, 'refreshAllStock'])->name('menu.refresh-all-stock');
-        
+
         // Voucher Management
         Route::get('/manage/vouchers', [App\Http\Controllers\VoucherController::class, 'index'])->name('manage.vouchers.index');
         Route::post('/manage/vouchers', [App\Http\Controllers\VoucherController::class, 'store'])->name('manage.vouchers.store');
@@ -350,33 +357,33 @@ Route::middleware('auth')->group(function () {
 
         // Google Sheet Sync
         Route::post('/google-sheet/sync', [OrderController::class, 'syncToGoogleSheet'])->name('google-sheet.sync');
-        
+
         // Owner can update their own restaurant info
         Route::put('/warung/{id}', [RestaurantController::class, 'update'])->name('warung.update');
-        
+
         // Restaurant Management (Admin only)
         Route::middleware('role:admin')->group(function () {
             // Admin dashboard utama - daftar restoran
             Route::get('/admin/warungs', [DashboardController::class, 'admin'])->name('admin.warungs');
 
             Route::get('/admin/diagnostics', [DashboardController::class, 'adminDiagnostics'])->name('admin.diagnostics');
-            
+
             Route::get('/admin/restaurants/{warung}', [DashboardController::class, 'adminRestaurant'])->name('admin.restaurant.show');
             Route::post('/admin/restaurants', [RestaurantController::class, 'store'])->name('admin.restaurants.store');
             Route::put('/admin/restaurants/{id}', [RestaurantController::class, 'update'])->name('admin.restaurants.update');
             Route::delete('/admin/restaurants/{id}', [RestaurantController::class, 'destroy'])->name('admin.restaurants.destroy');
-            
+
             // User Management
             Route::post('/admin/users', [UserController::class, 'store'])->name('admin.users.store');
             Route::put('/admin/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
             Route::delete('/admin/users/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
-            
+
             // Order Management per Restaurant
             Route::get('/admin/restaurants/{warung}/orders', [OrderController::class, 'restaurantOrders'])->name('admin.restaurant.orders');
-            
+
             // Reports
             Route::get('/admin/reports/{type}', [DashboardController::class, 'getReports'])->name('admin.reports');
-            
+
             // Settings
             Route::put('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
         });
@@ -524,7 +531,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/inventory/requests', [App\Http\Controllers\InventoryController::class, 'storeRestockRequest'])->name('inventory.requests.store');
         Route::post('/inventory/requests/{restockRequest}/status', [App\Http\Controllers\InventoryController::class, 'updateRequestStatus'])->name('inventory.requests.status');
         Route::get('/inventory/hpp/{menuItem}', [App\Http\Controllers\InventoryController::class, 'getHPP'])->name('inventory.hpp');
-        
+
         // Recipe Routes
         Route::get('/inventory/menu/{menuItem}/recipes', [App\Http\Controllers\RecipeController::class, 'index'])->name('inventory.recipes.index');
         Route::post('/inventory/menu/{menuItem}/recipes', [App\Http\Controllers\RecipeController::class, 'store'])->name('inventory.recipes.store');
@@ -534,25 +541,25 @@ Route::middleware('auth')->group(function () {
     // HRD Routes
     Route::middleware('role:hrd,manager,owner,admin')->group(function () {
         Route::get('/dashboard/hrd', [App\Http\Controllers\HRDController::class, 'index'])->name('dashboard.hrd');
-        
+
         // Employee Management
         Route::post('/hrd/employee', [App\Http\Controllers\HRDController::class, 'storeEmployee'])->name('hrd.employee.store');
         Route::post('/hrd/employee/{user}', [App\Http\Controllers\HRDController::class, 'updateEmployee'])->name('hrd.employee.update');
-        
+
         // Attendance & Shift
         Route::post('/hrd/attendance', [App\Http\Controllers\HRDController::class, 'storeAttendance'])->name('hrd.attendance.store');
         Route::get('/hrd/shift/quick', [App\Http\Controllers\HRDController::class, 'quickAssignShift'])->name('hrd.shift.quick');
         Route::post('/hrd/shift/settings', [App\Http\Controllers\HRDController::class, 'updateShiftSettings'])->name('hrd.shift.settings.update');
         Route::post('/hrd/shift', [App\Http\Controllers\HRDController::class, 'storeShift'])->name('hrd.shift.store');
         Route::delete('/hrd/shift/{shift}', [App\Http\Controllers\HRDController::class, 'deleteShift'])->name('hrd.shift.delete');
-        
+
         // Payroll
         Route::post('/hrd/payroll/generate', [App\Http\Controllers\HRDController::class, 'generatePayroll'])->name('hrd.payroll.generate');
         Route::post('/hrd/payroll/{payroll}/status', [App\Http\Controllers\HRDController::class, 'updatePayrollStatus'])->name('hrd.payroll.update-status');
-        
+
         // Performance
         Route::post('/hrd/performance/{user}', [App\Http\Controllers\HRDController::class, 'updatePerformance'])->name('hrd.performance.update');
-        
+
         // Access Control
         Route::post('/hrd/access/reset-password/{user}', [App\Http\Controllers\HRDController::class, 'resetPassword'])->name('hrd.access.reset-password');
     });
@@ -592,7 +599,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/waiter', [App\Http\Controllers\TerminalController::class, 'waiter'])->name('terminal.waiter');
         Route::get('/kasir', [App\Http\Controllers\TerminalController::class, 'kasir'])->name('terminal.kasir');
         Route::get('/kitchen', [App\Http\Controllers\TerminalController::class, 'kitchen'])->name('terminal.kitchen');
-        
+
         // API routes within terminal prefix for easier management
         Route::get('/orders', [App\Http\Controllers\TerminalController::class, 'getOrders']);
         Route::get('/tables/{table}/draft', [App\Http\Controllers\TerminalController::class, 'getTableDraft']);
