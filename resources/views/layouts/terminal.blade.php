@@ -145,7 +145,7 @@
             <div class="d-flex align-items-center gap-3">
                 <div class="fw-bold fs-4 text-terminal-text">@yield('terminal_role', 'TERMINAL')</div>
                 <div class="text-muted">|</div>
-                <div class="text-muted">{{ $warung->name }}</div>
+                <div class="text-muted">{{ $warung->name ?? '-' }}</div>
             </div>
             <div class="d-flex align-items-center gap-4">
                 @yield('header_extra')

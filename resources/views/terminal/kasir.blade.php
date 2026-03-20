@@ -4,20 +4,31 @@
 @section('terminal_role', 'KASIR COMMAND CENTER')
 
 @section('header_extra')
-<div class="d-flex align-items-center gap-3 border-start ps-3 border-terminal-border">
-    <div id="printer-status" class="d-flex align-items-center gap-2">
-        <div class="status-dot w-2 h-2 rounded-full bg-terminal-accent"></div>
-        <span class="text-[10px] font-black uppercase tracking-widest text-terminal-muted">Printer: Online</span>
+    <div class="d-flex align-items-center gap-3 border-start ps-3 border-terminal-border">
+        <div class="d-flex align-items-center gap-2" id="printer-status">
+            <div class="status-dot w-2 h-2 rounded-full bg-terminal-accent"></div>
+            <span class="text-[10px] font-black uppercase tracking-widest text-terminal-muted">Printer: Online</span>
+        </div>
     </div>
-</div>
 @endsection
 
 @section('content')
-<div id="kasir-root" class="w-full h-full flex bg-terminal-bg"></div>
+    <div class="w-full h-full flex bg-terminal-bg" id="kasir-root">
+        <div id="kasir-fallback" style="margin:auto; max-width: 520px; padding: 24px; text-align:center;">
+            <div style="font-weight: 800; font-size: 20px; letter-spacing: .02em;">Memuat Terminal Kasir…</div>
+            <div style="margin-top: 8px; opacity: .75; font-size: 14px; line-height: 1.4;">
+                Jika layar tetap kosong, biasanya karena script CDN diblokir/offline atau browser terlalu lama.
+            </div>
+            <div style="margin-top: 16px; display:flex; gap: 10px; justify-content:center; flex-wrap: wrap;">
+                <button type="button" onclick="location.reload()" style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: #fff; font-weight: 700;">Muat Ulang</button>
+                <a href="{{ route('terminal.index') }}" style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: transparent; font-weight: 700; text-decoration:none; color: inherit;">Pilih Terminal</a>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('extra_js')
-<script type="text/babel">
+    <script type="text/babel" data-presets="env,react" data-plugins="proposal-optional-chaining,proposal-nullish-coalescing-operator">
     const { useState, useEffect, useMemo, useCallback } = React;
 
     // --- Shared Components ---
@@ -42,8 +53,8 @@
             lg: 'px-8 py-4 text-lg rounded-2xl'
         };
         return (
-            <button 
-                onClick={onClick} 
+            <button
+                onClick={onClick}
                 disabled={disabled}
                 className={`flex items-center justify-center gap-2 font-bold transition-all active:scale-95 disabled:opacity-30 disabled:active:scale-100 ${variants[variant]} ${sizes[size]} ${className}`}
             >
@@ -54,7 +65,7 @@
     };
 
     const SidebarItem = ({ id, label, icon, active, onClick, count = 0 }) => (
-        <div 
+        <div
             onClick={() => onClick(id)}
             className={`flex flex-col items-center justify-center gap-2 py-6 cursor-pointer transition-all border-l-4 relative ${active ? 'bg-orange-500/10 border-orange-500 text-orange-500 font-black' : 'border-transparent text-terminal-muted hover:text-terminal-text hover:bg-gray-50'}`}
         >
@@ -88,14 +99,14 @@
             <div className="flex-1 flex overflow-hidden animate-in fade-in duration-500">
                 {/* Left: Categories */}
                 <div className="w-32 bg-white border-r border-terminal-border flex flex-col overflow-y-auto custom-scrollbar">
-                    <div 
+                    <div
                         onClick={() => setActiveCategory('All')}
                         className={`p-4 text-center cursor-pointer transition-all border-b border-terminal-border ${activeCategory === 'All' ? 'bg-terminal-accent text-white font-black' : 'text-terminal-muted font-bold hover:bg-gray-50'}`}
                     >
                         ALL
                     </div>
                     {categories.filter(c => c !== 'All').map(cat => (
-                        <div 
+                        <div
                             key={cat}
                             onClick={() => setActiveCategory(cat)}
                             className={`p-4 text-center cursor-pointer transition-all border-b border-terminal-border text-xs uppercase tracking-wider ${activeCategory === cat ? 'bg-terminal-accent text-white font-black' : 'text-terminal-muted font-bold hover:bg-gray-50'}`}
@@ -110,10 +121,10 @@
                     <div className="p-6 bg-white border-b border-terminal-border shadow-sm">
                         <div className="relative">
                             <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-terminal-muted"></i>
-                            <input 
-                                type="text" 
-                                className="w-full bg-terminal-bg border border-terminal-border rounded-2xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:border-terminal-accent shadow-sm" 
-                                placeholder="Cari menu atau meja..." 
+                            <input
+                                type="text"
+                                className="w-full bg-terminal-bg border border-terminal-border rounded-2xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:border-terminal-accent shadow-sm"
+                                placeholder="Cari menu atau meja..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                             />
@@ -121,16 +132,16 @@
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start custom-scrollbar">
                         {filteredMenu.map(menu => (
-                            <div 
-                                key={menu.id} 
+                            <div
+                                key={menu.id}
                                 onClick={() => onAddItem(menu)}
                                 className="bg-white border border-terminal-border p-4 rounded-3xl cursor-pointer hover:border-terminal-accent hover:shadow-xl transition-all active:scale-95 group flex flex-col gap-3 shadow-sm relative overflow-hidden"
                             >
                                 <div className="aspect-square bg-gray-100 rounded-2xl mb-2 overflow-hidden relative">
-                                    <img 
-                                        src={menu.image || placeholderImg} 
-                                        alt={menu.name} 
-                                        className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
+                                    <img
+                                        src={menu.image || placeholderImg}
+                                        alt={menu.name}
+                                        className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
                                     />
                                     {menu.stock <= 5 && (
                                         <div className="absolute top-2 right-2 bg-terminal-danger text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg">
@@ -166,8 +177,8 @@
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {orders.map(order => (
-                        <div 
-                            key={order.id} 
+                        <div
+                            key={order.id}
                             className="bg-white border-2 border-orange-100 rounded-[2.5rem] p-6 shadow-sm hover:shadow-xl transition-all cursor-pointer hover:border-orange-500 group relative overflow-hidden"
                             onClick={() => onSelect(order)}
                         >
@@ -181,7 +192,7 @@
                                     <div className="text-[10px] font-bold text-terminal-muted mt-2 uppercase tracking-widest">{new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
                                 </div>
                             </div>
-                            
+
                             <div className="space-y-2 mb-6 relative z-10">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-terminal-muted font-bold uppercase tracking-wider text-[10px]">Tamu</span>
@@ -209,7 +220,7 @@
         </div>
     );
 
-    const Badge = ({ children, color = 'bg-gray-100' }) => (
+    const HistoryBadge = ({ children, color = 'bg-gray-100' }) => (
         <span className={`${color} text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm`}>
             {children}
         </span>
@@ -243,8 +254,8 @@
                         </thead>
                         <tbody className="divide-y divide-terminal-border">
                             {history.map(trx => (
-                                <tr 
-                                    key={trx.id} 
+                                <tr
+                                    key={trx.id}
                                     onClick={() => onSelect(trx)}
                                     className="hover:bg-orange-50 cursor-pointer transition-colors group"
                                 >
@@ -265,23 +276,23 @@
                                         </div>
                                     </td>
                                     <td className="p-6">
-                                        <Badge color={
+                                        <HistoryBadge color={
                                             trx.guest_category === 'MAJAR_OWNER' ? 'bg-purple-100 text-purple-600' :
                                             trx.guest_category === 'MAJAR_PRIORITY' ? 'bg-blue-100 text-blue-600' :
                                             trx.guest_category === 'RESERVED' ? 'bg-orange-100 text-orange-600' :
                                             'bg-gray-100 text-gray-600'
                                         }>
                                             {trx.guest_category}
-                                        </Badge>
+                                        </HistoryBadge>
                                     </td>
                                     <td className="p-6 text-right font-black text-lg text-terminal-text">
                                         {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(trx.total)}
                                     </td>
                                     <td className="p-6 text-center">
                                         {trx.stage === 'VOID' ? (
-                                            <Badge color="bg-red-100 text-red-600">VOID</Badge>
+                                            <HistoryBadge color="bg-red-100 text-red-600">VOID</HistoryBadge>
                                         ) : (
-                                            <Badge color="bg-green-100 text-green-600">PAID</Badge>
+                                            <HistoryBadge color="bg-green-100 text-green-600">PAID</HistoryBadge>
                                         )}
                                     </td>
                                 </tr>
@@ -295,7 +306,7 @@
 
     const AuditDetailModal = ({ trx, onClose, onVoid }) => {
         if (!trx) return null;
-        
+
         return (
             <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[150] flex items-center justify-center p-4">
                 <div className="bg-white rounded-[3rem] w-full max-w-5xl h-[85vh] overflow-hidden shadow-2xl flex animate-in zoom-in duration-300 border border-terminal-border">
@@ -415,7 +426,7 @@
     const ReportsView = ({ reportData }) => (
         <div className="flex-1 flex flex-col p-8 bg-terminal-bg/30 overflow-y-auto custom-scrollbar">
             <h2 className="text-3xl font-black uppercase tracking-tighter mb-8 text-terminal-text">Ikhtisar Penjualan</h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
                 <div className="bg-white p-8 rounded-[2rem] border border-terminal-border shadow-sm group hover:border-orange-500 transition-all">
                     <div className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-2 group-hover:text-orange-500">Total Penjualan</div>
@@ -514,10 +525,10 @@
                                 {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value)}
                             </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-3 gap-4 mb-8">
                             {buttons.map(btn => (
-                                <button 
+                                <button
                                     key={btn}
                                     onClick={() => handleKey(btn)}
                                     className={`h-24 rounded-[2rem] text-3xl font-black transition-all active:scale-90 ${btn === 'C' ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-white border-2 border-terminal-border text-terminal-text hover:border-orange-500 hover:text-orange-500 shadow-sm'}`}
@@ -553,7 +564,7 @@
                         <div className="space-y-3">
                             <label className="text-[10px] font-black text-terminal-muted uppercase tracking-widest block">Uang Pas / Cepat</label>
                             {quickCash.map(amount => (
-                                <button 
+                                <button
                                     key={amount}
                                     onClick={() => onChange(amount)}
                                     className="w-full py-4 border-2 border-terminal-border rounded-2xl font-black text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent transition-all active:scale-95"
@@ -570,7 +581,7 @@
 
     const SplitBillModal = ({ order, onConfirm, onCancel }) => {
         const [selectedItems, setSelectedItems] = useState([]);
-        
+
         const toggleItem = (idx, maxQty) => {
             const existing = selectedItems.find(i => i.idx === idx);
             if (existing) {
@@ -592,13 +603,13 @@
                     <div className="flex-1 flex flex-col p-10 bg-terminal-bg/30">
                         <h3 className="text-3xl font-black uppercase tracking-tighter mb-2">Split Bill</h3>
                         <p className="text-terminal-muted font-bold mb-8 text-sm">Pilih item yang akan dipindah ke Bill Baru.</p>
-                        
+
                         <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-4">
                             {order.items.map((item, idx) => {
                                 const selected = selectedItems.find(i => i.idx === idx);
                                 return (
-                                    <div 
-                                        key={idx} 
+                                    <div
+                                        key={idx}
                                         onClick={() => toggleItem(idx, item.qty)}
                                         className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${selected ? 'border-terminal-accent bg-terminal-accent/5' : 'border-white bg-white hover:border-terminal-border'}`}
                                     >
@@ -641,7 +652,7 @@
 
     // --- Main Application ---
     const KasirTerminal = () => {
-        const [activeTab, setActiveTab] = useState('PENDING'); 
+        const [activeTab, setActiveTab] = useState('ORDERING');
         const [activeOrder, setActiveOrder] = useState(null);
         const [paymentMethod, setPaymentMethod] = useState('cash');
         const [amountPaid, setAmountPaid] = useState(0);
@@ -655,7 +666,7 @@
         const [voucherCode, setVoucherCode] = useState('');
         const [appliedVoucher, setAppliedVoucher] = useState(null);
         const [voucherDiscount, setVoucherDiscount] = useState(0);
-        
+
         const [orders, setOrders] = useState([]);
         const [history, setHistory] = useState([]);
         const [reportData, setReportData] = useState({});
@@ -680,7 +691,7 @@
                 });
                 if (!response.ok) throw new Error('Failed to fetch orders');
                 const data = await response.json();
-                setOrders(data.filter(o => o.stage === 'WAITING_CASHIER'));
+                setOrders(data.filter(o => o.status === 'pending' || o.stage === 'WAITING_CASHIER'));
             } catch (e) { console.error('Failed to fetch orders', e); }
         }, []);
 
@@ -798,10 +809,10 @@
             try {
                 const response = await fetch('/terminal/coupons/check', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
+                    headers: {
+                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     body: JSON.stringify({ code: couponCode })
                 });
@@ -828,10 +839,10 @@
 
             const response = await fetch('/terminal/vouchers/check', {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
+                headers: {
+                    'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 body: JSON.stringify({ code: voucherCode, cart_categories: cartCategories })
             });
@@ -849,7 +860,7 @@
                 } else {
                     discountAmount = data.value;
                 }
-                
+
                 setVoucherDiscount(discountAmount);
                 setAmountPaid(totalWithTax * (1 - discountPercent/100) - discountAmount);
             }
@@ -940,461 +951,511 @@
                 </div>
                 <script>
                     window.onload = function() { window.print(); window.close(); }
-                </script>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
+                <\/script>
+    </body>
+
+    </html>
+    `);
+    printWindow.document.close();
     };
 
-        const handleProcessPayment = async () => {
-            if (paymentMethod === 'cash' && !showNumpad) {
-                setShowNumpad(true);
-                return;
-            }
-            
-            setIsProcessing(true);
-            try {
-                const response = await fetch(`/terminal/orders/${activeOrder.id || 'new'}/approve-and-pay`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                    },
-                    body: JSON.stringify({
-                        table_id: activeOrder.table_id,
-                        customer_name: activeOrder.customer_name,
-                        payment_method: paymentMethod,
-                        amount_paid: amountPaid,
-                        coupon_code: appliedCoupon,
-                        voucher_code: appliedVoucher,
-                        discount_percent: discountPercent,
-                        guest_category: activeOrder.guest_category,
-                        order_type: activeOrder.order_type,
-                        items: activeOrder.items.map(i => ({ menu_item_id: i.menu_item_id, qty: i.qty, note: i.note, type: i.type }))
-                    })
-                });
-                
-                const data = await response.json();
-                if (response.ok) {
-                    printReceipt('STRUK', data.order);
-                    printReceipt('KITCHEN', data.order);
-                    setActiveOrder(null);
-                    setShowNumpad(false);
-                    fetchOrders();
-                } else {
-                    throw new Error(data.error || data.message || 'Gagal memproses transaksi');
-                }
-            } catch (e) { alert('Error: ' + e.message); }
-            finally { setIsProcessing(false); }
-        };
+    const handleProcessPayment = async () => {
+    if (paymentMethod === 'cash' && !showNumpad) {
+    setShowNumpad(true);
+    return;
+    }
 
-        const handleVoidRequest = (trx) => {
-            setVoidTarget(trx);
-            setVoidType('ORDER');
-            setShowVoidModal(true);
-            setVoidReason('');
-            setVoidPin('');
-        };
+    setIsProcessing(true);
+    try {
+    const response = await fetch(`/terminal/orders/${activeOrder.id || 'new'}/approve-and-pay`, {
+    method: 'POST',
+    headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({
+    table_id: activeOrder.table_id,
+    customer_name: activeOrder.customer_name,
+    payment_method: paymentMethod,
+    amount_paid: amountPaid,
+    coupon_code: appliedCoupon,
+    voucher_code: appliedVoucher,
+    discount_percent: discountPercent,
+    guest_category: activeOrder.guest_category,
+    order_type: activeOrder.order_type,
+    items: activeOrder.items.map(i => ({ menu_item_id: i.menu_item_id, qty: i.qty, note: i.note, type: i.type }))
+    })
+    });
 
-        const handleVoidItemRequest = (idx) => {
-            // Only require PIN if the order is already saved in DB (has ID)
-            if (!activeOrder.id) {
-                const newItems = [...activeOrder.items];
-                newItems.splice(idx, 1);
-                recalculate(activeOrder, newItems);
-                return;
-            }
-            setVoidItemIdx(idx);
-            setVoidType('ITEM');
-            setShowVoidModal(true);
-            setVoidReason('');
-            setVoidPin('');
-        };
+    const data = await response.json();
+    if (response.ok) {
+    printReceipt('STRUK', data.order);
+    printReceipt('KITCHEN', data.order);
+    setActiveOrder(null);
+    setShowNumpad(false);
+    fetchOrders();
+    } else {
+    throw new Error(data.error || data.message || 'Gagal memproses transaksi');
+    }
+    } catch (e) { alert('Error: ' + e.message); }
+    finally { setIsProcessing(false); }
+    };
 
-        const confirmVoid = async () => {
-            if (!voidReason || !voidPin) return;
-            if (voidPin !== '1234') { alert('PIN Manager Salah!'); return; }
+    const handleVoidRequest = (trx) => {
+    setVoidTarget(trx);
+    setVoidType('ORDER');
+    setShowVoidModal(true);
+    setVoidReason('');
+    setVoidPin('');
+    };
 
-            if (voidType === 'ITEM') {
-                const newItems = [...activeOrder.items];
-                newItems.splice(voidItemIdx, 1);
-                recalculate(activeOrder, newItems);
-                setShowVoidModal(false);
-                return;
-            }
+    const handleVoidItemRequest = (idx) => {
+    // Only require PIN if the order is already saved in DB (has ID)
+    if (!activeOrder.id) {
+    const newItems = [...activeOrder.items];
+    newItems.splice(idx, 1);
+    recalculate(activeOrder, newItems);
+    return;
+    }
+    setVoidItemIdx(idx);
+    setVoidType('ITEM');
+    setShowVoidModal(true);
+    setVoidReason('');
+    setVoidPin('');
+    };
 
-            setIsProcessing(true);
-            try {
-                const response = await fetch(`/terminal/orders/${voidTarget.id}/void`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                    },
-                    body: JSON.stringify({ reason: voidReason, pin: voidPin })
-                });
-                const result = await response.json();
-                if (response.ok) {
-                    alert('Transaksi berhasil di-void!');
-                    setShowVoidModal(false);
-                    fetchHistory();
-                } else {
-                    throw new Error(result.error || result.message || 'Gagal melakukan void');
-                }
-            } catch (e) { alert('Error: ' + e.message); }
-            finally { setIsProcessing(false); }
-        };
+    const confirmVoid = async () => {
+    if (!voidReason || !voidPin) return;
+    if (voidPin !== '1234') { alert('PIN Manager Salah!'); return; }
 
-        const handleSplitConfirm = async (selectedItems) => {
-            if (!activeOrder.id) { alert('Hanya pesanan tersimpan yang bisa di-split'); return; }
-            setIsProcessing(true);
-            try {
-                const response = await fetch(`/terminal/orders/${activeOrder.id}/split`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                    },
-                    body: JSON.stringify({
-                        items: selectedItems.map(i => ({ order_item_id: i.item.id, qty: i.qty }))
-                    })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    alert('Bill berhasil dipisah!');
-                    setShowSplitModal(false);
-                    setActiveOrder(null);
-                    fetchOrders();
-                } else {
-                    throw new Error(data.error || data.message || 'Gagal melakukan split bill');
-                }
-            } catch (e) { alert('Error: ' + e.message); }
-            finally { setIsProcessing(false); }
-        };
+    if (voidType === 'ITEM') {
+    const newItems = [...activeOrder.items];
+    newItems.splice(voidItemIdx, 1);
+    recalculate(activeOrder, newItems);
+    setShowVoidModal(false);
+    return;
+    }
 
-        const handleMergeTable = async () => {
-            if (!activeOrder.id) { alert('Hanya pesanan tersimpan yang bisa digabung'); return; }
-            const tableId = prompt("Masukkan ID Meja yang akan digabung ke sini:");
-            if (!tableId) return;
-            
-            try {
-                const response = await fetch(`/terminal/orders/${activeOrder.id}/merge`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                    },
-                    body: JSON.stringify({ source_table_id: tableId })
-                });
-                const result = await response.json();
-                if (response.ok) {
-                    alert('Meja berhasil digabung!');
-                    handleSelectOrder(result.order);
-                    fetchOrders();
-                } else {
-                    alert(result.error || result.message || 'Gagal menggabungkan meja');
-                }
-            } catch (e) { alert('Error: ' + e.message); }
-        };
+    setIsProcessing(true);
+    try {
+    const response = await fetch(`/terminal/orders/${voidTarget.id}/void`, {
+    method: 'POST',
+    headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ reason: voidReason, pin: voidPin })
+    });
+    const result = await response.json();
+    if (response.ok) {
+    alert('Transaksi berhasil di-void!');
+    setShowVoidModal(false);
+    fetchHistory();
+    } else {
+    throw new Error(result.error || result.message || 'Gagal melakukan void');
+    }
+    } catch (e) { alert('Error: ' + e.message); }
+    finally { setIsProcessing(false); }
+    };
 
-        const GUEST_COLORS = {
-            'REGULER': 'bg-terminal-accent',
-            'RESERVED': 'bg-terminal-warning',
-            'MAJAR_PRIORITY': 'bg-blue-500',
-            'MAJAR_OWNER': 'bg-purple-500'
-        };
+    const handleSplitConfirm = async (selectedItems) => {
+    if (!activeOrder.id) { alert('Hanya pesanan tersimpan yang bisa di-split'); return; }
+    setIsProcessing(true);
+    try {
+    const response = await fetch(`/terminal/orders/${activeOrder.id}/split`, {
+    method: 'POST',
+    headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({
+    items: selectedItems.map(i => ({ order_item_id: i.item.id, qty: i.qty }))
+    })
+    });
+    const data = await response.json();
+    if (response.ok) {
+    alert('Bill berhasil dipisah!');
+    setShowSplitModal(false);
+    setActiveOrder(null);
+    fetchOrders();
+    } else {
+    throw new Error(data.error || data.message || 'Gagal melakukan split bill');
+    }
+    } catch (e) { alert('Error: ' + e.message); }
+    finally { setIsProcessing(false); }
+    };
 
-        return (
-            <div className="flex w-full h-full bg-white overflow-hidden font-sans">
-                {/* Sidebar Navigation */}
-                <div className="w-32 bg-white border-r border-terminal-border flex flex-col flex-shrink-0 z-30 shadow-2xl">
-                    <div className="p-4 border-b border-terminal-border bg-terminal-accent/5">
-                        <img src="/logo.png" className="w-full h-auto grayscale opacity-50" alt="Majar" />
-                    </div>
-                    <SidebarItem id="ORDERING" label="Ordering" icon="bi-grid-fill" active={activeTab === 'ORDERING'} onClick={setActiveTab} />
-                    <SidebarItem id="PENDING" label="Pending" icon="bi-hourglass-split" active={activeTab === 'PENDING'} onClick={setActiveTab} />
-                    <SidebarItem id="HISTORY" label="History" icon="bi-receipt-cutoff" active={activeTab === 'HISTORY'} onClick={setActiveTab} />
-                    <SidebarItem id="REPORTS" label="Reports" icon="bi-graph-up-arrow" active={activeTab === 'REPORTS'} onClick={setActiveTab} />
-                    <div className="mt-auto">
-                        <SidebarItem id="SETTINGS" label="Settings" icon="bi-gear-fill" active={activeTab === 'SETTINGS'} onClick={setActiveTab} />
-                    </div>
-                </div>
+    const handleMergeTable = async () => {
+    if (!activeOrder.id) { alert('Hanya pesanan tersimpan yang bisa digabung'); return; }
+    const tableId = prompt("Masukkan ID Meja yang akan digabung ke sini:");
+    if (!tableId) return;
 
-                {/* Main Content Area */}
-                <div className="flex-1 flex flex-col relative overflow-hidden">
-                    {activeTab === 'ORDERING' && <OrderingView menuItems={menuItems} categories={categories} tables={tables} onAddItem={handleAddItem} />}
-                    {activeTab === 'PENDING' && <PendingApprovalView orders={orders} onSelect={handleSelectOrder} />}
-                {activeTab === 'HISTORY' && <TransactionHistoryView history={history} onVoid={handleVoidRequest} onSelect={setActiveOrder} />}
-                {activeTab === 'REPORTS' && <ReportsView reportData={reportData} />}
-                {activeTab === 'SETTINGS' && <SettingsView />}
+    try {
+    const response = await fetch(`/terminal/orders/${activeOrder.id}/merge`, {
+    method: 'POST',
+    headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+    },
+    body: JSON.stringify({ source_table_id: tableId })
+    });
+    const result = await response.json();
+    if (response.ok) {
+    alert('Meja berhasil digabung!');
+    handleSelectOrder(result.order);
+    fetchOrders();
+    } else {
+    alert(result.error || result.message || 'Gagal menggabungkan meja');
+    }
+    } catch (e) { alert('Error: ' + e.message); }
+    };
 
-                {/* Audit Detail Modal */}
-                {activeTab === 'HISTORY' && activeOrder && !isEditing && (
-                    <AuditDetailModal 
-                        trx={activeOrder} 
-                        onClose={() => setActiveOrder(null)} 
-                        onVoid={handleVoidRequest} 
-                    />
+    const GUEST_COLORS = {
+    'REGULER': 'bg-terminal-accent',
+    'RESERVED': 'bg-terminal-warning',
+    'MAJAR_PRIORITY': 'bg-blue-500',
+    'MAJAR_OWNER': 'bg-purple-500'
+    };
+
+    return (
+    <div className="flex w-full h-full bg-white overflow-hidden font-sans">
+        {/* Sidebar Navigation */}
+        <div className="w-32 bg-white border-r border-terminal-border flex flex-col flex-shrink-0 z-30 shadow-2xl">
+            <div className="p-4 border-b border-terminal-border bg-terminal-accent/5">
+                <img className="w-full h-auto grayscale opacity-50" src="/favicon.ico" alt="Majar" />
+            </div>
+            <SidebarItem id="ORDERING" label="Ordering" icon="bi-grid-fill" active={activeTab === 'ORDERING'}
+                onClick={setActiveTab} />
+            <SidebarItem id="PENDING" label="Pending" icon="bi-hourglass-split" active={activeTab === 'PENDING'}
+                onClick={setActiveTab} />
+            <SidebarItem id="HISTORY" label="History" icon="bi-receipt-cutoff" active={activeTab === 'HISTORY'}
+                onClick={setActiveTab} />
+            <SidebarItem id="REPORTS" label="Reports" icon="bi-graph-up-arrow" active={activeTab === 'REPORTS'}
+                onClick={setActiveTab} />
+            <div className="mt-auto">
+                <SidebarItem id="SETTINGS" label="Settings" icon="bi-gear-fill" active={activeTab === 'SETTINGS'}
+                    onClick={setActiveTab} />
+            </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col relative overflow-hidden">
+            {activeTab === 'ORDERING' &&
+            <OrderingView menuItems={menuItems} categories={categories} tables={tables} onAddItem={handleAddItem} />}
+            {activeTab === 'PENDING' &&
+            <PendingApprovalView orders={orders} onSelect={handleSelectOrder} />}
+            {activeTab === 'HISTORY' &&
+            <TransactionHistoryView history={history} onVoid={handleVoidRequest} onSelect={setActiveOrder} />}
+            {activeTab === 'REPORTS' &&
+            <ReportsView reportData={reportData} />}
+            {activeTab === 'SETTINGS' &&
+            <SettingsView />}
+
+            {/* Audit Detail Modal */}
+            {activeTab === 'HISTORY' && activeOrder && !isEditing && (
+            <AuditDetailModal trx={activeOrder} onClose={()=> setActiveOrder(null)}
+                onVoid={handleVoidRequest}
+                />
                 )}
-                </div>
+        </div>
 
-                {/* Right: Active Order / Cart (Persistent for Ordering/Pending) */}
-                {(activeTab === 'ORDERING' || (activeTab === 'PENDING' && activeOrder)) && (
-                    <div className="w-[400px] flex flex-col bg-white border-l border-terminal-border shadow-2xl z-20">
-                        {!activeOrder ? (
-                            <div className="flex-1 flex flex-col items-center justify-center opacity-10 text-terminal-muted p-8 text-center">
-                                <i className="bi bi-cart-x text-[6rem] mb-4"></i>
-                                <h3 className="text-xl font-black uppercase">Belum ada pesanan aktif</h3>
-                                <p className="text-xs font-bold mt-2">Pilih menu atau antrean untuk memulai</p>
-                            </div>
-                        ) : (
-                            <div className="flex-1 flex flex-col overflow-hidden">
-                                <div className="p-6 bg-terminal-bg/50 border-b border-terminal-border">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <h3 className="text-2xl font-black">Meja {activeOrder.table?.name}</h3>
-                                            <div className="text-[10px] font-mono text-terminal-muted">#{activeOrder.code}</div>
-                                        </div>
-                                        <button onClick={() => setActiveOrder(null)} className="text-terminal-muted hover:text-terminal-danger"><i className="bi bi-x-circle text-2xl"></i></button>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
-                                            <i className="bi bi-person-fill absolute left-3 top-1/2 -translate-y-1/2 text-orange-400"></i>
-                                            <input 
-                                                type="text" 
-                                                className="w-full bg-white border border-orange-100 rounded-xl pl-10 pr-4 py-2 text-xs font-black uppercase focus:outline-none shadow-sm"
-                                                placeholder="NAMA TAMU"
-                                                value={activeOrder.customer_name || ''}
-                                                onChange={e => setActiveOrder({...activeOrder, customer_name: e.target.value})}
-                                            />
-                                        </div>
-                                        <div className="flex gap-1">
-                                            <button 
-                                                onClick={handleMergeTable}
-                                                className="w-10 h-10 rounded-xl border border-terminal-border flex items-center justify-center text-terminal-muted hover:text-orange-500 hover:border-orange-500 bg-white shadow-sm transition-all"
-                                                title="Gabung Meja"
-                                            >
-                                                <i className="bi bi-diagram-2"></i>
-                                            </button>
-                                            <button 
-                                                onClick={() => setShowSplitModal(true)}
-                                                className="w-10 h-10 rounded-xl border border-terminal-border flex items-center justify-center text-terminal-muted hover:text-red-500 hover:border-red-500 bg-white shadow-sm transition-all"
-                                                title="Split Bill"
-                                            >
-                                                <i className="bi bi-scissors"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="mt-2">
-                                        <select 
-                                            className="w-full bg-white border border-terminal-border rounded-xl px-3 py-2 text-xs font-black uppercase focus:outline-none shadow-sm text-orange-600 border-orange-100"
-                                            value={activeOrder.guest_category}
-                                            onChange={e => setActiveOrder({...activeOrder, guest_category: e.target.value})}
-                                        >
-                                            <option value="REGULER">Reguler</option>
-                                            <option value="RESERVED">Reserved</option>
-                                            <option value="MAJAR_PRIORITY">Priority</option>
-                                            <option value="MAJAR_OWNER">Owner</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                                    {activeOrder.items.map((item, idx) => (
-                                        <div key={idx} className="bg-white border border-terminal-border rounded-2xl p-4 shadow-sm space-y-3 relative overflow-hidden group">
-                                            {/* Item Type Badge */}
-                                            <div className="absolute top-0 right-0">
-                                                <button 
-                                                    onClick={() => {
-                                                        const newItems = [...activeOrder.items];
-                                                        newItems[idx].type = item.type === 'TAKE_AWAY' ? 'DINE_IN' : 'TAKE_AWAY';
-                                                        setActiveOrder({...activeOrder, items: newItems});
-                                                    }}
-                                                    className={`text-[8px] font-black px-2 py-1 rounded-bl-xl transition-colors ${item.type === 'TAKE_AWAY' ? 'bg-terminal-danger text-white' : 'bg-terminal-accent text-white'}`}
-                                                >
-                                                    {item.type === 'TAKE_AWAY' ? 'TAKE AWAY' : 'DINE IN'}
-                                                </button>
-                                            </div>
-
-                                            <div className="flex justify-between items-start">
-                                                <div className="font-black text-sm leading-tight flex-1 pr-8 text-terminal-text">{item.menu_name}</div>
-                                                <div className="font-black text-terminal-accent text-lg">
-                                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price * item.qty)}
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="flex items-center justify-between gap-4">
-                                                <div className="flex items-center gap-2 bg-terminal-bg p-1 rounded-lg border border-terminal-border">
-                                                    <button onClick={() => handleUpdateQty(idx, -1)} className="w-8 h-8 rounded flex items-center justify-center hover:bg-black/5 text-terminal-text">-</button>
-                                                    <span className="font-black min-w-[20px] text-center text-terminal-text">{item.qty}</span>
-                                                    <button onClick={() => handleUpdateQty(idx, 1)} className="w-8 h-8 rounded flex items-center justify-center hover:bg-black/5 text-terminal-text">+</button>
-                                                </div>
-                                                
-                                                <div className="flex-1 flex items-center gap-2">
-                                                    <div className="relative flex-1">
-                                                        <i className="bi bi-pencil-fill absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-terminal-muted"></i>
-                                                        <input 
-                                                            type="text" 
-                                                            className="w-full bg-terminal-bg border border-terminal-border rounded-lg pl-6 pr-2 py-1.5 text-[10px] focus:outline-none focus:border-terminal-accent text-terminal-text" 
-                                                            placeholder="Tambah catatan..." 
-                                                            value={item.note || ''}
-                                                            onChange={e => handleUpdateItemNote(idx, e.target.value)}
-                                                        />
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => handleVoidItemRequest(idx)}
-                                                        className="w-8 h-8 rounded-lg flex items-center justify-center text-terminal-danger hover:bg-terminal-danger/10 transition-colors"
-                                                    >
-                                                        <i className="bi bi-trash-fill"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="p-6 border-t-2 border-terminal-border bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                                    <div className="space-y-3 mb-6">
-                                        <div className="flex gap-2 mb-4">
-                                            <div className="relative flex-1">
-                                                <i className="bi bi-tag-fill absolute left-3 top-1/2 -translate-y-1/2 text-terminal-muted text-sm"></i>
-                                                <input 
-                                                    type="text" 
-                                                    className="w-full bg-terminal-bg border border-terminal-border rounded-xl pl-10 pr-4 py-2 text-xs font-bold uppercase focus:outline-none focus:border-orange-500"
-                                                    placeholder="KODE KUPON"
-                                                    value={couponCode}
-                                                    onChange={e => setCouponCode(e.target.value.toUpperCase())}
-                                                />
-                                            </div>
-                                            <Button size="sm" variant="dark" onClick={handleCheckCoupon}>CEK</Button>
-                                        </div>
-
-                                        <div className="flex gap-2 mb-6">
-                                            <div className="relative flex-1">
-                                                <i className="bi bi-ticket-perforated absolute left-3 top-1/2 -translate-y-1/2 text-terminal-muted text-sm"></i>
-                                                <input 
-                                                    type="text" 
-                                                    className="w-full bg-terminal-bg border border-terminal-border rounded-xl pl-10 pr-4 py-2 text-xs font-bold uppercase focus:outline-none focus:border-orange-500"
-                                                    placeholder="INPUT VOUCHER CODE"
-                                                    value={voucherCode}
-                                                    onChange={e => setVoucherCode(e.target.value.toUpperCase())}
-                                                />
-                                            </div>
-                                            <Button size="sm" variant="primary" className="bg-orange-500 border-none" onClick={handleCheckVoucher}>APPLY</Button>
-                                        </div>
-
-                                        <div className="flex justify-between text-terminal-muted font-bold text-xs uppercase tracking-widest"><span>Subtotal</span><span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(activeOrder.total)}</span></div>
-                                        <div className="flex justify-between text-terminal-muted font-bold text-xs uppercase tracking-widest"><span>Service Charge (5%)</span><span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(activeOrder.total * 0.05)}</span></div>
-                                        <div className="flex justify-between text-terminal-muted font-bold text-xs uppercase tracking-widest"><span>Tax (11%)</span><span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((activeOrder.total * 1.05) * 0.11)}</span></div>
-                                        {discountPercent > 0 && <div className="flex justify-between text-red-500 font-black text-xs uppercase tracking-widest"><span>Diskon ({discountPercent}%)</span><span>-{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((activeOrder.total * 1.16) * (discountPercent/100))}</span></div>}
-                                        {voucherDiscount > 0 && (
-                                            <div className="flex justify-between text-red-500 font-black text-xs uppercase tracking-widest">
-                                                <span>Voucher ({appliedVoucher})</span>
-                                                <span>-{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(voucherDiscount)}</span>
-                                            </div>
-                                        )}
-                                        <div className="flex justify-between items-center pt-2 border-t border-terminal-border">
-                                            <span className="text-xl font-black text-terminal-text uppercase tracking-tighter">Total Akhir</span>
-                                            <span className="text-4xl font-black text-orange-600 tracking-tighter">
-                                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((activeOrder.total * 1.16) * (1 - discountPercent/100) - voucherDiscount)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2 mb-4">
-                                        {['cash', 'qris', 'card'].map(m => (
-                                            <button 
-                                                key={m} 
-                                                onClick={() => setPaymentMethod(m)}
-                                                className={`py-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all ${paymentMethod === m ? 'border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'border-terminal-border bg-white text-terminal-muted hover:border-orange-200'}`}
-                                            >
-                                                <i className={`bi bi-${m === 'cash' ? 'cash-stack' : m === 'qris' ? 'qr-code-scan' : 'credit-card'} text-lg`}></i>
-                                                <span className="text-[8px] font-black uppercase tracking-widest">{m}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <Button 
-                                        variant="primary" 
-                                        className="w-full py-5 text-xl uppercase tracking-widest shadow-2xl bg-orange-500 border-none hover:bg-orange-600 transition-all active:scale-95" 
-                                        disabled={isProcessing || activeOrder.items.length === 0}
-                                        onClick={handleProcessPayment}
-                                    >
-                                        {isProcessing ? 'PROSES...' : activeTab === 'PENDING' ? 'APPROVE & KIRIM KE DAPUR' : 'BAYAR SEKARANG'}
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
+        {/* Right: Active Order / Cart (Persistent for Ordering/Pending) */}
+        {(activeTab === 'ORDERING' || (activeTab === 'PENDING' && activeOrder)) && (
+        <div className="w-[400px] flex flex-col bg-white border-l border-terminal-border shadow-2xl z-20">
+            {!activeOrder ? (
+            <div
+                className="flex-1 flex flex-col items-center justify-center opacity-10 text-terminal-muted p-8 text-center">
+                <i className="bi bi-cart-x text-[6rem] mb-4"></i>
+                <h3 className="text-xl font-black uppercase">Belum ada pesanan aktif</h3>
+                <p className="text-xs font-bold mt-2">Pilih menu atau antrean untuk memulai</p>
+            </div>
+            ) : (
+            <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-6 bg-terminal-bg/50 border-b border-terminal-border">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 className="text-2xl font-black">Meja {activeOrder.table?.name}</h3>
+                            <div className="text-[10px] font-mono text-terminal-muted">#{activeOrder.code}</div>
+                        </div>
+                        <button onClick={()=> setActiveOrder(null)}
+                            className="text-terminal-muted hover:text-terminal-danger"><i
+                                className="bi bi-x-circle text-2xl"></i></button>
                     </div>
-                )}
-
-                {/* --- Modals --- */}
-                {showNumpad && <Numpad value={amountPaid} onChange={setAmountPaid} onConfirm={handleProcessPayment} onCancel={() => setShowNumpad(false)} total={(activeOrder.total * 1.16) * (1 - discountPercent/100)} />}
-                {showSplitModal && <SplitBillModal order={activeOrder} onConfirm={handleSplitConfirm} onCancel={() => setShowSplitModal(false)} />}
-
-                {/* --- Void Modal --- */}
-                {showVoidModal && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-                        <div className="bg-white border border-terminal-border rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-                            <div className="p-10 text-center space-y-6">
-                                <div className="w-20 h-20 bg-terminal-danger/10 rounded-full flex items-center justify-center mx-auto text-terminal-danger">
-                                    <i className="bi bi-exclamation-triangle-fill text-4xl"></i>
-                                </div>
-                                <h3 className="text-3xl font-black uppercase tracking-tighter">Otorisasi Void</h3>
-                                <p className="text-terminal-muted font-bold">Membatalkan pesanan <span className="text-terminal-text">#{voidTarget?.code}</span> memerlukan otorisasi manager.</p>
-                                
-                                <div className="space-y-4 text-left">
-                                    <div>
-                                        <label className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">Alasan Void</label>
-                                        <textarea 
-                                            className="w-full bg-terminal-bg border border-terminal-border rounded-2xl p-4 focus:outline-none focus:border-terminal-danger"
-                                            rows="3"
-                                            placeholder="Contoh: Kesalahan input item..."
-                                            value={voidReason}
-                                            onChange={e => setVoidReason(e.target.value)}
-                                        ></textarea>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">PIN Manager</label>
-                                        <input 
-                                            type="password" 
-                                            className="w-full bg-terminal-bg border border-terminal-border rounded-2xl px-4 py-4 text-center text-3xl font-black tracking-[1em] focus:outline-none focus:border-terminal-danger"
-                                            maxLength="4"
-                                            placeholder="****"
-                                            value={voidPin}
-                                            onChange={e => setVoidPin(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="p-8 bg-gray-50 border-t border-terminal-border flex gap-4">
-                                <Button variant="secondary" className="flex-1" onClick={() => setShowVoidModal(false)}>BATAL</Button>
-                                <Button 
-                                    variant="danger" 
-                                    className="flex-1" 
-                                    disabled={!voidReason || voidPin.length < 4 || isProcessing}
-                                    onClick={confirmVoid}
+                    <div className="flex gap-2">
+                        <div className="relative flex-1">
+                            <i className="bi bi-person-fill absolute left-3 top-1/2 -translate-y-1/2 text-orange-400"></i>
+                            <input
+                                className="w-full bg-white border border-orange-100 rounded-xl pl-10 pr-4 py-2 text-xs font-black uppercase focus:outline-none shadow-sm"
+                                type="text"
+                                placeholder="NAMA TAMU"
+                                value={activeOrder.customer_name || ''}
+                                onChange={e=> setActiveOrder({...activeOrder, customer_name: e.target.value})}
+                            />
+                        </div>
+                        <div className="flex gap-1">
+                            <button
+                                className="w-10 h-10 rounded-xl border border-terminal-border flex items-center justify-center text-terminal-muted hover:text-orange-500 hover:border-orange-500 bg-white shadow-sm transition-all"
+                                title="Gabung Meja" onClick={handleMergeTable}>
+                                <i className="bi bi-diagram-2"></i>
+                            </button>
+                            <button onClick={()=> setShowSplitModal(true)}
+                                className="w-10 h-10 rounded-xl border border-terminal-border flex items-center justify-center text-terminal-muted hover:text-red-500 hover:border-red-500 bg-white shadow-sm transition-all"
+                                title="Split Bill"
                                 >
-                                    KONFIRMASI VOID
-                                </Button>
+                                <i className="bi bi-scissors"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="mt-2">
+                        <select
+                            className="w-full bg-white border border-terminal-border rounded-xl px-3 py-2 text-xs font-black uppercase focus:outline-none shadow-sm text-orange-600 border-orange-100"
+                            value={activeOrder.guest_category} onChange={e=> setActiveOrder({...activeOrder, guest_category:
+                            e.target.value})}
+                            >
+                            <option value="REGULER">Reguler</option>
+                            <option value="RESERVED">Reserved</option>
+                            <option value="MAJAR_PRIORITY">Priority</option>
+                            <option value="MAJAR_OWNER">Owner</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                    {activeOrder.items.map((item, idx) => (
+                    <div className="bg-white border border-terminal-border rounded-2xl p-4 shadow-sm space-y-3 relative overflow-hidden group"
+                        key={idx}>
+                        {/* Item Type Badge */}
+                        <div className="absolute top-0 right-0">
+                            <button onClick={()=> {
+                                const newItems = [...activeOrder.items];
+                                newItems[idx].type = item.type === 'TAKE_AWAY' ? 'DINE_IN' : 'TAKE_AWAY';
+                                setActiveOrder({...activeOrder, items: newItems});
+                                }}
+                                className={`text-[8px] font-black px-2 py-1 rounded-bl-xl transition-colors ${item.type
+                                === 'TAKE_AWAY' ? 'bg-terminal-danger text-white' : 'bg-terminal-accent text-white'}`}
+                                >
+                                {item.type === 'TAKE_AWAY' ? 'TAKE AWAY' : 'DINE IN'}
+                            </button>
+                        </div>
+
+                        <div className="flex justify-between items-start">
+                            <div className="font-black text-sm leading-tight flex-1 pr-8 text-terminal-text">
+                                {item.menu_name}</div>
+                            <div className="font-black text-terminal-accent text-lg">
+                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits:
+                                0 }).format(item.price * item.qty)}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4">
+                            <div
+                                className="flex items-center gap-2 bg-terminal-bg p-1 rounded-lg border border-terminal-border">
+                                <button onClick={()=> handleUpdateQty(idx, -1)}
+                                    className="w-8 h-8 rounded flex items-center justify-center hover:bg-black/5 text-terminal-text">-</button>
+                                <span className="font-black min-w-[20px] text-center text-terminal-text">{item.qty}</span>
+                                <button onClick={()=> handleUpdateQty(idx, 1)}
+                                    className="w-8 h-8 rounded flex items-center justify-center hover:bg-black/5 text-terminal-text">+</button>
+                            </div>
+
+                            <div className="flex-1 flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <i
+                                        className="bi bi-pencil-fill absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-terminal-muted"></i>
+                                    <input
+                                        className="w-full bg-terminal-bg border border-terminal-border rounded-lg pl-6 pr-2 py-1.5 text-[10px] focus:outline-none focus:border-terminal-accent text-terminal-text"
+                                        type="text"
+                                        value={item.note || ''}
+                                        placeholder="Tambah catatan..."
+                                        onChange={e=> handleUpdateItemNote(idx, e.target.value)}
+                                    />
+                                </div>
+                                <button onClick={()=> handleVoidItemRequest(idx)}
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-terminal-danger hover:bg-terminal-danger/10 transition-colors"
+                                    >
+                                    <i className="bi bi-trash-fill"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
+                    ))}
+                </div>
+
+                <div className="p-6 border-t-2 border-terminal-border bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+                    <div className="space-y-3 mb-6">
+                        <div className="flex gap-2 mb-4">
+                            <div className="relative flex-1">
+                                <i
+                                    className="bi bi-tag-fill absolute left-3 top-1/2 -translate-y-1/2 text-terminal-muted text-sm"></i>
+                                <input
+                                    className="w-full bg-terminal-bg border border-terminal-border rounded-xl pl-10 pr-4 py-2 text-xs font-bold uppercase focus:outline-none focus:border-orange-500"
+                                    type="text" value={couponCode} placeholder="KODE KUPON" onChange={e=>
+                                setCouponCode(e.target.value.toUpperCase())}
+                                />
+                            </div>
+                            <Button size="sm" variant="dark" onClick={handleCheckCoupon}>CEK</Button>
+                        </div>
+
+                        <div className="flex gap-2 mb-6">
+                            <div className="relative flex-1">
+                                <i
+                                    className="bi bi-ticket-perforated absolute left-3 top-1/2 -translate-y-1/2 text-terminal-muted text-sm"></i>
+                                <input
+                                    className="w-full bg-terminal-bg border border-terminal-border rounded-xl pl-10 pr-4 py-2 text-xs font-bold uppercase focus:outline-none focus:border-orange-500"
+                                    type="text" value={voucherCode} placeholder="INPUT VOUCHER CODE" onChange={e=>
+                                setVoucherCode(e.target.value.toUpperCase())}
+                                />
+                            </div>
+                            <Button className="bg-orange-500 border-none" size="sm" variant="primary"
+                                onClick={handleCheckVoucher}>APPLY</Button>
+                        </div>
+
+                        <div
+                            className="flex justify-between text-terminal-muted font-bold text-xs uppercase tracking-widest">
+                            <span>Subtotal</span><span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR',
+                                minimumFractionDigits: 0 }).format(activeOrder.total)}</span>
+                        </div>
+                        <div
+                            className="flex justify-between text-terminal-muted font-bold text-xs uppercase tracking-widest">
+                            <span>Service Charge (5%)</span><span>{new Intl.NumberFormat('id-ID', { style: 'currency',
+                                currency: 'IDR', minimumFractionDigits: 0 }).format(activeOrder.total * 0.05)}</span>
+                        </div>
+                        <div
+                            className="flex justify-between text-terminal-muted font-bold text-xs uppercase tracking-widest">
+                            <span>Tax (11%)</span><span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency:
+                                'IDR', minimumFractionDigits: 0 }).format((activeOrder.total * 1.05) * 0.11)}</span>
+                        </div>
+                        {discountPercent > 0 && <div
+                            className="flex justify-between text-red-500 font-black text-xs uppercase tracking-widest">
+                            <span>Diskon ({discountPercent}%)</span><span>-{new Intl.NumberFormat('id-ID', { style:
+                                'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((activeOrder.total * 1.16) *
+                                (discountPercent/100))}</span>
+                        </div>}
+                        {voucherDiscount > 0 && (
+                        <div className="flex justify-between text-red-500 font-black text-xs uppercase tracking-widest">
+                            <span>Voucher ({appliedVoucher})</span>
+                            <span>-{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR',
+                                minimumFractionDigits: 0 }).format(voucherDiscount)}</span>
+                        </div>
+                        )}
+                        <div className="flex justify-between items-center pt-2 border-t border-terminal-border">
+                            <span className="text-xl font-black text-terminal-text uppercase tracking-tighter">Total
+                                Akhir</span>
+                            <span className="text-4xl font-black text-orange-600 tracking-tighter">
+                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits:
+                                0 }).format((activeOrder.total * 1.16) * (1 - discountPercent/100) - voucherDiscount)}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                        {['cash', 'qris', 'card'].map(m => (
+                        <button key={m} onClick={()=> setPaymentMethod(m)}
+                            className={`py-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1
+                            transition-all ${paymentMethod === m ? 'border-orange-500 bg-orange-500 text-white shadow-lg
+                            shadow-orange-500/20' : 'border-terminal-border bg-white text-terminal-muted
+                            hover:border-orange-200'}`}
+                            >
+                            <i className={`bi bi-${m === 'cash' ? 'cash-stack' : m === 'qris' ? 'qr-code-scan'
+                                : 'credit-card' } text-lg`}></i>
+                            <span className="text-[8px] font-black uppercase tracking-widest">{m}</span>
+                        </button>
+                        ))}
+                    </div>
+                    <Button
+                        className="w-full py-5 text-xl uppercase tracking-widest shadow-2xl bg-orange-500 border-none hover:bg-orange-600 transition-all active:scale-95"
+                        variant="primary" disabled={isProcessing || activeOrder.items.length===0}
+                        onClick={handleProcessPayment}>
+                        {isProcessing ? 'PROSES...' : activeTab === 'PENDING' ? 'APPROVE & KIRIM KE DAPUR' : 'BAYAR
+                        SEKARANG'}
+                    </Button>
+                </div>
+            </div>
+            )}
+        </div>
+        )}
+
+        {/* --- Modals --- */}
+        {showNumpad && <Numpad value={amountPaid} onChange={setAmountPaid} onConfirm={handleProcessPayment} onCancel={()=>
+            setShowNumpad(false)} total={(activeOrder.total * 1.16) * (1 - discountPercent/100)} />}
+            {showSplitModal && <SplitBillModal order={activeOrder} onConfirm={handleSplitConfirm} onCancel={()=>
+                setShowSplitModal(false)} />}
+
+                {/* --- Void Modal --- */}
+                {showVoidModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="bg-white border border-terminal-border rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                        <div className="p-10 text-center space-y-6">
+                            <div
+                                className="w-20 h-20 bg-terminal-danger/10 rounded-full flex items-center justify-center mx-auto text-terminal-danger">
+                                <i className="bi bi-exclamation-triangle-fill text-4xl"></i>
+                            </div>
+                            <h3 className="text-3xl font-black uppercase tracking-tighter">Otorisasi Void</h3>
+                            <p className="text-terminal-muted font-bold">Membatalkan pesanan <span
+                                    className="text-terminal-text">#{voidTarget?.code}</span> memerlukan otorisasi manager.
+                            </p>
+
+                            <div className="space-y-4 text-left">
+                                <div>
+                                    <label
+                                        className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">Alasan
+                                        Void</label>
+                                    <textarea
+                                        className="w-full bg-terminal-bg border border-terminal-border rounded-2xl p-4 focus:outline-none focus:border-terminal-danger"
+                                        value={voidReason} rows="3" placeholder="Contoh: Kesalahan input item..." onChange={e=> setVoidReason(e.target.value)}
+                                                                                                                ></textarea>
+                                </div>
+                                <div>
+                                    <label
+                                        className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">PIN
+                                        Manager</label>
+                                    <input
+                                        className="w-full bg-terminal-bg border border-terminal-border rounded-2xl px-4 py-4 text-center text-3xl font-black tracking-[1em] focus:outline-none focus:border-terminal-danger"
+                                        type="password" value={voidPin} maxLength="4" placeholder="****" onChange={e=>
+                                    setVoidPin(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-8 bg-gray-50 border-t border-terminal-border flex gap-4">
+                            <Button className="flex-1" variant="secondary" onClick={()=>
+                                setShowVoidModal(false)}>BATAL</Button>
+                            <Button className="flex-1" variant="danger" disabled={!voidReason || voidPin.length < 4 ||
+                                isProcessing} onClick={confirmVoid}>
+                                KONFIRMASI VOID
+                            </Button>
+                        </div>
+                    </div>
+                </div>
                 )}
 
-                <style>{`
-                    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-                    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-                `}</style>
-            </div>
-        );
+                <style>
+                    {
+                        ` .custom-scrollbar::-webkit-scrollbar {
+                            width: 4px;
+                        }
+
+                        .custom-scrollbar::-webkit-scrollbar-track {
+                            background: transparent;
+                        }
+
+                        .custom-scrollbar::-webkit-scrollbar-thumb {
+                            background: #cbd5e1;
+                            border-radius: 10px;
+                        }
+
+                        `
+                    }
+                </style>
+    </div>
+    );
     };
 
     const root = ReactDOM.createRoot(document.getElementById('kasir-root'));
-    root.render(<KasirTerminal />);
-</script>
+    root.render(
+    <KasirTerminal />);
+    </script>
 @endsection

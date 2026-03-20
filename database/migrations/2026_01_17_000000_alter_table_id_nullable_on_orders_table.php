@@ -7,12 +7,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('ALTER TABLE orders MODIFY table_id BIGINT UNSIGNED NULL;');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE orders MODIFY table_id BIGINT UNSIGNED NULL;');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE orders MODIFY table_id BIGINT UNSIGNED NOT NULL;');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE orders MODIFY table_id BIGINT UNSIGNED NOT NULL;');
+        }
     }
 };
-

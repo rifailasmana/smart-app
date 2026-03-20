@@ -4,15 +4,29 @@
 @section('terminal_role', 'KITCHEN')
 
 @section('header_extra')
-<div id="kitchen-header-root"></div>
+    <div id="kitchen-header-root"></div>
 @endsection
 
 @section('content')
-<div id="kitchen-root" class="w-full h-full"></div>
+    <div class="w-full h-full" id="kitchen-root">
+        <div style="margin:auto; max-width: 520px; padding: 24px; text-align:center;">
+            <div style="font-weight: 800; font-size: 20px; letter-spacing: .02em;">Memuat Terminal Kitchen…</div>
+            <div style="margin-top: 8px; opacity: .75; font-size: 14px; line-height: 1.4;">Jika layar tetap kosong, coba muat
+                ulang.</div>
+            <div style="margin-top: 16px; display:flex; gap: 10px; justify-content:center; flex-wrap: wrap;">
+                <button type="button"
+                    style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: #fff; font-weight: 700;"
+                    onclick="location.reload()">Muat Ulang</button>
+                <a href="{{ route('terminal.index') }}"
+                    style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: transparent; font-weight: 700; text-decoration:none; color: inherit;">Pilih
+                    Terminal</a>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('extra_js')
-<script type="text/babel">
+    <script type="text/babel" data-presets="env,react" data-plugins="proposal-optional-chaining,proposal-nullish-coalescing-operator">
     const { useState, useEffect, useMemo, useCallback } = React;
 
     // --- Components ---
