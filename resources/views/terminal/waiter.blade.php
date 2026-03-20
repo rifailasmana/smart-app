@@ -1,7 +1,16 @@
 @extends('layouts.terminal')
 
-@section('title', 'Terminal Waiter')
+@section('title', 'Waiter - Majar Signature')
 @section('terminal_role', 'WAITER')
+
+@section('header_extra')
+<div class="flex items-center gap-4 border-l border-gray-700 pl-4">
+    <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">System: Online</span>
+    </div>
+</div>
+@endsection
 
 @section('content')
 <div id="waiter-root" class="w-full h-full"></div>
@@ -11,628 +20,584 @@
 <script type="text/babel">
     const { useState, useEffect, useMemo, useCallback } = React;
 
-    // --- Shared Components ---
-    const Badge = ({ children, color = 'bg-terminal-border' }) => (
-        <span className={`${color} text-black text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider`}>
-            {children}
-        </span>
+    // --- Components ---
+
+    const SidebarIcon = ({ icon, label, active = false, onClick }) => (
+        <div 
+            onClick={onClick}
+            className={`relative flex flex-col items-center justify-center w-full py-5 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
+        >
+            {active && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-500 rounded-r-full shadow-[2px_0_10px_rgba(249,115,22,0.4)]"></div>}
+            <div className={`p-2 rounded-xl transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-gray-800'}`}>
+                <i className={`bi ${icon} text-2xl`}></i>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-tighter mt-1">{label}</span>
+        </div>
     );
 
-    const Button = ({ children, onClick, variant = 'secondary', disabled = false, className = '', icon = null }) => {
-        const variants = {
-            primary: 'bg-terminal-accent text-white hover:opacity-90 shadow-lg shadow-terminal-accent/20',
-            secondary: 'bg-white border border-terminal-border text-terminal-text hover:bg-black/5',
-            danger: 'bg-terminal-danger text-white hover:opacity-90 shadow-lg shadow-terminal-danger/20',
-            ghost: 'bg-transparent text-terminal-muted hover:text-terminal-text',
-            warning: 'bg-terminal-warning text-white hover:opacity-90 shadow-lg shadow-terminal-warning/20'
+    const OrderTypeCard = ({ icon, title, subtitle, onClick, color = "orange" }) => (
+        <div 
+            onClick={onClick}
+            className="w-full max-w-[340px] aspect-square bg-white rounded-[2.5rem] p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 transform hover:-translate-y-3 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] group border-2 border-transparent hover:border-orange-100"
+        >
+            <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 ${color === 'orange' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-500'}`}>
+                <i className={`bi ${icon} text-5xl`}></i>
+            </div>
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight">{title}</h2>
+            <p className="text-gray-400 font-medium mt-2">{subtitle}</p>
+            <div className={`mt-10 flex items-center gap-2 font-bold text-sm ${color === 'orange' ? 'text-orange-500' : 'text-green-500'}`}>
+                {title === 'Dine In' ? 'Pilih Meja' : 'Langsung Pesan'} <i className="bi bi-arrow-right"></i>
+            </div>
+        </div>
+    );
+
+    const TableCard = ({ table, active, onClick, guestCount }) => {
+        const statusConfig = {
+            available: { bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600', label: 'Tersedia' },
+            occupied: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-400', label: 'Terisi' },
+            reserved: { bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-orange-500', label: 'Reservasi' }
         };
+        const config = statusConfig[table.status] || statusConfig.available;
+        const isClickable = table.status === 'available' && table.capacity >= guestCount;
+
         return (
-            <button 
-                onClick={onClick} 
-                disabled={disabled}
-                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all active:scale-95 disabled:opacity-30 disabled:active:scale-100 ${variants[variant]} ${className}`}
+            <div 
+                onClick={() => isClickable && onClick(table)}
+                className={`relative p-6 rounded-[2rem] border-2 transition-all duration-300 flex flex-col justify-between aspect-video ${active ? 'border-orange-500 bg-orange-50 shadow-lg' : config.border + ' ' + config.bg} ${isClickable ? 'cursor-pointer hover:shadow-md' : 'opacity-60 cursor-not-allowed'}`}
             >
-                {icon && <i className={`bi ${icon}`}></i>}
-                {children}
-            </button>
+                <div className="flex justify-between items-start">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${active ? 'bg-orange-500 text-white' : 'bg-white ' + config.text}`}>
+                        <i className="bi bi-grid-fill text-xl"></i>
+                    </div>
+                    {active && <i className="bi bi-check-circle-fill text-orange-500 text-xl"></i>}
+                </div>
+                <div>
+                    <h3 className={`text-2xl font-black tracking-tight ${active ? 'text-orange-600' : 'text-gray-900'}`}>{table.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                        <i className="bi bi-people-fill text-xs text-gray-400"></i>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Maks. {table.capacity}</span>
+                    </div>
+                </div>
+                <div className={`mt-4 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${config.text}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-orange-500' : config.text.replace('text-', 'bg-')}`}></div>
+                    {config.label}
+                </div>
+            </div>
         );
     };
 
-    // --- Main Application ---
-    const WaiterTerminal = () => {
-        const [activeTab, setActiveTab] = useState('tables'); 
-        const [searchTable, setSearchTable] = useState('');
-        const [searchMenu, setSearchMenu] = useState('');
-        const [activeCategory, setActiveCategory] = useState('All');
-        const [activeTable, setActiveTable] = useState(null);
-        const [activeOrderId, setActiveOrderId] = useState(null);
-        const [orderItems, setOrderItems] = useState([]);
-        const [activeOrders, setActiveOrders] = useState([]);
-        const [tables, setTables] = useState(@json($tables));
-        const [menuItems] = useState(@json($menuItems));
-        const [categories] = useState(['All', ...@json($categories)]);
-        const [isLoading, setIsLoading] = useState(false);
+    // --- Main Views ---
 
-        // New Guest Info State
-        const [guestCategory, setGuestCategory] = useState('REGULER');
-        const [orderType, setOrderType] = useState('DINE_IN');
-        const [reservationName, setReservationName] = useState('');
-        const [reservationCode, setReservationCode] = useState('');
-        const [mergedTables, setMergedTables] = useState([]);
-        const [showGuestModal, setShowGuestModal] = useState(false);
-        const [showMergeModal, setShowMergeModal] = useState(false);
-        const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const OrderTypeView = ({ onSelect }) => (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 animate-in fade-in zoom-in duration-500">
+            <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">Selamat Datang!</h1>
+            <p className="text-xl text-gray-400 font-medium mb-16 tracking-tight">Pilih jenis pesanan Anda untuk memulai</p>
+            <div className="flex gap-10 w-full max-w-4xl px-6">
+                <OrderTypeCard 
+                    icon="bi-shop" 
+                    title="Dine In" 
+                    subtitle="Makan di tempat" 
+                    onClick={() => onSelect('DINE_IN')} 
+                    color="orange"
+                />
+                <OrderTypeCard 
+                    icon="bi-bag-heart-fill" 
+                    title="Take Away" 
+                    subtitle="Dibawa pulang" 
+                    onClick={() => onSelect('TAKE_AWAY')} 
+                    color="green"
+                />
+            </div>
+        </div>
+    );
 
-        const GUEST_CATEGORIES = [
-            { id: 'REGULER', label: 'Reguler', color: 'bg-terminal-accent' },
-            { id: 'RESERVED', label: 'Reserved', color: 'bg-terminal-warning' },
-            { id: 'MAJAR_PRIORITY', label: 'Majar Priority', color: 'bg-blue-500' },
-            { id: 'MAJAR_OWNER', label: 'Majar Owner', color: 'bg-purple-500' }
-        ];
-
-        const fetchActiveOrders = useCallback(async () => {
-            try {
-                const response = await fetch('/terminal/orders?role=waiter', {
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-                setActiveOrders(data);
-                setTables(prev => prev.map(t => {
-                    const order = data.find(o => o.table_id === t.id && o.stage !== 'DONE');
-                    // Check if table is part of a merged order
-                    const mergedOrder = data.find(o => {
-                        if (!o.merged_table_ids) return false;
-                        try {
-                            const ids = JSON.parse(o.merged_table_ids);
-                            return Array.isArray(ids) && ids.includes(t.id);
-                        } catch(e) { return false; }
-                    });
-
-                    return {
-                        ...t,
-                        has_draft: (order && order.stage === 'DRAFT') || (mergedOrder && mergedOrder.stage === 'DRAFT'),
-                        current_order: order || mergedOrder,
-                        is_merged_child: !!mergedOrder && mergedOrder.table_id !== t.id
-                    };
-                }));
-            } catch (e) { console.error('Failed to fetch orders', e); }
-        }, []);
-
-        useEffect(() => {
-            fetchActiveOrders();
-            const interval = setInterval(fetchActiveOrders, 10000);
-            return () => clearInterval(interval);
-        }, [fetchActiveOrders]);
-
-        const filteredTables = useMemo(() => {
-            if (!searchTable) return tables;
-            return tables.filter(t => t.name.toLowerCase().includes(searchTable.toLowerCase()));
-        }, [tables, searchTable]);
-
-        const filteredMenu = useMemo(() => {
-            return menuItems.filter(m => {
-                const matchesSearch = m.name.toLowerCase().includes(searchMenu.toLowerCase()) || 
-                                    (m.category && m.category.toLowerCase().includes(searchMenu.toLowerCase()));
-                const matchesCategory = activeCategory === 'All' || m.category === activeCategory;
-                return matchesSearch && matchesCategory;
-            });
-        }, [menuItems, searchMenu, activeCategory]);
-
-        const orderTotal = useMemo(() => orderItems.reduce((sum, item) => sum + (item.price * item.qty), 0), [orderItems]);
-
-        const handleSelectTable = async (table) => {
-            if (table.status === 'occupied' && !table.has_draft && !table.current_order) {
-                alert('Meja ini sedang digunakan.');
-                return;
-            }
-
-            // If it's a child of a merged order, select the parent table/order
-            if (table.is_merged_child && table.current_order) {
-                const parentTable = tables.find(t => t.id === table.current_order.table_id);
-                if (parentTable) {
-                    handleSelectTable(parentTable);
-                    return;
-                }
-            }
-
-            setActiveTable(table);
-            setOrderItems([]);
-            setActiveOrderId(null);
-            setGuestCategory('REGULER');
-            setOrderType('DINE_IN');
-            setReservationName('');
-            setReservationCode('');
-            setMergedTables([]);
-            
-            setIsLoading(true);
-            try {
-                const response = await fetch(`/terminal/tables/${table.id}/draft`, {
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) throw new Error('Failed to load draft');
-                const draft = await response.json();
-                if (draft) {
-                    setActiveOrderId(draft.id);
-                    setGuestCategory(draft.guest_category || 'REGULER');
-                    setOrderType(draft.order_type || 'DINE_IN');
-                    setReservationName(draft.reservation_name || '');
-                    setReservationCode(draft.reservation_code || '');
-                    try {
-                        setMergedTables(JSON.parse(draft.merged_table_ids || '[]'));
-                    } catch(e) { setMergedTables([]); }
-                    
-                    setOrderItems(draft.items.map(i => ({
-                        id: i.menu_item_id,
-                        name: i.menu_name,
-                        price: i.price,
-                        qty: i.qty,
-                        note: i.note || ''
-                    })));
-                    setShowGuestModal(false);
-                } else {
-                    setShowGuestModal(true);
-                }
-            } catch (e) { 
-                console.error('Failed to load draft', e); 
-                setShowGuestModal(true);
-            }
-            finally { setIsLoading(false); }
-        };
-
-        const handleToggleMergeTable = (tableId) => {
-            setMergedTables(prev => {
-                if (prev.includes(tableId)) return prev.filter(id => id !== tableId);
-                return [...prev, tableId];
-            });
-        };
-
-        const handleSaveDraft = async () => {
-            if (orderItems.length === 0) return;
-            setIsLoading(true);
-            try {
-                const response = await fetch('/terminal/orders', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                    },
-                    body: JSON.stringify({
-                        order_id: activeOrderId,
-                        table_id: activeTable.id,
-                        guest_category: guestCategory,
-                        order_type: orderType,
-                        reservation_name: reservationName,
-                        reservation_code: reservationCode,
-                        merged_table_ids: JSON.stringify(mergedTables),
-                        items: orderItems.map(i => ({ menu_item_id: i.id, qty: i.qty, note: i.note }))
-                    })
-                });
+    const TableSelectionView = ({ tables, guestCount, setGuestCount, selectedTable, onSelect, onBack, onContinue }) => (
+        <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
+            {/* Left: Guest Control */}
+            <div className="w-[320px] bg-white border-r border-gray-100 p-8 flex flex-col">
+                <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm mb-10 transition-colors">
+                    <i className="bi bi-arrow-left"></i> Kembali
+                </button>
                 
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || data.message || 'Gagal menyimpan');
-                }
-
-                setActiveOrderId(data.id);
-                alert('Draft berhasil disimpan!');
-                fetchActiveOrders();
-            } catch (e) { alert('Gagal: ' + e.message); }
-            finally { setIsLoading(false); }
-        };
-
-        const handleSubmitToCashier = async () => {
-            if (orderItems.length === 0) {
-                alert('Pesanan kosong!');
-                return;
-            }
-            setShowConfirmModal(true);
-        };
-
-        const confirmSubmitToCashier = async () => {
-            setShowConfirmModal(false);
-            setIsLoading(true);
-            try {
-                // 1. Save first to ensure latest items are stored
-                const saveResponse = await fetch('/terminal/orders', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                    },
-                    body: JSON.stringify({
-                        order_id: activeOrderId,
-                        table_id: activeTable.id,
-                        guest_category: guestCategory,
-                        order_type: orderType,
-                        reservation_name: reservationName,
-                        reservation_code: reservationCode,
-                        merged_table_ids: JSON.stringify(mergedTables),
-                        items: orderItems.map(i => ({ menu_item_id: i.id, qty: i.qty, note: i.note }))
-                    })
-                });
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs">2</div>
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pilih Meja</h2>
+                </div>
                 
-                const saveData = await saveResponse.json();
-                if (!saveResponse.ok) {
-                    throw new Error(saveData.error || saveData.message || 'Gagal menyimpan pesanan sebelum dikirim');
-                }
-
-                // 2. Submit to cashier
-                const submitRes = await fetch(`/terminal/orders/${saveData.id}/submit-to-cashier`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
-                    }
-                });
-                
-                const submitData = await submitRes.json();
-                if (submitRes.ok) {
-                    alert('Pesanan terkirim ke kasir!');
-                    setActiveTable(null); 
-                    setOrderItems([]); 
-                    setActiveOrderId(null);
-                    setMergedTables([]);
-                    fetchActiveOrders();
-                } else {
-                    throw new Error(submitData.error || submitData.message || 'Gagal mengirim ke kasir');
-                }
-            } catch (e) { alert('Gagal: ' + e.message); }
-            finally { setIsLoading(false); }
-        };
-
-        const handleAddItem = (menu) => {
-            setOrderItems(prev => {
-                const existing = prev.find(i => i.id === menu.id);
-                if (existing) return prev.map(i => i.id === menu.id ? { ...i, qty: i.qty + 1 } : i);
-                return [...prev, { id: menu.id, name: menu.name, price: menu.price, qty: 1, note: '' }];
-            });
-        };
-
-        const handleUpdateQty = (index, delta) => {
-            setOrderItems(prev => {
-                const newItems = [...prev];
-                newItems[index].qty += delta;
-                if (newItems[index].qty <= 0) newItems.splice(index, 1);
-                return newItems;
-            });
-        };
-
-        const handleUpdateNote = (index, note) => {
-            setOrderItems(prev => {
-                const newItems = [...prev];
-                newItems[index].note = note;
-                return newItems;
-            });
-        };
-
-        const formatPrice = (p) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(p);
-        const formatTime = (ts) => new Date(ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
-        return (
-            <div className="flex w-full h-full bg-terminal-bg text-terminal-text overflow-hidden font-sans">
-                {/* --- Left Panel: Tables/Status (35%) --- */}
-                <div className="w-[35%] flex flex-col border-r border-terminal-border bg-terminal-panel shadow-2xl z-10">
-                    <div className="flex p-4 gap-2 bg-black/30 border-b border-terminal-border">
-                        <button 
-                            className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'tables' ? 'bg-terminal-accent text-black shadow-lg shadow-terminal-accent/20' : 'bg-terminal-bg border border-terminal-border text-terminal-muted hover:text-terminal-text'}`}
-                            onClick={() => setActiveTab('tables')}>Meja</button>
-                        <button 
-                            className={`flex-1 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${activeTab === 'status' ? 'bg-terminal-accent text-black shadow-lg shadow-terminal-accent/20' : 'bg-terminal-bg border border-terminal-border text-terminal-muted hover:text-terminal-text'}`}
-                            onClick={() => setActiveTab('status')}>Status</button>
+                <div className="mt-8">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">Jumlah Tamu</label>
+                    <div className="flex items-center justify-between bg-gray-50 rounded-3xl p-4 border border-gray-100 mb-6">
+                        <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                            <i className="bi bi-dash-lg text-xl"></i>
+                        </button>
+                        <span className="text-5xl font-black text-gray-900 w-20 text-center tracking-tighter">{guestCount}</span>
+                        <button onClick={() => setGuestCount(guestCount + 1)} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                            <i className="bi bi-plus-lg text-xl"></i>
+                        </button>
                     </div>
-
-                    <div className="flex-1 overflow-hidden flex flex-col">
-                        {activeTab === 'tables' ? (
-                            <>
-                                <div className="p-4 border-b border-terminal-border/50">
-                                    <div className="relative">
-                                        <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-terminal-muted"></i>
-                                        <input type="text" className="w-full bg-terminal-bg border border-terminal-border rounded-2xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:border-terminal-accent shadow-inner" placeholder="Cari nomor meja..." value={searchTable} onChange={e => setSearchTable(e.target.value)} />
-                                    </div>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 content-start custom-scrollbar">
-                                    {filteredTables.map(table => (
-                                        <div key={table.id} className={`aspect-square rounded-[2rem] border-2 flex flex-col items-center justify-center cursor-pointer transition-all relative group active:scale-95 shadow-sm ${activeTable?.id === table.id ? 'border-orange-500 bg-orange-50 shadow-[0_0_30px_rgba(255,140,0,0.15)]' : table.is_merged_child ? 'border-terminal-muted bg-terminal-bg opacity-60' : table.has_draft ? 'border-orange-300 bg-orange-50/50' : table.status === 'occupied' ? 'border-orange-200 bg-orange-50/30 shadow-[0_0_20px_rgba(255,140,0,0.05)]' : 'border-terminal-border bg-white hover:border-orange-300 hover:shadow-md'}`} onClick={() => handleSelectTable(table)}>
-                                            {table.has_draft && <div className="absolute top-4 right-4"><Badge color="bg-orange-500 text-white">DRAFT</Badge></div>}
-                                            {table.is_merged_child && <div className="absolute top-4 right-4"><Badge color="bg-terminal-muted">MERGED</Badge></div>}
-                                            <div className={`text-4xl font-black mb-1 group-hover:scale-110 transition-transform ${activeTable?.id === table.id || table.status === 'occupied' || table.has_draft ? 'text-orange-600' : 'text-terminal-text'}`}>{table.name}</div>
-                                            <div className="text-terminal-muted text-[10px] font-black uppercase tracking-widest">{table.status === 'occupied' ? 'Terisi' : table.has_draft ? 'Draft' : `${table.seats} Kursi`}</div>
-                                            {(table.status === 'occupied' || table.has_draft) && !table.is_merged_child && (
-                                                <div className="mt-2 w-2 h-2 rounded-full bg-orange-500 animate-ping"></div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
-                        ) : (
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                                {activeOrders.map(order => (
-                                    <div key={order.id} className="bg-white border border-terminal-border rounded-[1.5rem] p-5 shadow-sm hover:border-terminal-accent/30 transition-colors">
-                                        <div className="flex justify-between items-center mb-3">
-                                            <div className="font-black text-xl text-terminal-text">Meja {order.table.name}</div>
-                                            <Badge color={order.stage === 'WAITING_CASHIER' ? 'bg-terminal-warning' : ['CASHIER_APPROVED', 'READY_FOR_KITCHEN'].includes(order.stage) ? 'bg-blue-500' : order.stage === 'COOKING' ? 'bg-orange-500' : order.stage === 'READY' ? 'bg-terminal-accent' : 'bg-terminal-muted'}>{order.stage}</Badge>
-                                        </div>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <div className="text-[10px] font-black uppercase tracking-widest text-terminal-muted">{order.guest_category || 'REGULER'} • {order.order_type || 'DINE_IN'}</div>
-                                            <div className="text-terminal-accent font-black">{formatPrice(order.total)}</div>
-                                        </div>
-                                        <div className="flex justify-between text-[10px] font-mono text-terminal-muted"><span>#{order.code}</span><span>{formatTime(order.created_at)}</span></div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                    
+                    <div className="grid grid-cols-4 gap-2 mb-10">
+                        {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
+                            <button 
+                                key={n}
+                                onClick={() => setGuestCount(n)}
+                                className={`py-3 rounded-xl font-black transition-all ${guestCount === n ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                            >
+                                {n}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {/* --- Middle Panel: Menu Selection (40%) --- */}
-                <div className="flex-1 flex flex-col border-r border-terminal-border bg-terminal-bg relative">
-                    <div className="p-6 bg-terminal-panel border-b border-terminal-border space-y-4 shadow-sm">
-                        <div className="relative">
-                            <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-terminal-muted"></i>
-                            <input type="text" className="w-full bg-terminal-bg border border-terminal-border rounded-2xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:border-terminal-accent shadow-sm" placeholder="Cari Menu..." value={searchMenu} onChange={e => setSearchMenu(e.target.value)} />
-                        </div>
-                        <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
-                            {categories.map(cat => (
-                                <button 
-                                    key={cat}
-                                    onClick={() => setActiveCategory(cat)}
-                                    className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-terminal-accent text-white shadow-lg shadow-terminal-accent/20' : 'bg-terminal-panel border border-terminal-border text-terminal-muted hover:border-terminal-accent/50'}`}
-                                >
-                                    {cat}
-                                </button>
-                            ))}
+                <div className="mt-auto space-y-3 pt-6 border-t border-gray-50">
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div> Tersedia
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="w-3 h-3 rounded-full bg-gray-300"></div> Terisi
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="w-3 h-3 rounded-full bg-orange-500"></div> Reservasi
+                    </div>
+                </div>
+            </div>
+
+            {/* Right: Table Grid */}
+            <div className="flex-1 p-10 flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center mb-8">
+                    <h3 className="text-xl font-black text-gray-900 tracking-tight">Meja tersedia untuk {guestCount}+ tamu</h3>
+                    <div className="bg-white px-4 py-2 rounded-full border border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                        {tables.filter(t => t.status === 'available' && t.capacity >= guestCount).length} tersedia
+                    </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                    {tables.map(table => (
+                        <TableCard 
+                            key={table.id} 
+                            table={table} 
+                            active={selectedTable?.id === table.id} 
+                            guestCount={guestCount}
+                            onClick={onSelect} 
+                        />
+                    ))}
+                </div>
+
+                <div className="mt-8 flex justify-end">
+                    <button 
+                        disabled={!selectedTable}
+                        onClick={onContinue}
+                        className="px-12 py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-orange-500/20 disabled:opacity-30 disabled:shadow-none transition-all active:scale-95"
+                    >
+                        Lanjut ke Menu <i className="bi bi-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
+    const MenuView = ({ menuItems, categories, orderType, selectedTable, guestCount, onBack }) => {
+        const [activeCategory, setActiveCategory] = useState('Semua');
+        const [cart, setCart] = useState([]);
+        const [searchQuery, setSearchQuery] = useState('');
+
+        const filteredMenu = useMemo(() => {
+            return menuItems.filter(item => {
+                const matchCat = activeCategory === 'Semua' || item.category === activeCategory;
+                const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchCat && matchSearch;
+            });
+        }, [menuItems, activeCategory, searchQuery]);
+
+        const addToCart = (item) => {
+            setCart(prev => {
+                const existing = prev.find(i => i.id === item.id);
+                if (existing) return prev.map(i => i.id === item.id ? {...i, qty: i.qty + 1} : i);
+                return [...prev, {...item, qty: 1}];
+            });
+        };
+
+        const updateQty = (id, delta) => {
+            setCart(prev => prev.map(i => {
+                if (i.id === id) return {...i, qty: Math.max(0, i.qty + delta)};
+                return i;
+            }).filter(i => i.qty > 0));
+        };
+
+        const subtotal = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+        return (
+            <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
+                {/* Main: Menu Area */}
+                <div className="flex-1 flex flex-col overflow-hidden p-8">
+                    <div className="flex items-center gap-6 mb-8">
+                        <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm transition-colors">
+                            <i className="bi bi-arrow-left"></i> Kembali
+                        </button>
+                        <div className="flex gap-2">
+                            <div className="bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <i className="bi bi-check-circle-fill"></i> Tipe Order: {orderType === 'DINE_IN' ? 'Dine In' : 'Take Away'}
+                            </div>
+                            {selectedTable && (
+                                <div className="bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <i className="bi bi-check-circle-fill"></i> Meja: {selectedTable.name}
+                                </div>
+                            )}
+                            <div className="bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <i className="bi bi-people-fill"></i> {guestCount} Tamu
+                            </div>
                         </div>
                     </div>
-                    
-                    <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 gap-4 content-start custom-scrollbar">
-                        {filteredMenu.map(menu => (
-                            <div key={menu.id} className="bg-terminal-panel border border-terminal-border p-5 rounded-[1.5rem] cursor-pointer hover:border-terminal-accent hover:bg-terminal-accent/5 transition-all active:scale-95 group flex flex-col gap-3 shadow-sm hover:shadow-md" onClick={() => handleAddItem(menu)}>
-                                <div className="text-xl font-black group-hover:text-terminal-accent transition-colors leading-tight h-12 overflow-hidden text-terminal-text">{menu.name}</div>
-                                <div className="flex items-center justify-between mt-auto">
-                                    <div className="text-terminal-accent font-black text-lg">{formatPrice(menu.price)}</div>
-                                    <div className="w-8 h-8 rounded-full bg-terminal-bg flex items-center justify-center border border-terminal-border group-hover:bg-terminal-accent group-hover:text-white transition-all"><i className="bi bi-plus-lg"></i></div>
+
+                    {/* Category Tabs */}
+                    <div className="flex gap-3 mb-8 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                        {['Semua', ...categories].map(cat => (
+                            <button 
+                                key={cat}
+                                onClick={() => setActiveCategory(cat)}
+                                className={`px-8 py-3 rounded-2xl font-black text-sm transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white text-gray-400 hover:bg-gray-100'}`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Menu Grid */}
+                    <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                        {filteredMenu.map(item => (
+                            <div 
+                                key={item.id}
+                                onClick={() => addToCart(item)}
+                                className="bg-white rounded-[2rem] p-5 flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group"
+                            >
+                                <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-gray-50">
+                                    <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&h=200&auto=format&fit=crop'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                </div>
+                                <h4 className="text-lg font-black text-gray-900 leading-tight mb-2">{item.name}</h4>
+                                <div className="mt-auto flex justify-between items-center">
+                                    <span className="text-orange-500 font-black text-xl">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
+                                    <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-all">
+                                        <i className="bi bi-plus-lg"></i>
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
-
-                    {!activeTable && (
-                        <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center text-center p-8">
-                            <div className="bg-terminal-panel border border-terminal-border p-10 rounded-[3rem] shadow-2xl scale-110">
-                                <i className="bi bi-arrow-left-circle text-terminal-accent text-6xl mb-6 block animate-bounce-x"></i>
-                                <h2 className="text-3xl font-black uppercase tracking-widest text-terminal-text mb-2">Pilih Meja Dahulu</h2>
-                                <p className="text-terminal-muted font-bold">Silakan pilih meja di panel kiri untuk mulai memesan</p>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
-                {/* --- Right Panel: Cart (25%) --- */}
-                <div className="w-[25%] flex flex-col bg-terminal-panel shadow-[-20px_0_50px_rgba(0,0,0,0.05)] z-20">
-                    <div className="p-6 border-b border-terminal-border bg-terminal-bg/50">
-                        <h2 className="text-2xl font-black uppercase tracking-widest flex justify-between items-center text-terminal-text">Pesanan {activeTable ? <span className="text-terminal-accent">#{activeTable.name}</span> : ''}</h2>
+                {/* Right: Cart Area */}
+                <div className="w-[420px] bg-white border-l border-gray-100 flex flex-col p-8 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
+                    <div className="flex items-center gap-3 mb-8">
+                        <i className="bi bi-cart-fill text-2xl text-orange-500"></i>
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pesanan</h2>
                     </div>
-                    
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                        {orderItems.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 opacity-20 text-terminal-muted"><i className="bi bi-cart text-5xl mb-4"></i><p className="font-bold">Kosong</p></div>
+
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                        {cart.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center opacity-30">
+                                <i className="bi bi-cart-x text-6xl mb-4"></i>
+                                <p className="font-bold text-sm uppercase tracking-widest">Belum ada produk</p>
+                                <p className="text-[10px] mt-1">Ketuk produk untuk menambahkan</p>
+                            </div>
                         ) : (
-                            orderItems.map((item, idx) => (
-                                <div key={idx} className="bg-white border border-terminal-border rounded-2xl p-4 space-y-3 shadow-sm">
-                                    <div className="flex justify-between items-start">
-                                        <div className="font-bold leading-tight flex-1 pr-2 text-terminal-text">{item.name}</div>
-                                        <button onClick={() => handleUpdateQty(idx, -item.qty)} className="text-terminal-danger opacity-50 hover:opacity-100"><i className="bi bi-x-circle-fill"></i></button>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 bg-terminal-bg p-1 rounded-lg border border-terminal-border">
-                                            <button onClick={() => handleUpdateQty(idx, -1)} className="w-8 h-8 rounded flex items-center justify-center hover:bg-black/5 text-terminal-text">-</button>
-                                            <span className="font-black min-w-[20px] text-center text-terminal-text">{item.qty}</span>
-                                            <button onClick={() => handleUpdateQty(idx, 1)} className="w-8 h-8 rounded flex items-center justify-center hover:bg-black/5 text-terminal-text">+</button>
+                            cart.map(item => (
+                                <div key={item.id} className="bg-gray-50 rounded-2xl p-4 flex gap-4 animate-in slide-in-from-bottom duration-300">
+                                    <img src={item.image_url} className="w-16 h-16 rounded-xl object-cover" />
+                                    <div className="flex-1">
+                                        <h5 className="font-black text-gray-900 text-sm leading-tight">{item.name}</h5>
+                                        <p className="text-orange-500 font-bold text-xs mt-1">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
+                                        <div className="flex items-center gap-3 mt-3">
+                                            <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-red-50 hover:text-red-500 transition-all"><i className="bi bi-dash"></i></button>
+                                            <span className="font-black text-gray-900 w-6 text-center">{item.qty}</span>
+                                            <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-green-50 hover:text-green-500 transition-all"><i className="bi bi-plus"></i></button>
                                         </div>
-                                        <div className="font-black text-terminal-accent">{formatPrice(item.price * item.qty)}</div>
                                     </div>
-                                    <input type="text" className="w-full bg-terminal-bg border border-terminal-border rounded-lg px-2 py-1 text-[10px] text-terminal-muted focus:text-terminal-text focus:outline-none" placeholder="Catatan..." value={item.note} onChange={e => handleUpdateNote(idx, e.target.value)} />
+                                    <div className="text-right font-black text-gray-900">
+                                        Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}
+                                    </div>
                                 </div>
                             ))
                         )}
                     </div>
 
-                    <div className="p-6 border-t border-terminal-border bg-terminal-bg/50">
-                        <div className="mb-4">
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <i className="bi bi-person-fill absolute left-3 top-1/2 -translate-y-1/2 text-orange-400"></i>
-                                    <input 
-                                        type="text" 
-                                        className="w-full bg-white border border-orange-100 rounded-xl pl-10 pr-4 py-2 text-xs font-black uppercase focus:outline-none shadow-sm"
-                                        placeholder="NAMA TAMU"
-                                        value={reservationName}
-                                        onChange={e => setReservationName(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="mt-2 flex gap-2">
-                                <select 
-                                    className="flex-1 bg-white border border-terminal-border rounded-xl px-3 py-2 text-[10px] font-black uppercase focus:outline-none shadow-sm text-orange-600 border-orange-100"
-                                    value={guestCategory}
-                                    onChange={e => setGuestCategory(e.target.value)}
-                                >
-                                    <option value="REGULER">Reguler</option>
-                                    <option value="RESERVED">Reserved</option>
-                                    <option value="MAJAR_PRIORITY">Priority</option>
-                                    <option value="MAJAR_OWNER">Owner</option>
-                                </select>
-                                <button 
-                                    onClick={() => setShowMergeModal(true)}
-                                    className="w-10 h-10 rounded-xl border border-terminal-border flex items-center justify-center text-terminal-muted hover:text-orange-500 hover:border-orange-500 bg-white shadow-sm transition-all"
-                                    title="Gabung Meja"
-                                >
-                                    <i className="bi bi-diagram-2"></i>
-                                </button>
-                            </div>
+                    <div className="mt-8 pt-8 border-t-2 border-dashed border-gray-100 space-y-4">
+                        <div className="flex justify-between items-center text-gray-400 font-bold">
+                            <span className="text-[10px] uppercase tracking-widest">Subtotal</span>
+                            <span>Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
                         </div>
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="text-xs font-black text-terminal-muted uppercase tracking-widest">Total</div>
-                            <div className="text-3xl font-black text-terminal-text">{formatPrice(orderTotal)}</div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">Total Bill</span>
+                            <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
                         </div>
-                            <div className="flex flex-col gap-3">
-                                <Button variant="secondary" className="w-full py-4 text-sm font-black uppercase tracking-widest border-2 border-orange-100 hover:border-orange-500" icon="bi-save" onClick={handleSaveDraft} disabled={isLoading || !activeTable || orderItems.length === 0}>SIMPAN DRAFT</Button>
-                                <Button variant="primary" className="w-full py-5 text-lg font-black uppercase tracking-widest bg-orange-500 border-none shadow-xl shadow-orange-500/20 hover:bg-orange-600" icon="bi-send-check" onClick={handleSubmitToCashier} disabled={isLoading || !activeTable || orderItems.length === 0}>KIRIM KE KASIR</Button>
-                            </div>
+                        <button 
+                            disabled={cart.length === 0}
+                            className="w-full py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-orange-500/30 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none mt-4"
+                        >
+                            Kirim Pesanan <i className="bi bi-send-fill ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // --- Main Terminal App ---
+
+    const WaiterTerminal = () => {
+        const [view, setView] = useState('ORDER_TYPE'); // ORDER_TYPE, TABLE_SELECT, MENU
+        const [orderType, setOrderType] = useState('DINE_IN');
+        const [guestCount, setGuestCount] = useState(2);
+        const [selectedTable, setSelectedTable] = useState(null);
+
+        const handleSelectOrderType = (type) => {
+            setOrderType(type);
+            if (type === 'DINE_IN') {
+                setView('TABLE_SELECT');
+            } else {
+                setSelectedTable(null);
+                setView('MENU');
+            }
+        };
+
+        const handleSelectTable = (table) => {
+            setSelectedTable(table);
+        };
+
+        const handleBack = () => {
+            if (view === 'MENU' && orderType === 'TAKE_AWAY') setView('ORDER_TYPE');
+            else if (view === 'MENU') setView('TABLE_SELECT');
+            else if (view === 'TABLE_SELECT') setView('ORDER_TYPE');
+            else if (view === 'ORDER_STATUS' || view === 'ORDER_HISTORY') setView('ORDER_TYPE');
+        };
+
+        const renderView = () => {
+            switch (view) {
+                case 'ORDER_STATUS':
+                    return <OrderStatusView role="waiter" onBack={() => setView('ORDER_TYPE')} />;
+                case 'ORDER_HISTORY':
+                    return <OrderHistoryView onBack={() => setView('ORDER_TYPE')} />;
+                case 'TABLE_SELECT':
+                    return (
+                        <TableSelectionView 
+                            tables={ @json($tables) } 
+                            guestCount={guestCount} 
+                            setGuestCount={setGuestCount}
+                            selectedTable={selectedTable}
+                            onSelect={handleSelectTable}
+                            onBack={handleBack}
+                            onContinue={() => setView('MENU')}
+                        />
+                    );
+                case 'MENU':
+                    return (
+                        <MenuView 
+                            menuItems={ @json($menuItems) }
+                            categories={ @json($categories) }
+                            orderType={orderType}
+                            selectedTable={selectedTable}
+                            guestCount={guestCount}
+                            onBack={handleBack}
+                        />
+                    );
+                case 'ORDER_TYPE':
+                default:
+                    return <OrderTypeView onSelect={handleSelectOrderType} />;
+            }
+        };
+
+        return (
+            <div className="w-full h-full flex overflow-hidden">
+                {/* Fixed Sidebar */}
+                <div className="w-24 bg-gray-900 flex flex-col border-r border-gray-800">
+                    <div className="p-6 border-b border-gray-800">
+                        <div className="w-full aspect-square rounded-2xl bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-orange-500/30">
+                            <span className="font-black text-2xl text-white">S</span>
+                        </div>
+                    </div>
+                    <div className="flex-1 py-4">
+                        <SidebarIcon icon="bi-plus-circle" label="Pesan" active={view === 'ORDER_TYPE' || view === 'TABLE_SELECT' || view === 'MENU'} onClick={() => setView('ORDER_TYPE')} />
+                        <SidebarIcon icon="bi-list-check" label="Status" active={view === 'ORDER_STATUS'} onClick={() => setView('ORDER_STATUS')} />
+                        <SidebarIcon icon="bi-clock-history" label="History" active={view === 'ORDER_HISTORY'} onClick={() => setView('ORDER_HISTORY')} />
+                    </div>
+                    <div className="py-4 border-t border-gray-800">
+                        <SidebarIcon icon="bi-person-badge-fill" label="Profil" />
                     </div>
                 </div>
 
-                <style>{`
-                    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-                    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
-                    @keyframes bounce-x {
-                        0%, 100% { transform: translateX(0); }
-                        50% { transform: translateX(-10px); }
-                    }
-                    .animate-bounce-x { animation: bounce-x 1s infinite; }
-                `}</style>
+                {/* Content Area */}
+                <div className="flex-1 h-full overflow-hidden">
+                    {renderView()}
+                </div>
+            </div>
+        );
+    };
 
-                {/* --- Guest Category Modal --- */}
-                {showGuestModal && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-                        <div className="bg-terminal-panel border border-terminal-border rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-300">
-                            <div className="p-8 border-b border-terminal-border bg-black/20 flex justify-between items-center">
-                                <h3 className="text-2xl font-black uppercase tracking-widest">Informasi Tamu — <span className="text-terminal-accent">Meja {activeTable.name}</span></h3>
-                                <button onClick={() => { setShowGuestModal(false); setActiveTable(null); }} className="text-terminal-muted hover:text-white"><i className="bi bi-x-lg text-2xl"></i></button>
+    // --- Order Status & History Components ---
+
+    const OrderStatusView = ({ role, onBack }) => {
+        const [orders, setOrders] = useState([]);
+        const [loading, setLoading] = useState(true);
+
+        const fetchOrders = useCallback(async () => {
+            try {
+                const res = await fetch(`/terminal/orders?role=${role}`);
+                const data = await res.json();
+                setOrders(data);
+            } catch (e) { console.error(e); }
+            finally { setLoading(false); }
+        }, [role]);
+
+        useEffect(() => {
+            fetchOrders();
+            const interval = setInterval(fetchOrders, 5000);
+            return () => clearInterval(interval);
+        }, [fetchOrders]);
+
+        const handleServe = async (id) => {
+            if (!confirm('Tandai pesanan sudah di-serve?')) return;
+            const res = await fetch(`/terminal/orders/${id}/serve`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            if (res.ok) fetchOrders();
+        };
+
+        const getBadgeClass = (stage) => {
+            switch(stage) {
+                case 'WAITING_CASHIER': return 'bg-yellow-100 text-yellow-600';
+                case 'READY_FOR_KITCHEN': return 'bg-orange-100 text-orange-600';
+                case 'COOKING': return 'bg-blue-100 text-blue-600';
+                case 'READY': return 'bg-green-100 text-green-600';
+                case 'SERVED': return 'bg-purple-100 text-purple-600';
+                default: return 'bg-gray-100 text-gray-600';
+            }
+        };
+
+        return (
+            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
+                <div className="flex items-center gap-4 mb-8">
+                    <button onClick={onBack} className="text-gray-400 hover:text-gray-900"><i className="bi bi-arrow-left text-2xl"></i></button>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Status Pesanan</h1>
+                </div>
+
+                <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar pr-2">
+                    {orders.length === 0 && !loading && (
+                        <div className="col-span-full h-64 flex flex-col items-center justify-center opacity-20">
+                            <i className="bi bi-inbox text-6xl"></i>
+                            <p className="font-bold uppercase tracking-widest mt-4">Tidak ada pesanan aktif</p>
+                        </div>
+                    )}
+                    {orders.map(order => (
+                        <div key={order.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex flex-col">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4 className="font-black text-gray-900">Meja {order.table?.name || 'TA'}</h4>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">#{order.code}</p>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getBadgeClass(order.stage)}`}>
+                                    {order.stage.replace(/_/g, ' ')}
+                                </span>
                             </div>
                             
-                                <div className="p-8 space-y-8 bg-white">
-                                    <div>
-                                        <label className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-4 block">Kategori Tamu</label>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {GUEST_CATEGORIES.map(cat => (
-                                                <button 
-                                                    key={cat.id} 
-                                                    onClick={() => setGuestCategory(cat.id)}
-                                                    className={`p-6 rounded-2xl border-2 flex flex-col items-start gap-2 transition-all ${guestCategory === cat.id ? `border-terminal-accent ${cat.color} text-white shadow-xl` : 'border-terminal-border bg-terminal-bg text-terminal-muted hover:border-terminal-accent/30'}`}
-                                                >
-                                                    <span className="font-black text-lg uppercase tracking-wider">{cat.label}</span>
-                                                </button>
-                                            ))}
-                                        </div>
+                            <div className="flex-1 space-y-2 mb-6">
+                                {order.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm">
+                                        <span className="text-gray-600 font-medium">{item.qty}x {item.menu_name}</span>
                                     </div>
+                                ))}
+                            </div>
 
-                                    <div className="grid grid-cols-2 gap-8">
-                                        <div>
-                                            <label className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-4 block">Tipe Pesanan</label>
-                                            <div className="flex gap-3">
-                                                <button onClick={() => setOrderType('DINE_IN')} className={`flex-1 py-4 rounded-xl font-black border-2 transition-all ${orderType === 'DINE_IN' ? 'bg-terminal-accent border-terminal-accent text-white shadow-md' : 'bg-terminal-bg border-terminal-border text-terminal-muted'}`}>DINE IN</button>
-                                                <button onClick={() => setOrderType('TAKE_AWAY')} className={`flex-1 py-4 rounded-xl font-black border-2 transition-all ${orderType === 'TAKE_AWAY' ? 'bg-terminal-danger border-terminal-danger text-white shadow-md' : 'bg-terminal-bg border-terminal-border text-terminal-muted'}`}>TAKE AWAY</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <div>
-                                            <label className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-4 block">Opsi Tambahan</label>
-                                            <Button 
-                                                variant={mergedTables.length > 0 ? 'primary' : 'secondary'} 
-                                                className="w-full py-4 text-sm shadow-sm" 
-                                                icon="bi-layers-half" 
-                                                onClick={() => setShowMergeModal(true)}
-                                            >
-                                                {mergedTables.length > 0 ? `${mergedTables.length} Meja Digabung` : 'Gabung Meja'}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {guestCategory === 'RESERVED' && (
-                                        <div className="space-y-4 animate-in slide-in-from-right duration-300">
-                                            <label className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] block">Detail Reservasi</label>
-                                            <input type="text" placeholder="Nama Pemesan" className="w-full bg-terminal-bg border border-terminal-border rounded-xl px-4 py-3 focus:outline-none focus:border-terminal-accent text-terminal-text shadow-sm" value={reservationName} onChange={e => setReservationName(e.target.value)} />
-                                            <input type="text" placeholder="Kode / ID Unik" className="w-full bg-terminal-bg border border-terminal-border rounded-xl px-4 py-3 focus:outline-none focus:border-terminal-accent text-terminal-text shadow-sm" value={reservationCode} onChange={e => setReservationCode(e.target.value)} />
-                                        </div>
-                                    )}
+                            <div className="pt-4 border-t border-gray-50 mt-auto">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-xs font-bold text-gray-400 uppercase">Tipe</span>
+                                    <span className="font-black text-gray-900">{order.order_type}</span>
                                 </div>
-
-                            <div className="p-8 bg-terminal-bg border-t border-terminal-border">
-                                <Button 
-                                    variant="primary" 
-                                    className="w-full py-5 text-xl shadow-lg shadow-terminal-accent/20" 
-                                    disabled={guestCategory === 'RESERVED' && (!reservationName || !reservationCode)}
-                                    onClick={() => setShowGuestModal(false)}
-                                >
-                                    LANJUT KE MENU
-                                </Button>
+                                {order.stage === 'READY' && (
+                                    <button onClick={() => handleServe(order.id)} className="w-full py-3 bg-green-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-500/20 active:scale-95 transition-all">Selesaikan Serve</button>
+                                )}
                             </div>
                         </div>
-                    </div>
-                )}
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
-                {/* --- Merge Table Modal --- */}
-                {showMergeModal && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-                        <div className="bg-terminal-panel border border-terminal-border rounded-[2.5rem] w-full max-w-3xl overflow-hidden shadow-2xl">
-                            <div className="p-8 border-b border-terminal-border bg-black/20 flex justify-between items-center">
-                                <h3 className="text-2xl font-black uppercase tracking-widest">Gabung Meja</h3>
-                                <Button variant="secondary" className="px-4 py-2" onClick={() => setShowMergeModal(false)}>SELESAI</Button>
-                            </div>
-                            <div className="p-8 space-y-4">
-                                <p className="text-terminal-muted font-bold mb-4">Pilih meja tambahan yang ingin digabung dengan <span className="text-terminal-accent">Meja {activeTable.name}</span></p>
-                                <div className="grid grid-cols-4 gap-4 overflow-y-auto max-h-[400px] p-2 custom-scrollbar">
-                                    {tables.filter(t => t.id !== activeTable.id).map(table => {
-                                        const isSelected = mergedTables.includes(table.id);
-                                        const isOccupied = table.status === 'occupied' && !isSelected;
-                                        return (
-                                            <div 
-                                                key={table.id} 
-                                                onClick={() => !isOccupied && handleToggleMergeTable(table.id)}
-                                                className={`aspect-square rounded-2xl border-2 flex flex-col items-center justify-center cursor-pointer transition-all ${isSelected ? 'border-terminal-accent bg-terminal-accent text-white' : isOccupied ? 'border-terminal-danger/30 bg-terminal-danger/5 opacity-30 cursor-not-allowed' : 'border-terminal-border bg-terminal-bg text-terminal-muted hover:border-terminal-accent/50'}`}
-                                            >
-                                                <div className="text-2xl font-black">{table.name}</div>
-                                                <div className="text-[10px] font-bold uppercase tracking-widest">{table.seats} Kursi</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                            <div className="p-8 bg-black/20 border-t border-terminal-border flex justify-between items-center">
-                                <div className="text-terminal-muted font-bold">Total: <span className="text-white">{mergedTables.length + 1} Meja</span></div>
-                                <Button variant="primary" className="px-10" onClick={() => setShowMergeModal(false)}>KONFIRMASI</Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+    const OrderHistoryView = ({ onBack }) => {
+        const [history, setHistory] = useState([]);
+        const [loading, setLoading] = useState(true);
 
-                {/* --- Confirmation Modal --- */}
-                {showConfirmModal && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-                        <div className="bg-terminal-panel border border-terminal-border rounded-[3rem] w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-                            <div className="p-10 text-center space-y-6">
-                                <div className="w-24 h-24 bg-terminal-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <i className="bi bi-send-check text-terminal-accent text-5xl"></i>
-                                </div>
-                                <h3 className="text-3xl font-black uppercase tracking-widest text-terminal-text">Validasi Pesanan</h3>
-                                <p className="text-terminal-muted text-lg">Pastikan semua pesanan sudah benar untuk menghindari <b>VOID</b> atau <b>REFUND</b>.</p>
-                                
-                                <div className="bg-terminal-bg rounded-2xl p-6 text-left space-y-2 border border-terminal-border shadow-inner">
-                                    <div className="flex justify-between text-terminal-text"><span>Meja:</span><span className="font-black text-terminal-accent">#{activeTable.name}</span></div>
-                                    <div className="flex justify-between text-terminal-text"><span>Kategori:</span><span className="font-black">{guestCategory}</span></div>
-                                    <div className="flex justify-between text-terminal-text"><span>Tipe:</span><span className="font-black">{orderType.replace('_', ' ')}</span></div>
-                                    <div className="flex justify-between text-xl mt-4 pt-4 border-t border-terminal-border text-terminal-text"><span>Total:</span><span className="font-black text-terminal-accent">{formatPrice(orderTotal)}</span></div>
-                                </div>
-                            </div>
-                            
-                            <div className="p-10 flex gap-4 bg-terminal-bg/50 border-t border-terminal-border">
-                                <Button variant="secondary" className="flex-1 py-5" onClick={() => setShowConfirmModal(false)}>KOREKSI</Button>
-                                <Button variant="primary" className="flex-1 py-5 shadow-lg shadow-terminal-accent/20" onClick={confirmSubmitToCashier}>KIRIM SEKARANG</Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+        useEffect(() => {
+            fetch('/terminal/orders/history')
+                .then(res => res.json())
+                .then(data => {
+                    setHistory(data);
+                    setLoading(false);
+                });
+        }, []);
+
+        return (
+            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
+                <div className="flex items-center gap-4 mb-8">
+                    <button onClick={onBack} className="text-gray-400 hover:text-gray-900"><i className="bi bi-arrow-left text-2xl"></i></button>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">History Hari Ini</h1>
+                </div>
+
+                <div className="flex-1 overflow-y-auto bg-white rounded-[2rem] border border-gray-100 shadow-sm custom-scrollbar">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-gray-50">
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Waktu</th>
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Kode</th>
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Meja</th>
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tipe</th>
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {history.map(order => (
+                                <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                    <td className="p-6 text-sm font-bold text-gray-600">{new Date(order.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</td>
+                                    <td className="p-6 text-sm font-black text-gray-900">{order.code}</td>
+                                    <td className="p-6 text-sm font-bold text-gray-600">{order.table?.name || 'TA'}</td>
+                                    <td className="p-6 text-sm font-black text-orange-500">{order.order_type}</td>
+                                    <td className="p-6">
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${order.stage === 'DONE' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                            {order.stage}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         );
     };
 
     const root = ReactDOM.createRoot(document.getElementById('waiter-root'));
     root.render(<WaiterTerminal />);
+
 </script>
+
+<style>
+    /* Custom Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #E5E7EB;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #D1D5DB;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+</style>
 @endsection

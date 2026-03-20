@@ -7,9 +7,15 @@ use App\Models\MenuItem;
 use App\Models\OrderItem;
 use App\Models\RestaurantTable;
 use App\Models\Warung;
+use App\Models\Ingredient;
+use App\Models\Supplier;
+use App\Models\StockLog;
+use App\Models\RestockRequest;
+use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 
 class TerminalController extends Controller
 {
@@ -91,14 +97,11 @@ class TerminalController extends Controller
             ->with(['table', 'items']);
 
         if ($role === 'waiter') {
-            // Waiter sees their own drafts and all active orders for status tracking
-            $query->where(function($q) use ($user) {
-                $q->where('waiter_id', $user->id)
-                  ->orWhereIn('stage', ['WAITING_CASHIER', 'CASHIER_APPROVED', 'READY_FOR_KITCHEN', 'COOKING', 'READY']);
-            });
+            // Waiter sees active orders to track status
+            $query->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY', 'SERVED']);
         } elseif ($role === 'kasir') {
-            // Kasir sees orders waiting for them or recently approved
-            $query->whereIn('stage', ['WAITING_CASHIER', 'CASHIER_APPROVED', 'READY_FOR_KITCHEN']);
+            // Kasir sees orders waiting for approval OR orders served waiting for payment
+            $query->whereIn('stage', ['WAITING_CASHIER', 'SERVED', 'READY_FOR_KITCHEN', 'COOKING', 'READY']);
         } elseif ($role === 'kitchen') {
             // Kitchen sees orders ready for production
             $query->whereIn('stage', ['READY_FOR_KITCHEN', 'COOKING', 'READY']);
@@ -369,55 +372,96 @@ class TerminalController extends Controller
             // Sync table status
             $this->syncTableStatuses($order);
 
-            // Deduct stock
-            try {
-                \App\Http\Controllers\RecipeController::deductStockForOrder($order);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Stock deduction failed for Order #{$order->id}: " . $e->getMessage());
-            }
+            StockService::reduceStockForOrder($order);
 
             return response()->json(['success' => true, 'order' => $order->load('items')]);
         });
     }
 
     /**
-     * Update kitchen status (gatekeeper step 3)
+     * Approve order (Kasir step)
+     */
+    public function approveOrder(Order $order)
+    {
+        if ($order->stage !== 'WAITING_CASHIER') {
+            return response()->json(['error' => 'Hanya pesanan menunggu approval yang dapat disetujui'], 400);
+        }
+
+        $order->update([
+            'stage' => 'READY_FOR_KITCHEN',
+            'kasir_id' => auth()->id(),
+            'approved_at' => now(),
+            'sent_to_kitchen_at' => now(),
+        ]);
+
+        StockService::reduceStockForOrder($order);
+
+        return response()->json(['success' => true, 'order' => $order]);
+    }
+
+    /**
+     * Mark as served (Waiter step)
+     */
+    public function serveOrder(Order $order)
+    {
+        if ($order->stage !== 'READY') {
+            return response()->json(['error' => 'Hanya pesanan yang sudah siap (READY) yang dapat di-serve'], 400);
+        }
+
+        $order->update([
+            'stage' => 'SERVED',
+            'status' => 'served',
+            'served_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'order' => $order]);
+    }
+
+    /**
+     * Final Payment (Kasir step)
+     */
+    public function finalizePayment(Request $request, Order $order)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:cash,qris,card,other',
+            'amount_paid' => 'required|numeric|min:' . $order->total,
+        ]);
+
+        $order->update([
+            'stage' => 'DONE',
+            'status' => 'paid',
+            'payment_method' => $validated['payment_method'],
+            'amount_paid' => $validated['amount_paid'],
+            'paid_at' => now(),
+        ]);
+
+        $this->syncTableStatuses($order);
+
+        return response()->json(['success' => true, 'order' => $order]);
+    }
+
+    /**
+     * Update kitchen status
      */
     public function updateKitchenStatus(Request $request, Order $order)
     {
         $user = auth()->user();
         $validated = $request->validate([
-            'status' => 'required|in:COOKING,READY,DONE',
+            'status' => 'required|in:COOKING,READY',
         ]);
 
-        $updateData = [
-            'stage' => $validated['status'],
-            'status' => match($validated['status']) {
-                'COOKING' => 'preparing',
-                'READY' => 'ready',
-                'DONE' => 'served',
-            }
-        ];
+        $updateData = ['stage' => $validated['status']];
 
         if ($validated['status'] === 'COOKING') {
             $updateData['kitchen_id'] = $user->id;
             $updateData['cooking_at'] = now();
         }
 
-        if ($validated['status'] === 'DONE') {
+        if ($validated['status'] === 'READY') {
             $updateData['kitchen_done_at'] = now();
         }
 
-        if ($validated['status'] === 'DONE') {
-            $updateData['served_at'] = now();
-        }
-
         $order->update($updateData);
-
-        if ($validated['status'] === 'DONE') {
-            // Sync table status
-            $this->syncTableStatuses($order);
-        }
 
         return response()->json(['success' => true, 'order' => $order]);
     }

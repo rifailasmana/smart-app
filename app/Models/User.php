@@ -68,4 +68,19 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Warung::class);
     }
+
+    public function employeeDetail()
+    {
+        return $this->hasOne(EmployeeDetail::class);
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
+    public function payrolls()
+    {
+        return $this->hasMany(Payroll::class);
+    }
 }

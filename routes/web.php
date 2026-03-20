@@ -331,8 +331,10 @@ Route::middleware('auth')->group(function () {
 
     // Owner/Admin Dashboard - Menu & Finance Management
     Route::middleware('role:admin,owner')->group(function () {
-        Route::get('/dashboard/owner', [DashboardController::class, 'owner'])->name('dashboard.owner');
-        // Route::get('/dashboard/owner/orders', [DashboardController::class, 'ownerOrders'])->name('dashboard.owner.orders');
+        Route::get('/dashboard/owner', [App\Http\Controllers\OwnerController::class, 'index'])->name('dashboard.owner');
+        Route::post('/owner/menu/price/{menuItem}', [App\Http\Controllers\OwnerController::class, 'updatePricing'])->name('owner.menu.price');
+        Route::post('/owner/menu/toggle/{menuItem}', [App\Http\Controllers\OwnerController::class, 'toggleMenu'])->name('owner.menu.toggle');
+        
         // Route admin dashboard lama (redirect ke /admin/warungs)
         Route::get('/dashboard/admin', function () {
             return redirect('/admin/warungs');
@@ -515,7 +517,12 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:inventory,manager,owner,admin')->group(function () {
         Route::get('/dashboard/inventory', [App\Http\Controllers\InventoryController::class, 'index'])->name('dashboard.inventory');
         Route::post('/inventory/ingredient', [App\Http\Controllers\InventoryController::class, 'storeIngredient'])->name('inventory.ingredient.store');
-        Route::post('/inventory/stock', [App\Http\Controllers\InventoryController::class, 'updateStock'])->name('inventory.stock.update');
+        Route::post('/inventory/incoming', [App\Http\Controllers\InventoryController::class, 'storeIncoming'])->name('inventory.incoming.store');
+        Route::post('/inventory/adjustment', [App\Http\Controllers\InventoryController::class, 'adjustStock'])->name('inventory.adjustment.store');
+        Route::get('/inventory/history', [App\Http\Controllers\InventoryController::class, 'history'])->name('inventory.history');
+        Route::get('/inventory/requests', [App\Http\Controllers\InventoryController::class, 'restockRequests'])->name('inventory.requests');
+        Route::post('/inventory/requests', [App\Http\Controllers\InventoryController::class, 'storeRestockRequest'])->name('inventory.requests.store');
+        Route::post('/inventory/requests/{restockRequest}/status', [App\Http\Controllers\InventoryController::class, 'updateRequestStatus'])->name('inventory.requests.status');
         Route::get('/inventory/hpp/{menuItem}', [App\Http\Controllers\InventoryController::class, 'getHPP'])->name('inventory.hpp');
         
         // Recipe Routes
@@ -527,14 +534,27 @@ Route::middleware('auth')->group(function () {
     // HRD Routes
     Route::middleware('role:hrd,manager,owner,admin')->group(function () {
         Route::get('/dashboard/hrd', [App\Http\Controllers\HRDController::class, 'index'])->name('dashboard.hrd');
-        Route::get('/hrd/attendance', [App\Http\Controllers\HRDController::class, 'attendance'])->name('hrd.attendance');
-        Route::get('/hrd/payroll', [App\Http\Controllers\HRDController::class, 'payroll'])->name('hrd.payroll');
-        Route::post('/hrd/payroll/generate', [App\Http\Controllers\HRDController::class, 'generatePayroll'])->name('hrd.payroll.generate');
         
-        // Shift Routes
-        Route::get('/hrd/shifts', [App\Http\Controllers\HRDController::class, 'shifts'])->name('hrd.shifts');
-        Route::post('/hrd/shifts', [App\Http\Controllers\HRDController::class, 'storeShift'])->name('hrd.shifts.store');
-        Route::delete('/hrd/shifts/{id}', [App\Http\Controllers\HRDController::class, 'destroyShift'])->name('hrd.shifts.destroy');
+        // Employee Management
+        Route::post('/hrd/employee', [App\Http\Controllers\HRDController::class, 'storeEmployee'])->name('hrd.employee.store');
+        Route::post('/hrd/employee/{user}', [App\Http\Controllers\HRDController::class, 'updateEmployee'])->name('hrd.employee.update');
+        
+        // Attendance & Shift
+        Route::post('/hrd/attendance', [App\Http\Controllers\HRDController::class, 'storeAttendance'])->name('hrd.attendance.store');
+        Route::get('/hrd/shift/quick', [App\Http\Controllers\HRDController::class, 'quickAssignShift'])->name('hrd.shift.quick');
+        Route::post('/hrd/shift/settings', [App\Http\Controllers\HRDController::class, 'updateShiftSettings'])->name('hrd.shift.settings.update');
+        Route::post('/hrd/shift', [App\Http\Controllers\HRDController::class, 'storeShift'])->name('hrd.shift.store');
+        Route::delete('/hrd/shift/{shift}', [App\Http\Controllers\HRDController::class, 'deleteShift'])->name('hrd.shift.delete');
+        
+        // Payroll
+        Route::post('/hrd/payroll/generate', [App\Http\Controllers\HRDController::class, 'generatePayroll'])->name('hrd.payroll.generate');
+        Route::post('/hrd/payroll/{payroll}/status', [App\Http\Controllers\HRDController::class, 'updatePayrollStatus'])->name('hrd.payroll.update-status');
+        
+        // Performance
+        Route::post('/hrd/performance/{user}', [App\Http\Controllers\HRDController::class, 'updatePerformance'])->name('hrd.performance.update');
+        
+        // Access Control
+        Route::post('/hrd/access/reset-password/{user}', [App\Http\Controllers\HRDController::class, 'resetPassword'])->name('hrd.access.reset-password');
     });
 
     // Manager Routes
@@ -542,6 +562,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard/manager', [App\Http\Controllers\ManagerController::class, 'index'])->name('dashboard.manager');
         Route::post('/manager/void/{order}', [App\Http\Controllers\ManagerController::class, 'voidOrder'])->name('manager.void');
         Route::post('/manager/coupon', [App\Http\Controllers\ManagerController::class, 'createCoupon'])->name('manager.coupon.store');
+        Route::post('/manager/table', [App\Http\Controllers\ManagerController::class, 'storeTable'])->name('manager.table.store');
+        Route::delete('/manager/table/{table}', [App\Http\Controllers\ManagerController::class, 'deleteTable'])->name('manager.table.delete');
+        Route::post('/manager/table/merge', [App\Http\Controllers\ManagerController::class, 'mergeTables'])->name('manager.table.merge');
+        Route::post('/manager/menu/toggle/{menuItem}', [App\Http\Controllers\ManagerController::class, 'toggleMenuStatus'])->name('manager.menu.toggle');
+        Route::post('/manager/restock/approve/{request}', [App\Http\Controllers\ManagerController::class, 'approveRestock'])->name('manager.restock.approve');
+        Route::post('/manager/restock/reject/{request}', [App\Http\Controllers\ManagerController::class, 'rejectRestock'])->name('manager.restock.reject');
     });
 
 
@@ -574,6 +600,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/orders/{order}/submit-to-cashier', [App\Http\Controllers\TerminalController::class, 'submitToCashier']);
         Route::post('/orders/{order}/split', [App\Http\Controllers\TerminalController::class, 'splitOrder']);
         Route::post('/orders/{order}/merge', [App\Http\Controllers\TerminalController::class, 'mergeOrder']);
+        Route::post('/orders/{order}/approve', [App\Http\Controllers\TerminalController::class, 'approveOrder']);
+        Route::post('/orders/{order}/serve', [App\Http\Controllers\TerminalController::class, 'serveOrder']);
+        Route::post('/orders/{order}/finalize-payment', [App\Http\Controllers\TerminalController::class, 'finalizePayment']);
         Route::post('/orders/{order}/approve-and-pay', [App\Http\Controllers\TerminalController::class, 'approveAndPay']);
         Route::post('/orders/{order}/kitchen-status', [App\Http\Controllers\TerminalController::class, 'updateKitchenStatus']);
         Route::get('/orders/history', [App\Http\Controllers\TerminalController::class, 'history']);

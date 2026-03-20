@@ -18,14 +18,14 @@
                 extend: {
                     colors: {
                         terminal: {
-                            bg: '#F8FAFC', // Light Grayish White
-                            panel: '#FFFFFF', // Pure White
-                            accent: '#FF8C00', // Majar Orange
-                            warning: '#FFC107', // Majar Yellow
+                            bg: '#111827', // Dark Gray
+                            panel: '#1F2937', // Lighter Dark Gray
+                            accent: '#F97316', // Orange
+                            warning: '#FBBF24', // Yellow
                             danger: '#EF4444',
-                            text: '#1E293B', // Dark Slate
-                            muted: '#64748B', // Slate Muted
-                            border: 'rgba(255, 140, 0, 0.2)'
+                            text: '#F9FAFB', // Almost White
+                            muted: '#9CA3AF', // Muted Gray
+                            border: '#374151' // Border Gray
                         }
                     }
                 }
@@ -140,39 +140,34 @@
     </style>
 </head>
 <body>
-    <div class="terminal-container">
-        <div class="terminal-header">
-            <div class="d-flex align-items-center gap-3">
-                <div class="fw-bold fs-4 text-terminal-text">@yield('terminal_role', 'TERMINAL')</div>
-                <div class="text-muted">|</div>
-                <div class="text-muted">{{ $warung->name }}</div>
+    <div class="terminal-container bg-gray-900 text-white">
+        <header class="terminal-header bg-gray-900 border-b border-gray-800">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-yellow-400 rounded-lg flex items-center justify-center">
+                    <i class="bi bi-person-circle text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white">@yield('terminal_role', 'Terminal')</h1>
+                    <p class="text-xs text-gray-400">{{ now()->format('l, j F Y') }}</p>
+                </div>
             </div>
-            <div class="d-flex align-items-center gap-4">
+            <div class="flex items-center gap-6">
                 @yield('header_extra')
-                <div class="d-flex align-items-center gap-2 text-terminal-text">
-                    <i class="bi bi-person-circle fs-5"></i>
-                    <span>{{ auth()->user()->name }}</span>
+                <div class="flex items-center gap-2 text-white">
+                    <i class="bi bi-wifi text-lg"></i>
+                    <span class="text-sm font-semibold">{{ $warung->name ?? 'SmartOrder' }}</span>
                 </div>
-                <div id="terminal-clock" class="fw-bold fs-5 text-terminal-text">00:00:00</div>
-                <div id="online-indicator" class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill border border-terminal-border bg-white/50 shadow-sm">
-                    <div class="status-dot w-2 h-2 rounded-full bg-terminal-accent"></div>
-                    <span class="text-xs font-bold uppercase tracking-wider text-terminal-text">Online</span>
-                </div>
-                <a href="{{ route('terminal.index') }}" class="btn btn-terminal btn-terminal-secondary py-1 px-3 shadow-sm" style="height: auto;" title="Pilih Terminal">
-                    <i class="bi bi-grid-fill"></i>
+                <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="text-gray-400 hover:text-white transition-colors">
+                    <i class="bi bi-box-arrow-right text-xl"></i>
                 </a>
-                <form action="{{ route('logout') }}" method="POST" class="m-0">
+                <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
                     @csrf
-                    <button type="submit" class="btn btn-terminal btn-terminal-danger py-1 px-3 text-white shadow-sm" style="height: auto;" title="End Shift / Logout">
-                        <i class="bi bi-power"></i>
-                    </button>
                 </form>
             </div>
-        </div>
-        
-        <div class="terminal-content">
+        </header>
+        <main class="terminal-content">
             @yield('content')
-        </div>
+        </main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -319,45 +319,128 @@
                 <a href="{{ route('admin.diagnostics') }}" class="nav-item {{ request()->routeIs('admin.diagnostics') ? 'active' : '' }}">
                     <i class="fas fa-shield-alt"></i> <span>Diagnostics</span>
                 </a>
-                @endif
 
-                @if(auth()->user()->isOwner())
-                <a href="{{ route('dashboard.owner') }}" class="nav-item {{ request()->routeIs('dashboard.owner') ? 'active' : '' }}">
-                    <i class="fas fa-crown"></i> <span>Owner Panel</span>
+                @elseif(auth()->user()->role === 'owner')
+                <a href="{{ route('dashboard.owner') }}" class="nav-item {{ request()->routeIs('dashboard.owner') && !request()->has('tab') ? 'active' : '' }}">
+                    <i class="fas fa-crown"></i> <span>Dashboard</span>
                 </a>
-                @endif
-
-                @if(auth()->user()->isHRD())
-                <a href="{{ route('dashboard.hrd') }}" class="nav-item {{ request()->routeIs('dashboard.hrd') ? 'active' : '' }}">
-                    <i class="fas fa-user-tie"></i> <span>HRD Panel</span>
+                <a href="{{ route('dashboard.owner') }}?tab=analytics" class="nav-item {{ request()->get('tab') === 'analytics' ? 'active' : '' }}">
+                    <i class="fas fa-chart-pie"></i> <span>Analytics</span>
                 </a>
-                @endif
-
-                @if(auth()->user()->isManager())
-                <a href="{{ route('dashboard.manager') }}" class="nav-item {{ request()->routeIs('dashboard.manager') ? 'active' : '' }}">
-                    <i class="fas fa-tasks"></i> <span>Manager Panel</span>
-                </a>
-                @endif
-
-                @if(auth()->user()->isInventory())
-                <a href="{{ route('dashboard.inventory') }}" class="nav-item {{ request()->routeIs('dashboard.inventory') ? 'active' : '' }}">
+                <a href="{{ route('dashboard.owner') }}?tab=inventory" class="nav-item {{ request()->get('tab') === 'inventory' ? 'active' : '' }}">
                     <i class="fas fa-boxes"></i> <span>Inventory</span>
                 </a>
-                @endif
+                <a href="{{ route('dashboard.owner') }}?tab=approval" class="nav-item {{ request()->get('tab') === 'approval' ? 'active' : '' }}">
+                    <i class="fas fa-check-double"></i> <span>Approval</span>
+                </a>
+                <a href="{{ route('dashboard.owner') }}?tab=employees" class="nav-item {{ request()->get('tab') === 'employees' ? 'active' : '' }}">
+                    <i class="fas fa-users-cog"></i> <span>Employees</span>
+                </a>
+                <a href="{{ route('dashboard.owner') }}?tab=menu" class="nav-item {{ request()->get('tab') === 'menu' ? 'active' : '' }}">
+                    <i class="fas fa-utensils"></i> <span>Menu Control</span>
+                </a>
+                <a href="{{ route('dashboard.owner') }}?tab=coupon" class="nav-item {{ request()->get('tab') === 'coupon' ? 'active' : '' }}">
+                    <i class="fas fa-ticket-alt"></i> <span>Coupon</span>
+                </a>
+                <a href="{{ route('dashboard.owner') }}?tab=settings" class="nav-item {{ request()->get('tab') === 'settings' ? 'active' : '' }}">
+                    <i class="fas fa-cogs"></i> <span>Settings</span>
+                </a>
 
-                @if(auth()->user()->isCashier())
+                @elseif(auth()->user()->role === 'hrd')
+                <a href="{{ route('dashboard.hrd') }}" class="nav-item {{ request()->routeIs('dashboard.hrd') && !request()->has('tab') ? 'active' : '' }}">
+                    <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+                </a>
+                <a href="{{ route('dashboard.hrd') }}?tab=employees" class="nav-item {{ request()->get('tab') === 'employees' ? 'active' : '' }}">
+                    <i class="fas fa-users"></i> <span>Karyawan</span>
+                </a>
+                <a href="{{ route('dashboard.hrd') }}?tab=attendance" class="nav-item {{ request()->get('tab') === 'attendance' ? 'active' : '' }}">
+                    <i class="fas fa-clock"></i> <span>Absensi & Shift</span>
+                </a>
+                <a href="{{ route('dashboard.hrd') }}?tab=payroll" class="nav-item {{ request()->get('tab') === 'payroll' ? 'active' : '' }}">
+                    <i class="fas fa-money-check-alt"></i> <span>Payroll</span>
+                </a>
+                <a href="{{ route('dashboard.hrd') }}?tab=performance" class="nav-item {{ request()->get('tab') === 'performance' ? 'active' : '' }}">
+                    <i class="fas fa-award"></i> <span>Evaluasi</span>
+                </a>
+                <a href="{{ route('dashboard.hrd') }}?tab=access" class="nav-item {{ request()->get('tab') === 'access' ? 'active' : '' }}">
+                    <i class="fas fa-key"></i> <span>Access Control</span>
+                </a>
+
+                @elseif(auth()->user()->role === 'manager')
+                <a href="{{ route('dashboard.manager') }}" class="nav-item {{ request()->routeIs('dashboard.manager') && !request()->has('tab') ? 'active' : '' }}">
+                    <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+                </a>
+                <a href="{{ route('dashboard.manager') }}?tab=sales" class="nav-item {{ request()->get('tab') === 'sales' ? 'active' : '' }}">
+                    <i class="fas fa-shopping-bag"></i> <span>Sales Monitoring</span>
+                </a>
+                <a href="{{ route('dashboard.manager') }}?tab=menu" class="nav-item {{ request()->get('tab') === 'menu' ? 'active' : '' }}">
+                    <i class="fas fa-utensils"></i> <span>Menu Management</span>
+                </a>
+                <a href="{{ route('dashboard.manager') }}?tab=approval" class="nav-item {{ request()->get('tab') === 'approval' ? 'active' : '' }}">
+                    <i class="fas fa-check-circle"></i> <span>Approval Center</span>
+                </a>
+                <a href="{{ route('dashboard.manager') }}?tab=staff" class="nav-item {{ request()->get('tab') === 'staff' ? 'active' : '' }}">
+                    <i class="fas fa-users"></i> <span>Staff Monitoring</span>
+                </a>
+                <a href="{{ route('dashboard.manager') }}?tab=inventory" class="nav-item {{ request()->get('tab') === 'inventory' ? 'active' : '' }}">
+                    <i class="fas fa-boxes"></i> <span>Inventory Control</span>
+                </a>
+                <a href="{{ route('dashboard.manager') }}?tab=coupon" class="nav-item {{ request()->get('tab') === 'coupon' ? 'active' : '' }}">
+                    <i class="fas fa-ticket-alt"></i> <span>Coupon Control</span>
+                </a>
+                <a href="{{ route('dashboard.manager') }}?tab=orders" class="nav-item {{ request()->get('tab') === 'orders' ? 'active' : '' }}">
+                    <i class="fas fa-desktop"></i> <span>Order Monitoring</span>
+                </a>
+                <a href="{{ route('dashboard.manager') }}?tab=tables" class="nav-item {{ request()->get('tab') === 'tables' ? 'active' : '' }}">
+                    <i class="fas fa-th-large"></i> <span>Table Management</span>
+                </a>
+
+                @elseif(auth()->user()->role === 'inventory')
+                <a href="{{ route('dashboard.inventory') }}" class="nav-item {{ request()->routeIs('dashboard.inventory') && !request()->has('tab') ? 'active' : '' }}">
+                    <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+                </a>
+                <a href="{{ route('dashboard.inventory') }}?tab=items" class="nav-item {{ request()->get('tab') === 'items' ? 'active' : '' }}">
+                    <i class="fas fa-boxes"></i> <span>Data Barang</span>
+                </a>
+                <a href="{{ route('dashboard.inventory') }}?tab=overview" class="nav-item {{ request()->get('tab') === 'overview' ? 'active' : '' }}">
+                    <i class="fas fa-wave-square"></i> <span>Stock Overview</span>
+                </a>
+                <a href="{{ route('dashboard.inventory') }}?tab=incoming" class="nav-item {{ request()->get('tab') === 'incoming' ? 'active' : '' }}">
+                    <i class="fas fa-file-import"></i> <span>Incoming</span>
+                </a>
+                <a href="{{ route('dashboard.inventory') }}?tab=usage" class="nav-item {{ request()->get('tab') === 'usage' ? 'active' : '' }}">
+                    <i class="fas fa-utensils"></i> <span>Usage</span>
+                </a>
+                <a href="{{ route('dashboard.inventory') }}?tab=adjustment" class="nav-item {{ request()->get('tab') === 'adjustment' ? 'active' : '' }}">
+                    <i class="fas fa-sliders-h"></i> <span>Adjustment</span>
+                </a>
+                <a href="{{ route('inventory.history') }}" class="nav-item {{ request()->routeIs('inventory.history') ? 'active' : '' }}">
+                    <i class="fas fa-history"></i> <span>Riwayat</span>
+                </a>
+                <a href="{{ route('dashboard.inventory') }}?tab=alert" class="nav-item {{ request()->get('tab') === 'alert' ? 'active' : '' }}">
+                    <i class="fas fa-exclamation-triangle"></i> <span>Alert</span>
+                </a>
+                <a href="{{ route('dashboard.inventory') }}?tab=suppliers" class="nav-item {{ request()->get('tab') === 'suppliers' ? 'active' : '' }}">
+                    <i class="fas fa-truck"></i> <span>Supplier</span>
+                </a>
+                <a href="{{ route('inventory.requests') }}" class="nav-item {{ request()->routeIs('inventory.requests') ? 'active' : '' }}">
+                    <i class="fas fa-clipboard-list"></i> <span>Request</span>
+                </a>
+                <a href="{{ route('dashboard.inventory') }}?tab=recipes" class="nav-item {{ request()->get('tab') === 'recipes' ? 'active' : '' }}">
+                    <i class="fas fa-book-open"></i> <span>Resep</span>
+                </a>
+
+                @elseif(auth()->user()->role === 'kasir')
                 <a href="{{ route('terminal.kasir') }}" class="nav-item {{ request()->routeIs('terminal.kasir') ? 'active' : '' }}">
                     <i class="fas fa-cash-register"></i> <span>Cashier POS</span>
                 </a>
-                @endif
 
-                @if(auth()->user()->isWaiter())
+                @elseif(auth()->user()->role === 'waiter')
                 <a href="{{ route('terminal.waiter') }}" class="nav-item {{ request()->routeIs('terminal.waiter') ? 'active' : '' }}">
                     <i class="fas fa-concierge-bell"></i> <span>Waiter Service</span>
                 </a>
-                @endif
 
-                @if(auth()->user()->isKitchen())
+                @elseif(auth()->user()->role === 'kitchen' || auth()->user()->role === 'dapur')
                 <a href="{{ route('terminal.kitchen') }}" class="nav-item {{ request()->routeIs('terminal.kitchen') ? 'active' : '' }}">
                     <i class="fas fa-fire"></i> <span>Kitchen KDS</span>
                 </a>
