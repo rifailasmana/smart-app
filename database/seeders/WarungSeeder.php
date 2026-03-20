@@ -86,9 +86,12 @@ class WarungSeeder extends Seeder
             ['name' => 'Majar Owner', 'username' => 'owner', 'role' => 'owner'],
             ['name' => 'Majar HRD', 'username' => 'hrd', 'role' => 'hrd'],
             ['name' => 'Majar Manager', 'username' => 'manager', 'role' => 'manager'],
-            ['name' => 'Majar Cashier', 'username' => 'cashier', 'role' => 'kasir'],
-            ['name' => 'Majar Waiter', 'username' => 'waiter', 'role' => 'waiter'],
-            ['name' => 'Majar Kitchen', 'username' => 'kitchen', 'role' => 'kitchen'],
+            ['name' => 'Majar Cashier 1', 'username' => 'cashier', 'role' => 'kasir'],
+            ['name' => 'Majar Cashier 2', 'username' => 'cashier2', 'role' => 'kasir'],
+            ['name' => 'Majar Waiter 1', 'username' => 'waiter', 'role' => 'waiter'],
+            ['name' => 'Majar Waiter 2', 'username' => 'waiter2', 'role' => 'waiter'],
+            ['name' => 'Majar Kitchen 1', 'username' => 'kitchen', 'role' => 'kitchen'],
+            ['name' => 'Majar Kitchen 2', 'username' => 'kitchen2', 'role' => 'kitchen'],
             ['name' => 'Majar Inventory', 'username' => 'inventory', 'role' => 'inventory'],
         ];
 
@@ -111,7 +114,7 @@ class WarungSeeder extends Seeder
             [
                 'name' => 'Admin System',
                 'email' => 'admin@smartorder.local',
-                'password' => bcrypt('password'),
+                'password' => Hash::make('123456'),
                 'role' => 'admin',
                 'warung_id' => null,
             ]

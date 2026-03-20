@@ -6,41 +6,32 @@ use App\Models\Order;
 use App\Models\MenuItem;
 use App\Models\OrderItem;
 use App\Models\RestaurantTable;
-use App\Models\User;
-use App\Models\Voucher;
 use App\Models\Warung;
+use App\Models\Ingredient;
+use App\Models\Supplier;
+use App\Models\StockLog;
+use App\Models\RestockRequest;
+use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Hash;
 
 class TerminalController extends Controller
 {
-    private function resolveWarungOrAbort($user): Warung
-    {
-        if (!$user || !$user->warung_id) {
-            abort(403, 'Akun belum terhubung ke warung.');
-        }
-
-        $warung = Warung::find($user->warung_id);
-        if (!$warung) {
-            abort(403, 'Warung tidak ditemukan untuk akun ini.');
-        }
-
-        return $warung;
-    }
-
     /**
      * Halaman Pilih Terminal (Full-screen Mode)
      */
     public function index()
     {
         $user = auth()->user();
-        $warung = $this->resolveWarungOrAbort($user);
-
+        $warung = Warung::find($user->warung_id);
+        
         // Get all staff for quick switch
         $staff = User::where('warung_id', $user->warung_id)
             ->whereIn('role', ['waiter', 'kasir', 'dapur', 'kitchen', 'owner'])
             ->get();
-
+            
         return view('terminal.index', compact('user', 'warung', 'staff'));
     }
 
@@ -50,7 +41,7 @@ class TerminalController extends Controller
     public function waiter()
     {
         $user = auth()->user();
-        $warung = $this->resolveWarungOrAbort($user);
+        $warung = Warung::find($user->warung_id);
         $tables = RestaurantTable::where('warung_id', $user->warung_id)->get();
         $menuItems = MenuItem::where('warung_id', $user->warung_id)->where('active', true)->get();
         $categories = MenuItem::where('warung_id', $user->warung_id)
@@ -58,7 +49,7 @@ class TerminalController extends Controller
             ->distinct()
             ->pluck('category')
             ->filter();
-
+        
         return view('terminal.waiter', compact('user', 'warung', 'tables', 'menuItems', 'categories'));
     }
 
@@ -68,17 +59,15 @@ class TerminalController extends Controller
     public function kasir()
     {
         $user = auth()->user();
-        $warung = $this->resolveWarungOrAbort($user);
-        // Keep terminal kasir menu source consistent with dashboard kasir.
-        $menuItems = MenuItem::where('warung_id', $user->warung_id)
-            ->orderBy('name')
-            ->get();
+        $warung = Warung::find($user->warung_id);
+        $menuItems = MenuItem::where('warung_id', $user->warung_id)->where('active', true)->get();
         $categories = MenuItem::where('warung_id', $user->warung_id)
+            ->where('active', true)
             ->distinct()
             ->pluck('category')
             ->filter();
         $tables = RestaurantTable::where('warung_id', $user->warung_id)->get();
-
+        
         return view('terminal.kasir', compact('user', 'warung', 'menuItems', 'categories', 'tables'));
     }
 
@@ -88,9 +77,9 @@ class TerminalController extends Controller
     public function kitchen()
     {
         $user = auth()->user();
-        $warung = $this->resolveWarungOrAbort($user);
+        $warung = Warung::find($user->warung_id);
         $tables = RestaurantTable::where('warung_id', $user->warung_id)->get();
-
+        
         return view('terminal.kitchen', compact('user', 'warung', 'tables'));
     }
 
@@ -103,23 +92,16 @@ class TerminalController extends Controller
     {
         $user = auth()->user();
         $role = $request->query('role'); // waiter, kasir, kitchen
-
+        
         $query = Order::where('warung_id', $user->warung_id)
             ->with(['table', 'items']);
 
         if ($role === 'waiter') {
-            // Waiter sees their own drafts and all active orders for status tracking
-            $query->where(function ($q) use ($user) {
-                $q->where('waiter_id', $user->id)
-                    ->orWhereIn('stage', ['WAITING_CASHIER', 'CASHIER_APPROVED', 'READY_FOR_KITCHEN', 'COOKING', 'READY']);
-            });
+            // Waiter sees active orders to track status
+            $query->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY', 'SERVED']);
         } elseif ($role === 'kasir') {
-            // Align kasir queue with dashboard logic (status pending), while
-            // keeping backward compatibility for stage-based orders.
-            $query->where(function ($q) {
-                $q->where('status', 'pending')
-                    ->orWhereIn('stage', ['WAITING_CASHIER', 'CASHIER_APPROVED', 'READY_FOR_KITCHEN']);
-            });
+            // Kasir sees orders waiting for approval OR orders served waiting for payment
+            $query->whereIn('stage', ['WAITING_CASHIER', 'SERVED', 'READY_FOR_KITCHEN', 'COOKING', 'READY']);
         } elseif ($role === 'kitchen') {
             // Kitchen sees orders ready for production
             $query->whereIn('stage', ['READY_FOR_KITCHEN', 'COOKING', 'READY']);
@@ -133,9 +115,9 @@ class TerminalController extends Controller
      */
     public function storeOrder(Request $request)
     {
-        return DB::transaction(function () use ($request) {
+        return DB::transaction(function() use ($request) {
             $user = auth()->user();
-
+            
             $validated = $request->validate([
                 'order_id' => 'nullable|exists:orders,id',
                 'table_id' => 'required|exists:restaurant_tables,id',
@@ -166,7 +148,7 @@ class TerminalController extends Controller
                     ->where('warung_id', $user->warung_id)
                     ->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY'])
                     ->first();
-
+                
                 if ($existingActive) {
                     return response()->json(['error' => 'Meja sedang digunakan oleh pesanan lain'], 400);
                 }
@@ -193,7 +175,7 @@ class TerminalController extends Controller
             foreach ($validated['items'] as $itemData) {
                 $menuItem = MenuItem::find($itemData['menu_item_id']);
                 $subtotal = $menuItem->price * $itemData['qty'];
-
+                
                 OrderItem::create([
                     'order_id' => $order->id,
                     'menu_item_id' => $menuItem->id,
@@ -233,7 +215,7 @@ class TerminalController extends Controller
                 $tableIds = array_merge($tableIds, $mergedIds);
             }
         }
-
+        
         if ($order->stage === 'DONE' || $order->stage === 'VOID') {
             // Check if tables have other active orders before freeing
             foreach ($tableIds as $tid) {
@@ -242,7 +224,7 @@ class TerminalController extends Controller
                     ->whereNotIn('stage', ['DONE', 'VOID'])
                     ->where('id', '!=', $order->id)
                     ->exists();
-
+                
                 if (!$hasOther) {
                     RestaurantTable::where('id', $tid)->update(['status' => 'available']);
                 }
@@ -291,7 +273,7 @@ class TerminalController extends Controller
     public function approveAndPay(Request $request, $orderId)
     {
         $user = auth()->user();
-
+        
         $validated = $request->validate([
             'table_id' => 'required|exists:restaurant_tables,id',
             'payment_method' => 'required|in:cash,qris,card,other',
@@ -308,7 +290,7 @@ class TerminalController extends Controller
             'items.*.note' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($user, $orderId, $validated) {
+        return DB::transaction(function() use ($user, $orderId, $validated) {
             if ($orderId === 'new') {
                 $order = Order::create([
                     'warung_id' => $user->warung_id,
@@ -336,7 +318,7 @@ class TerminalController extends Controller
             foreach ($validated['items'] as $itemData) {
                 $menuItem = MenuItem::find($itemData['menu_item_id']);
                 $itemSubtotal = $menuItem->price * $itemData['qty'];
-
+                
                 OrderItem::create([
                     'order_id' => $order->id,
                     'menu_item_id' => $menuItem->id,
@@ -360,7 +342,7 @@ class TerminalController extends Controller
                 'paid_at' => now(),
                 'ordered_at' => now(),
                 'kasir_id' => $user->id,
-                'payment_method' => match ($validated['payment_method']) {
+                'payment_method' => match($validated['payment_method']) {
                     'cash' => 'kasir',
                     'qris' => 'qris',
                     default => 'gateway',
@@ -390,55 +372,96 @@ class TerminalController extends Controller
             // Sync table status
             $this->syncTableStatuses($order);
 
-            // Deduct stock
-            try {
-                \App\Http\Controllers\RecipeController::deductStockForOrder($order);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Stock deduction failed for Order #{$order->id}: " . $e->getMessage());
-            }
+            StockService::reduceStockForOrder($order);
 
             return response()->json(['success' => true, 'order' => $order->load('items')]);
         });
     }
 
     /**
-     * Update kitchen status (gatekeeper step 3)
+     * Approve order (Kasir step)
+     */
+    public function approveOrder(Order $order)
+    {
+        if ($order->stage !== 'WAITING_CASHIER') {
+            return response()->json(['error' => 'Hanya pesanan menunggu approval yang dapat disetujui'], 400);
+        }
+
+        $order->update([
+            'stage' => 'READY_FOR_KITCHEN',
+            'kasir_id' => auth()->id(),
+            'approved_at' => now(),
+            'sent_to_kitchen_at' => now(),
+        ]);
+
+        StockService::reduceStockForOrder($order);
+
+        return response()->json(['success' => true, 'order' => $order]);
+    }
+
+    /**
+     * Mark as served (Waiter step)
+     */
+    public function serveOrder(Order $order)
+    {
+        if ($order->stage !== 'READY') {
+            return response()->json(['error' => 'Hanya pesanan yang sudah siap (READY) yang dapat di-serve'], 400);
+        }
+
+        $order->update([
+            'stage' => 'SERVED',
+            'status' => 'served',
+            'served_at' => now(),
+        ]);
+
+        return response()->json(['success' => true, 'order' => $order]);
+    }
+
+    /**
+     * Final Payment (Kasir step)
+     */
+    public function finalizePayment(Request $request, Order $order)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:cash,qris,card,other',
+            'amount_paid' => 'required|numeric|min:' . $order->total,
+        ]);
+
+        $order->update([
+            'stage' => 'DONE',
+            'status' => 'paid',
+            'payment_method' => $validated['payment_method'],
+            'amount_paid' => $validated['amount_paid'],
+            'paid_at' => now(),
+        ]);
+
+        $this->syncTableStatuses($order);
+
+        return response()->json(['success' => true, 'order' => $order]);
+    }
+
+    /**
+     * Update kitchen status
      */
     public function updateKitchenStatus(Request $request, Order $order)
     {
         $user = auth()->user();
         $validated = $request->validate([
-            'status' => 'required|in:COOKING,READY,DONE',
+            'status' => 'required|in:COOKING,READY',
         ]);
 
-        $updateData = [
-            'stage' => $validated['status'],
-            'status' => match ($validated['status']) {
-                'COOKING' => 'preparing',
-                'READY' => 'ready',
-                'DONE' => 'served',
-            }
-        ];
+        $updateData = ['stage' => $validated['status']];
 
         if ($validated['status'] === 'COOKING') {
             $updateData['kitchen_id'] = $user->id;
             $updateData['cooking_at'] = now();
         }
 
-        if ($validated['status'] === 'DONE') {
+        if ($validated['status'] === 'READY') {
             $updateData['kitchen_done_at'] = now();
         }
 
-        if ($validated['status'] === 'DONE') {
-            $updateData['served_at'] = now();
-        }
-
         $order->update($updateData);
-
-        if ($validated['status'] === 'DONE') {
-            // Sync table status
-            $this->syncTableStatuses($order);
-        }
 
         return response()->json(['success' => true, 'order' => $order]);
     }
@@ -454,7 +477,7 @@ class TerminalController extends Controller
             'items.*.qty' => 'required|integer|min:1',
         ]);
 
-        return DB::transaction(function () use ($order, $validated) {
+        return DB::transaction(function() use ($order, $validated) {
             // 1. Create new order (copy details)
             $newOrder = Order::create([
                 'warung_id' => $order->warung_id,
@@ -477,7 +500,7 @@ class TerminalController extends Controller
             $newSubtotal = 0;
             foreach ($validated['items'] as $itemData) {
                 $item = OrderItem::find($itemData['order_item_id']);
-
+                
                 // If moving full qty
                 if ($item->qty <= $itemData['qty']) {
                     $item->update(['order_id' => $newOrder->id]);
@@ -485,7 +508,7 @@ class TerminalController extends Controller
                 } else {
                     // Split qty
                     $newSubtotal += ($item->price * $itemData['qty']);
-
+                    
                     // Create new item for new order
                     OrderItem::create([
                         'order_id' => $newOrder->id,
@@ -531,7 +554,7 @@ class TerminalController extends Controller
             'source_table_id' => 'required|exists:restaurant_tables,id',
         ]);
 
-        return DB::transaction(function () use ($order, $validated) {
+        return DB::transaction(function() use ($order, $validated) {
             $sourceOrder = Order::where('table_id', $validated['source_table_id'])
                 ->whereIn('stage', ['DRAFT', 'WAITING_CASHIER'])
                 ->first();
@@ -585,11 +608,11 @@ class TerminalController extends Controller
         ]);
 
         // Simple PIN check for now, in production this should check against a manager user
-        if ($validated['pin'] !== '1234') {
+        if ($validated['pin'] !== '1234') { 
             return response()->json(['error' => 'PIN Manager tidak valid'], 403);
         }
 
-        return DB::transaction(function () use ($order, $validated) {
+        return DB::transaction(function() use ($order, $validated) {
             $order->update([
                 'stage' => 'VOID',
                 'status' => 'void',
@@ -622,7 +645,7 @@ class TerminalController extends Controller
             ->whereDate('created_at', now()->toDateString())
             ->orderBy('created_at', 'desc')
             ->get();
-
+        
         return response()->json($orders);
     }
 
@@ -633,12 +656,12 @@ class TerminalController extends Controller
     {
         $user = auth()->user();
         $today = now()->toDateString();
-
+        
         $totalSales = Order::where('warung_id', $user->warung_id)
             ->whereDate('created_at', $today)
             ->whereIn('status', ['paid', 'served'])
             ->sum('total');
-
+            
         $orderCount = Order::where('warung_id', $user->warung_id)
             ->whereDate('created_at', $today)
             ->whereIn('status', ['paid', 'served'])
@@ -677,7 +700,7 @@ class TerminalController extends Controller
             'code' => 'required|string',
             'cart_categories' => 'required|array'
         ]);
-
+        
         $voucher = \App\Models\Voucher::where('code', $request->code)
             ->where('warung_id', auth()->user()->warung_id)
             ->first();
@@ -717,7 +740,7 @@ class TerminalController extends Controller
     public function checkCoupon(Request $request)
     {
         $request->validate(['code' => 'required|string']);
-
+        
         $coupon = \App\Models\Coupon::where('code', $request->code)
             ->where('expires_at', '>', now())
             ->whereRaw('uses < max_uses')

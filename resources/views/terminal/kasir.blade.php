@@ -1,299 +1,588 @@
 @extends('layouts.terminal')
 
-@section('title', 'POS Command Center')
-@section('terminal_role', 'KASIR COMMAND CENTER')
+@section('title', 'Kasir - Majar Signature')
+@section('terminal_role', 'KASIR')
 
 @section('header_extra')
-    <div class="d-flex align-items-center gap-3 border-start ps-3 border-terminal-border">
-        <div class="d-flex align-items-center gap-2" id="printer-status">
-            <div class="status-dot w-2 h-2 rounded-full bg-terminal-accent"></div>
-            <span class="text-[10px] font-black uppercase tracking-widest text-terminal-muted">Printer: Online</span>
-        </div>
+<div class="flex items-center gap-4 border-l border-gray-700 pl-4">
+    <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+        <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">System: Online</span>
     </div>
+</div>
 @endsection
 
 @section('content')
-    <div class="w-full h-full flex bg-terminal-bg" id="kasir-root">
-        <div id="kasir-fallback" style="margin:auto; max-width: 520px; padding: 24px; text-align:center;">
-            <div style="font-weight: 800; font-size: 20px; letter-spacing: .02em;">Memuat Terminal Kasir…</div>
-            <div style="margin-top: 8px; opacity: .75; font-size: 14px; line-height: 1.4;">
-                Jika layar tetap kosong, biasanya karena script CDN diblokir/offline atau browser terlalu lama.
-            </div>
-            <div style="margin-top: 16px; display:flex; gap: 10px; justify-content:center; flex-wrap: wrap;">
-                <button type="button" onclick="location.reload()" style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: #fff; font-weight: 700;">Muat Ulang</button>
-                <a href="{{ route('terminal.index') }}" style="padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(255,140,0,.35); background: transparent; font-weight: 700; text-decoration:none; color: inherit;">Pilih Terminal</a>
-            </div>
-        </div>
-    </div>
+<div id="kasir-root" class="w-full h-full"></div>
 @endsection
 
 @section('extra_js')
-    <script type="text/babel" data-presets="env,react" data-plugins="proposal-optional-chaining,proposal-nullish-coalescing-operator">
+<script type="text/babel">
     const { useState, useEffect, useMemo, useCallback } = React;
 
-    // --- Shared Components ---
-    const Badge = ({ children, color = 'bg-terminal-border' }) => (
-        <span className={`${color} text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider`}>
-            {children}
-        </span>
-    );
+    // --- Components ---
 
-    const Button = ({ children, onClick, variant = 'secondary', disabled = false, className = '', icon = null, size = 'md' }) => {
-        const variants = {
-            primary: 'bg-terminal-accent text-white hover:opacity-90 shadow-lg shadow-terminal-accent/20',
-            secondary: 'bg-white border border-terminal-border text-terminal-text hover:bg-gray-50',
-            danger: 'bg-terminal-danger text-white hover:opacity-90 shadow-lg shadow-terminal-danger/20',
-            ghost: 'bg-transparent text-terminal-muted hover:text-terminal-text',
-            warning: 'bg-terminal-warning text-white hover:opacity-90 shadow-lg shadow-terminal-warning/20',
-            dark: 'bg-terminal-text text-white hover:opacity-90'
-        };
-        const sizes = {
-            sm: 'px-3 py-1.5 text-xs rounded-lg',
-            md: 'px-6 py-3 rounded-xl',
-            lg: 'px-8 py-4 text-lg rounded-2xl'
-        };
-        return (
-            <button
-                onClick={onClick}
-                disabled={disabled}
-                className={`flex items-center justify-center gap-2 font-bold transition-all active:scale-95 disabled:opacity-30 disabled:active:scale-100 ${variants[variant]} ${sizes[size]} ${className}`}
-            >
-                {icon && <i className={`bi ${icon}`}></i>}
-                {children}
-            </button>
-        );
-    };
-
-    const SidebarItem = ({ id, label, icon, active, onClick, count = 0 }) => (
-        <div
-            onClick={() => onClick(id)}
-            className={`flex flex-col items-center justify-center gap-2 py-6 cursor-pointer transition-all border-l-4 relative ${active ? 'bg-orange-500/10 border-orange-500 text-orange-500 font-black' : 'border-transparent text-terminal-muted hover:text-terminal-text hover:bg-gray-50'}`}
+    const SidebarIcon = ({ icon, label, active = false, onClick }) => (
+        <div 
+            onClick={onClick}
+            className={`relative flex flex-col items-center justify-center w-full py-5 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
         >
-            <i className={`bi ${icon} text-3xl`}></i>
-            <span className="text-[10px] uppercase tracking-widest text-center px-2">{label}</span>
-            {count > 0 && (
-                <div className="absolute top-4 right-4 bg-orange-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-lg">
-                    {count}
-                </div>
-            )}
+            {active && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-500 rounded-r-full shadow-[2px_0_10px_rgba(249,115,22,0.4)]"></div>}
+            <div className={`p-2 rounded-xl transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-gray-800'}`}>
+                <i className={`bi ${icon} text-2xl`}></i>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-tighter mt-1">{label}</span>
         </div>
     );
 
-    // --- Tab Views ---
+    const OrderTypeCard = ({ icon, title, subtitle, onClick, color = "orange" }) => (
+        <div 
+            onClick={onClick}
+            className="w-full max-w-[340px] aspect-square bg-white rounded-[2.5rem] p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 transform hover:-translate-y-3 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] group border-2 border-transparent hover:border-orange-100"
+        >
+            <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 ${color === 'orange' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-500'}`}>
+                <i className={`bi ${icon} text-5xl`}></i>
+            </div>
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight">{title}</h2>
+            <p className="text-gray-400 font-medium mt-2">{subtitle}</p>
+            <div className={`mt-10 flex items-center gap-2 font-bold text-sm ${color === 'orange' ? 'text-orange-500' : 'text-green-500'}`}>
+                {title === 'Dine In' ? 'Pilih Meja' : 'Langsung Pesan'} <i className="bi bi-arrow-right"></i>
+            </div>
+        </div>
+    );
 
-    const OrderingView = ({ menuItems, categories, tables, onAddItem }) => {
-        const [activeCategory, setActiveCategory] = useState('All');
-        const [searchQuery, setSearchQuery] = useState('');
-
-        const filteredMenu = useMemo(() => {
-            return menuItems.filter(m => {
-                const matchesCategory = activeCategory === 'All' || m.category === activeCategory;
-                const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
-                return matchesCategory && matchesSearch;
-            });
-        }, [menuItems, activeCategory, searchQuery]);
-
-        const placeholderImg = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&h=200&auto=format&fit=crop";
+    const TableCard = ({ table, active, onClick, guestCount }) => {
+        const statusConfig = {
+            available: { bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600', label: 'Tersedia' },
+            occupied: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-400', label: 'Terisi' },
+            reserved: { bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-orange-500', label: 'Reservasi' }
+        };
+        const config = statusConfig[table.status] || statusConfig.available;
+        const isClickable = table.status === 'available' && table.capacity >= guestCount;
 
         return (
-            <div className="flex-1 flex overflow-hidden animate-in fade-in duration-500">
-                {/* Left: Categories */}
-                <div className="w-32 bg-white border-r border-terminal-border flex flex-col overflow-y-auto custom-scrollbar">
-                    <div
-                        onClick={() => setActiveCategory('All')}
-                        className={`p-4 text-center cursor-pointer transition-all border-b border-terminal-border ${activeCategory === 'All' ? 'bg-terminal-accent text-white font-black' : 'text-terminal-muted font-bold hover:bg-gray-50'}`}
-                    >
-                        ALL
+            <div 
+                onClick={() => isClickable && onClick(table)}
+                className={`relative p-6 rounded-[2rem] border-2 transition-all duration-300 flex flex-col justify-between aspect-video ${active ? 'border-orange-500 bg-orange-50 shadow-lg' : config.border + ' ' + config.bg} ${isClickable ? 'cursor-pointer hover:shadow-md' : 'opacity-60 cursor-not-allowed'}`}
+            >
+                <div className="flex justify-between items-start">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${active ? 'bg-orange-500 text-white' : 'bg-white ' + config.text}`}>
+                        <i className="bi bi-grid-fill text-xl"></i>
                     </div>
-                    {categories.filter(c => c !== 'All').map(cat => (
-                        <div
-                            key={cat}
-                            onClick={() => setActiveCategory(cat)}
-                            className={`p-4 text-center cursor-pointer transition-all border-b border-terminal-border text-xs uppercase tracking-wider ${activeCategory === cat ? 'bg-terminal-accent text-white font-black' : 'text-terminal-muted font-bold hover:bg-gray-50'}`}
-                        >
-                            {cat}
-                        </div>
+                    {active && <i className="bi bi-check-circle-fill text-orange-500 text-xl"></i>}
+                </div>
+                <div>
+                    <h3 className={`text-2xl font-black tracking-tight ${active ? 'text-orange-600' : 'text-gray-900'}`}>{table.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                        <i className="bi bi-people-fill text-xs text-gray-400"></i>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Maks. {table.capacity}</span>
+                    </div>
+                </div>
+                <div className={`mt-4 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${config.text}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-orange-500' : config.text.replace('text-', 'bg-')}`}></div>
+                    {config.label}
+                </div>
+            </div>
+        );
+    };
+
+    // --- Main Views ---
+
+    const OrderTypeView = ({ onSelect }) => (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 animate-in fade-in zoom-in duration-500">
+            <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">Selamat Datang!</h1>
+            <p className="text-xl text-gray-400 font-medium mb-16 tracking-tight">Pilih jenis pesanan Anda untuk memulai</p>
+            <div className="flex gap-10 w-full max-w-4xl px-6">
+                <OrderTypeCard 
+                    icon="bi-shop" 
+                    title="Dine In" 
+                    subtitle="Makan di tempat" 
+                    onClick={() => onSelect('DINE_IN')} 
+                    color="orange"
+                />
+                <OrderTypeCard 
+                    icon="bi-bag-heart-fill" 
+                    title="Take Away" 
+                    subtitle="Dibawa pulang" 
+                    onClick={() => onSelect('TAKE_AWAY')} 
+                    color="green"
+                />
+            </div>
+        </div>
+    );
+
+    const TableSelectionView = ({ tables, guestCount, setGuestCount, selectedTable, onSelect, onBack, onContinue }) => (
+        <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
+            {/* Left: Guest Control */}
+            <div className="w-[320px] bg-white border-r border-gray-100 p-8 flex flex-col">
+                <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm mb-10 transition-colors">
+                    <i className="bi bi-arrow-left"></i> Kembali
+                </button>
+                
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs">2</div>
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pilih Meja</h2>
+                </div>
+                
+                <div className="mt-8">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">Jumlah Tamu</label>
+                    <div className="flex items-center justify-between bg-gray-50 rounded-3xl p-4 border border-gray-100 mb-6">
+                        <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                            <i className="bi bi-dash-lg text-xl"></i>
+                        </button>
+                        <span className="text-5xl font-black text-gray-900 w-20 text-center tracking-tighter">{guestCount}</span>
+                        <button onClick={() => setGuestCount(guestCount + 1)} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                            <i className="bi bi-plus-lg text-xl"></i>
+                        </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-2 mb-10">
+                        {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
+                            <button 
+                                key={n}
+                                onClick={() => setGuestCount(n)}
+                                className={`py-3 rounded-xl font-black transition-all ${guestCount === n ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                            >
+                                {n}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="mt-auto space-y-3 pt-6 border-t border-gray-50">
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div> Tersedia
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="w-3 h-3 rounded-full bg-gray-300"></div> Terisi
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="w-3 h-3 rounded-full bg-orange-500"></div> Reservasi
+                    </div>
+                </div>
+            </div>
+
+            {/* Right: Table Grid */}
+            <div className="flex-1 p-10 flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center mb-8">
+                    <h3 className="text-xl font-black text-gray-900 tracking-tight">Meja tersedia untuk {guestCount}+ tamu</h3>
+                    <div className="bg-white px-4 py-2 rounded-full border border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                        {tables.filter(t => t.status === 'available' && t.capacity >= guestCount).length} tersedia
+                    </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                    {tables.map(table => (
+                        <TableCard 
+                            key={table.id} 
+                            table={table} 
+                            active={selectedTable?.id === table.id} 
+                            guestCount={guestCount}
+                            onClick={onSelect} 
+                        />
                     ))}
                 </div>
 
-                {/* Middle: Grid */}
-                <div className="flex-1 flex flex-col bg-terminal-bg/30">
-                    <div className="p-6 bg-white border-b border-terminal-border shadow-sm">
-                        <div className="relative">
-                            <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-terminal-muted"></i>
-                            <input
-                                type="text"
-                                className="w-full bg-terminal-bg border border-terminal-border rounded-2xl pl-12 pr-4 py-4 text-lg focus:outline-none focus:border-terminal-accent shadow-sm"
-                                placeholder="Cari menu atau meja..."
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                            />
+                <div className="mt-8 flex justify-end">
+                    <button 
+                        disabled={!selectedTable}
+                        onClick={onContinue}
+                        className="px-12 py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-orange-500/20 disabled:opacity-30 disabled:shadow-none transition-all active:scale-95"
+                    >
+                        Lanjut ke Menu <i className="bi bi-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
+    const MenuView = ({ menuItems, categories, orderType, selectedTable, guestCount, onBack }) => {
+        const [activeCategory, setActiveCategory] = useState('Semua');
+        const [cart, setCart] = useState([]);
+        const [searchQuery, setSearchQuery] = useState('');
+
+        const filteredMenu = useMemo(() => {
+            return menuItems.filter(item => {
+                const matchCat = activeCategory === 'Semua' || item.category === activeCategory;
+                const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchCat && matchSearch;
+            });
+        }, [menuItems, activeCategory, searchQuery]);
+
+        const addToCart = (item) => {
+            setCart(prev => {
+                const existing = prev.find(i => i.id === item.id);
+                if (existing) return prev.map(i => i.id === item.id ? {...i, qty: i.qty + 1} : i);
+                return [...prev, {...item, qty: 1}];
+            });
+        };
+
+        const updateQty = (id, delta) => {
+            setCart(prev => prev.map(i => {
+                if (i.id === id) return {...i, qty: Math.max(0, i.qty + delta)};
+                return i;
+            }).filter(i => i.qty > 0));
+        };
+
+        const subtotal = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+        return (
+            <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
+                {/* Main: Menu Area */}
+                <div className="flex-1 flex flex-col overflow-hidden p-8">
+                    <div className="flex items-center gap-6 mb-8">
+                        <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm transition-colors">
+                            <i className="bi bi-arrow-left"></i> Kembali
+                        </button>
+                        <div className="flex gap-2">
+                            <div className="bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <i className="bi bi-check-circle-fill"></i> Tipe Order: {orderType === 'DINE_IN' ? 'Dine In' : 'Take Away'}
+                            </div>
+                            {selectedTable && (
+                                <div className="bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <i className="bi bi-check-circle-fill"></i> Meja: {selectedTable.name}
+                                </div>
+                            )}
+                            <div className="bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                <i className="bi bi-people-fill"></i> {guestCount} Tamu
+                            </div>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-6 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start custom-scrollbar">
-                        {filteredMenu.map(menu => (
-                            <div
-                                key={menu.id}
-                                onClick={() => onAddItem(menu)}
-                                className="bg-white border border-terminal-border p-4 rounded-3xl cursor-pointer hover:border-terminal-accent hover:shadow-xl transition-all active:scale-95 group flex flex-col gap-3 shadow-sm relative overflow-hidden"
+
+                    {/* Category Tabs */}
+                    <div className="flex gap-3 mb-8 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                        {['Semua', ...categories].map(cat => (
+                            <button 
+                                key={cat}
+                                onClick={() => setActiveCategory(cat)}
+                                className={`px-8 py-3 rounded-2xl font-black text-sm transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white text-gray-400 hover:bg-gray-100'}`}
                             >
-                                <div className="aspect-square bg-gray-100 rounded-2xl mb-2 overflow-hidden relative">
-                                    <img
-                                        src={menu.image || placeholderImg}
-                                        alt={menu.name}
-                                        className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500"
-                                    />
-                                    {menu.stock <= 5 && (
-                                        <div className="absolute top-2 right-2 bg-terminal-danger text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg">
-                                            STOK: {menu.stock}
-                                        </div>
-                                    )}
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Menu Grid */}
+                    <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                        {filteredMenu.map(item => (
+                            <div 
+                                key={item.id}
+                                onClick={() => addToCart(item)}
+                                className="bg-white rounded-[2rem] p-5 flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group"
+                            >
+                                <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-gray-50">
+                                    <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&h=200&auto=format&fit=crop'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                 </div>
-                                <div className="font-black text-terminal-text leading-tight h-10 overflow-hidden group-hover:text-terminal-accent transition-colors">{menu.name}</div>
-                                <div className="text-terminal-accent font-black text-lg">
-                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(menu.price)}
+                                <h4 className="text-lg font-black text-gray-900 leading-tight mb-2">{item.name}</h4>
+                                <div className="mt-auto flex justify-between items-center">
+                                    <span className="text-orange-500 font-black text-xl">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
+                                    <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-all">
+                                        <i className="bi bi-plus-lg"></i>
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
+
+                {/* Right: Cart Area */}
+                <div className="w-[420px] bg-white border-l border-gray-100 flex flex-col p-8 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
+                    <div className="flex items-center gap-3 mb-8">
+                        <i className="bi bi-cart-fill text-2xl text-orange-500"></i>
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pesanan</h2>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                        {cart.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center opacity-30">
+                                <i className="bi bi-cart-x text-6xl mb-4"></i>
+                                <p className="font-bold text-sm uppercase tracking-widest">Belum ada produk</p>
+                                <p className="text-[10px] mt-1">Ketuk produk untuk menambahkan</p>
+                            </div>
+                        ) : (
+                            cart.map(item => (
+                                <div key={item.id} className="bg-gray-50 rounded-2xl p-4 flex gap-4 animate-in slide-in-from-bottom duration-300">
+                                    <img src={item.image_url} className="w-16 h-16 rounded-xl object-cover" />
+                                    <div className="flex-1">
+                                        <h5 className="font-black text-gray-900 text-sm leading-tight">{item.name}</h5>
+                                        <p className="text-orange-500 font-bold text-xs mt-1">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
+                                        <div className="flex items-center gap-3 mt-3">
+                                            <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-red-50 hover:text-red-500 transition-all"><i className="bi bi-dash"></i></button>
+                                            <span className="font-black text-gray-900 w-6 text-center">{item.qty}</span>
+                                            <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-green-50 hover:text-green-500 transition-all"><i className="bi bi-plus"></i></button>
+                                        </div>
+                                    </div>
+                                    <div className="text-right font-black text-gray-900">
+                                        Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <div className="mt-8 pt-8 border-t-2 border-dashed border-gray-100 space-y-4">
+                        <div className="flex justify-between items-center text-gray-400 font-bold">
+                            <span className="text-[10px] uppercase tracking-widest">Subtotal</span>
+                            <span>Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">Total Bill</span>
+                            <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
+                        </div>
+                        <button 
+                            disabled={cart.length === 0}
+                            className="w-full py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-orange-500/30 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none mt-4"
+                        >
+                            Bayar Sekarang <i className="bi bi-credit-card-2-back ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // --- Main Terminal App ---
+
+    const KasirTerminal = () => {
+        const [view, setView] = useState('ORDER_TYPE'); // ORDER_TYPE, TABLE_SELECT, MENU
+        const [orderType, setOrderType] = useState('DINE_IN');
+        const [guestCount, setGuestCount] = useState(2);
+        const [selectedTable, setSelectedTable] = useState(null);
+
+        const handleSelectOrderType = (type) => {
+            setOrderType(type);
+            if (type === 'DINE_IN') {
+                setView('TABLE_SELECT');
+            } else {
+                setSelectedTable(null);
+                setView('MENU');
+            }
+        };
+
+        const handleSelectTable = (table) => {
+            setSelectedTable(table);
+        };
+
+        const handleBack = () => {
+            if (view === 'MENU' && orderType === 'TAKE_AWAY') setView('ORDER_TYPE');
+            else if (view === 'MENU') setView('TABLE_SELECT');
+            else if (view === 'TABLE_SELECT') setView('ORDER_TYPE');
+            else if (view === 'ORDER_STATUS' || view === 'ORDER_HISTORY') setView('ORDER_TYPE');
+        };
+
+        const renderView = () => {
+            switch (view) {
+                case 'ORDER_STATUS':
+                    return <OrderStatusView role="kasir" onBack={() => setView('ORDER_TYPE')} />;
+                case 'ORDER_HISTORY':
+                    return <OrderHistoryView onBack={() => setView('ORDER_TYPE')} />;
+                case 'TABLE_SELECT':
+                    return (
+                        <TableSelectionView 
+                            tables={ @json($tables) } 
+                            guestCount={guestCount} 
+                            setGuestCount={setGuestCount}
+                            selectedTable={selectedTable}
+                            onSelect={handleSelectTable}
+                            onBack={handleBack}
+                            onContinue={() => setView('MENU')}
+                        />
+                    );
+                case 'MENU':
+                    return (
+                        <MenuView 
+                            menuItems={ @json($menuItems) }
+                            categories={ @json($categories) }
+                            orderType={orderType}
+                            selectedTable={selectedTable}
+                            guestCount={guestCount}
+                            onBack={handleBack}
+                        />
+                    );
+                case 'ORDER_TYPE':
+                default:
+                    return <OrderTypeView onSelect={handleSelectOrderType} />;
+            }
+        };
+
+        return (
+            <div className="w-full h-full flex overflow-hidden">
+                {/* Fixed Sidebar */}
+                <div className="w-24 bg-gray-900 flex flex-col border-r border-gray-800">
+                    <div className="p-6 border-b border-gray-800">
+                        <div className="w-full aspect-square rounded-2xl bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-orange-500/30">
+                            <span className="font-black text-2xl text-white">S</span>
+                        </div>
+                    </div>
+                    <div className="flex-1 py-4">
+                        <SidebarIcon icon="bi-cash-stack" label="Kasir" active={view === 'ORDER_TYPE' || view === 'TABLE_SELECT' || view === 'MENU'} onClick={() => setView('ORDER_TYPE')} />
+                        <SidebarIcon icon="bi-list-check" label="Status" active={view === 'ORDER_STATUS'} onClick={() => setView('ORDER_STATUS')} />
+                        <SidebarIcon icon="bi-clock-history" label="History" active={view === 'ORDER_HISTORY'} onClick={() => setView('ORDER_HISTORY')} />
+                    </div>
+                    <div className="py-4 border-t border-gray-800">
+                        <SidebarIcon icon="bi-gear-fill" label="Setting" />
+                    </div>
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1 h-full overflow-hidden">
+                    {renderView()}
+                </div>
             </div>
         );
     };
 
-    const PendingApprovalView = ({ orders, onSelect }) => (
-        <div className="flex-1 flex flex-col p-8 bg-terminal-bg/30 overflow-y-auto custom-scrollbar">
-            <div className="mb-8 flex justify-between items-center">
-                <h2 className="text-3xl font-black uppercase tracking-tighter">Pending Approval <span className="text-terminal-accent ml-2">({orders.length})</span></h2>
-                <div className="flex gap-2">
-                    <Button variant="secondary" icon="bi-arrow-clockwise">Refresh</Button>
+    // --- Order Status & History Components ---
+
+    const OrderStatusView = ({ role, onBack }) => {
+        const [orders, setOrders] = useState([]);
+        const [loading, setLoading] = useState(true);
+
+        const fetchOrders = useCallback(async () => {
+            try {
+                const res = await fetch(`/terminal/orders?role=${role}`);
+                const data = await res.json();
+                setOrders(data);
+            } catch (e) { console.error(e); }
+            finally { setLoading(false); }
+        }, [role]);
+
+        useEffect(() => {
+            fetchOrders();
+            const interval = setInterval(fetchOrders, 5000);
+            return () => clearInterval(interval);
+        }, [fetchOrders]);
+
+        const handleApprove = async (id) => {
+            if (!confirm('Approve pesanan ini?')) return;
+            const res = await fetch(`/terminal/orders/${id}/approve`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+            });
+            if (res.ok) fetchOrders();
+        };
+
+        const handleFinalize = async (order) => {
+            const amount = prompt(`Total: Rp ${new Intl.NumberFormat('id-ID').format(order.total)}\nMasukkan jumlah bayar:`, order.total);
+            if (!amount) return;
+
+            const res = await fetch(`/terminal/orders/${order.id}/finalize-payment`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                },
+                body: JSON.stringify({ payment_method: 'cash', amount_paid: amount })
+            });
+            if (res.ok) fetchOrders();
+        };
+
+        const getBadgeClass = (stage) => {
+            switch(stage) {
+                case 'WAITING_CASHIER': return 'bg-yellow-100 text-yellow-600';
+                case 'READY_FOR_KITCHEN': return 'bg-orange-100 text-orange-600';
+                case 'COOKING': return 'bg-blue-100 text-blue-600';
+                case 'READY': return 'bg-green-100 text-green-600';
+                case 'SERVED': return 'bg-purple-100 text-purple-600';
+                default: return 'bg-gray-100 text-gray-600';
+            }
+        };
+
+        return (
+            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
+                <div className="flex items-center gap-4 mb-8">
+                    <button onClick={onBack} className="text-gray-400 hover:text-gray-900"><i className="bi bi-arrow-left text-2xl"></i></button>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Status Pesanan</h1>
                 </div>
-            </div>
-            {orders.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center opacity-20">
-                    <i className="bi bi-clock-history text-[8rem] mb-6"></i>
-                    <h3 className="text-2xl font-black uppercase">Belum ada antrean dari Waiter</h3>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+                <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar pr-2">
+                    {orders.length === 0 && !loading && (
+                        <div className="col-span-full h-64 flex flex-col items-center justify-center opacity-20">
+                            <i className="bi bi-inbox text-6xl"></i>
+                            <p className="font-bold uppercase tracking-widest mt-4">Tidak ada pesanan aktif</p>
+                        </div>
+                    )}
                     {orders.map(order => (
-                        <div
-                            key={order.id}
-                            className="bg-white border-2 border-orange-100 rounded-[2.5rem] p-6 shadow-sm hover:shadow-xl transition-all cursor-pointer hover:border-orange-500 group relative overflow-hidden"
-                            onClick={() => onSelect(order)}
-                        >
-                            <div className="flex justify-between items-start mb-4 relative z-10">
+                        <div key={order.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex flex-col">
+                            <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <div className="text-2xl font-black group-hover:text-orange-600 transition-colors">Meja {order.table.name}</div>
-                                    <div className="text-terminal-muted text-[10px] font-mono mt-1 uppercase tracking-widest">#{order.code}</div>
+                                    <h4 className="font-black text-gray-900">Meja {order.table?.name || 'TA'}</h4>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">#{order.code}</p>
                                 </div>
-                                <div className="text-right">
-                                    <Badge color="bg-orange-500 text-white shadow-md">PENDING</Badge>
-                                    <div className="text-[10px] font-bold text-terminal-muted mt-2 uppercase tracking-widest">{new Date(order.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
-                                </div>
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getBadgeClass(order.stage)}`}>
+                                    {order.stage.replace(/_/g, ' ')}
+                                </span>
+                            </div>
+                            
+                            <div className="flex-1 space-y-2 mb-6">
+                                {order.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm">
+                                        <span className="text-gray-600 font-medium">{item.qty}x {item.menu_name}</span>
+                                    </div>
+                                ))}
                             </div>
 
-                            <div className="space-y-2 mb-6 relative z-10">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-terminal-muted font-bold uppercase tracking-wider text-[10px]">Tamu</span>
-                                    <span className="font-black text-terminal-text uppercase">{order.customer_name || 'Guest'}</span>
+                            <div className="pt-4 border-t border-gray-50 mt-auto">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-xs font-bold text-gray-400 uppercase">Total</span>
+                                    <span className="font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-terminal-muted font-bold uppercase tracking-wider text-[10px]">Kategori</span>
-                                    <span className="font-black text-orange-600 uppercase">{order.guest_category}</span>
-                                </div>
+                                {role === 'kasir' && order.stage === 'WAITING_CASHIER' && (
+                                    <button onClick={() => handleApprove(order.id)} className="w-full py-3 bg-orange-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-500/20 active:scale-95 transition-all">Approve</button>
+                                )}
+                                {role === 'kasir' && order.stage === 'SERVED' && (
+                                    <button onClick={() => handleFinalize(order)} className="w-full py-3 bg-green-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-500/20 active:scale-95 transition-all">Payment</button>
+                                )}
                             </div>
-
-                            <div className="flex justify-between items-center pt-4 border-t border-orange-50 relative z-10">
-                                <div className="text-orange-600 font-black text-xl tracking-tighter">
-                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(order.total)}
-                                </div>
-                                <Button size="sm" variant="primary" className="bg-orange-500 border-none px-6">REVIEW</Button>
-                            </div>
-
-                            {/* Decorative icon */}
-                            <i className="bi bi-receipt absolute -right-4 -bottom-4 text-6xl opacity-[0.03] group-hover:scale-110 group-hover:rotate-12 transition-transform"></i>
                         </div>
                     ))}
                 </div>
-            )}
-        </div>
-    );
-
-    const HistoryBadge = ({ children, color = 'bg-gray-100' }) => (
-        <span className={`${color} text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm`}>
-            {children}
-        </span>
-    );
-
-    const TransactionHistoryView = ({ history, onVoid, onSelect }) => (
-        <div className="flex-1 flex flex-col p-8 bg-terminal-bg/30 overflow-hidden">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h2 className="text-3xl font-black uppercase tracking-tighter text-terminal-text">Riwayat Transaksi</h2>
-                    <p className="text-terminal-muted font-bold text-sm">Data mentah untuk audit operasional hari ini.</p>
-                </div>
-                <div className="flex gap-3">
-                    <Button variant="secondary" icon="bi-file-earmark-spreadsheet">Export CSV</Button>
-                    <Button variant="secondary" icon="bi-file-pdf">Print Report</Button>
-                </div>
             </div>
+        );
+    };
 
-            <div className="bg-white border border-terminal-border rounded-[2.5rem] overflow-hidden shadow-sm flex-1 flex flex-col">
-                <div className="overflow-y-auto custom-scrollbar flex-1">
+    const OrderHistoryView = ({ onBack }) => {
+        const [history, setHistory] = useState([]);
+        const [loading, setLoading] = useState(true);
+
+        useEffect(() => {
+            fetch('/terminal/orders/history')
+                .then(res => res.json())
+                .then(data => {
+                    setHistory(data);
+                    setLoading(false);
+                });
+        }, []);
+
+        return (
+            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
+                <div className="flex items-center gap-4 mb-8">
+                    <button onClick={onBack} className="text-gray-400 hover:text-gray-900"><i className="bi bi-arrow-left text-2xl"></i></button>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">History Hari Ini</h1>
+                </div>
+
+                <div className="flex-1 overflow-y-auto bg-white rounded-[2rem] border border-gray-100 shadow-sm custom-scrollbar">
                     <table className="w-full text-left border-collapse">
-                        <thead className="sticky top-0 bg-gray-50 z-10 border-b-2 border-terminal-border">
-                            <tr>
-                                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-terminal-muted">ID Transaksi</th>
-                                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-terminal-muted">Waktu</th>
-                                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-terminal-muted">Kasir</th>
-                                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-terminal-muted">Kategori</th>
-                                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-terminal-muted text-right">Total</th>
-                                <th className="p-6 text-[10px] font-black uppercase tracking-widest text-terminal-muted text-center">Status</th>
+                        <thead>
+                            <tr className="border-b border-gray-50">
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Waktu</th>
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Kode</th>
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Meja</th>
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-terminal-border">
-                            {history.map(trx => (
-                                <tr
-                                    key={trx.id}
-                                    onClick={() => onSelect(trx)}
-                                    className="hover:bg-orange-50 cursor-pointer transition-colors group"
-                                >
+                        <tbody>
+                            {history.map(order => (
+                                <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                    <td className="p-6 text-sm font-bold text-gray-600">{new Date(order.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</td>
+                                    <td className="p-6 text-sm font-black text-gray-900">{order.code}</td>
+                                    <td className="p-6 text-sm font-bold text-gray-600">{order.table?.name || 'TA'}</td>
+                                    <td className="p-6 text-sm font-black text-orange-500">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</td>
                                     <td className="p-6">
-                                        <div className="font-black text-terminal-text group-hover:text-orange-600">#{trx.code}</div>
-                                        <div className="text-[10px] text-terminal-muted font-bold uppercase tracking-widest">Meja {trx.table?.name}</div>
-                                    </td>
-                                    <td className="p-6">
-                                        <div className="font-bold text-sm">{new Date(trx.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
-                                        <div className="text-[10px] text-terminal-muted font-bold tracking-widest uppercase">{new Date(trx.created_at).toLocaleDateString('id-ID')}</div>
-                                    </td>
-                                    <td className="p-6">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-black text-xs">
-                                                {trx.kasir?.name?.charAt(0) || 'K'}
-                                            </div>
-                                            <span className="font-bold text-sm">{trx.kasir?.name || 'Kasir'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="p-6">
-                                        <HistoryBadge color={
-                                            trx.guest_category === 'MAJAR_OWNER' ? 'bg-purple-100 text-purple-600' :
-                                            trx.guest_category === 'MAJAR_PRIORITY' ? 'bg-blue-100 text-blue-600' :
-                                            trx.guest_category === 'RESERVED' ? 'bg-orange-100 text-orange-600' :
-                                            'bg-gray-100 text-gray-600'
-                                        }>
-                                            {trx.guest_category}
-                                        </HistoryBadge>
-                                    </td>
-                                    <td className="p-6 text-right font-black text-lg text-terminal-text">
-                                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(trx.total)}
-                                    </td>
-                                    <td className="p-6 text-center">
-                                        {trx.stage === 'VOID' ? (
-                                            <HistoryBadge color="bg-red-100 text-red-600">VOID</HistoryBadge>
-                                        ) : (
-                                            <HistoryBadge color="bg-green-100 text-green-600">PAID</HistoryBadge>
-                                        )}
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${order.stage === 'DONE' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                            {order.stage}
+                                        </span>
                                     </td>
                                 </tr>
                             ))}
@@ -301,1161 +590,32 @@
                     </table>
                 </div>
             </div>
-        </div>
-    );
-
-    const AuditDetailModal = ({ trx, onClose, onVoid }) => {
-        if (!trx) return null;
-
-        return (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[150] flex items-center justify-center p-4">
-                <div className="bg-white rounded-[3rem] w-full max-w-5xl h-[85vh] overflow-hidden shadow-2xl flex animate-in zoom-in duration-300 border border-terminal-border">
-                    <div className="flex-1 flex flex-col p-10 bg-terminal-bg/30 overflow-hidden">
-                        <div className="flex justify-between items-start mb-8">
-                            <div>
-                                <h3 className="text-3xl font-black uppercase tracking-tighter">Detail Audit Transaksi</h3>
-                                <p className="text-terminal-muted font-bold text-sm tracking-widest uppercase">ID: #{trx.code} | MEJA {trx.table?.name}</p>
-                            </div>
-                            <button onClick={onClose} className="w-12 h-12 rounded-full bg-white border border-terminal-border flex items-center justify-center text-terminal-muted hover:text-terminal-danger transition-all">
-                                <i className="bi bi-x-lg text-xl"></i>
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-6">
-                            {/* Audit Trail Timeline */}
-                            <div className="bg-white p-8 rounded-3xl border border-terminal-border shadow-sm">
-                                <h4 className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-6">Audit Trail (Timeline)</h4>
-                                <div className="space-y-6 relative before:absolute before:left-[15px] before:top-2 before:bottom-2 before:w-0.5 before:bg-terminal-border">
-                                    {[
-                                        { label: 'Pesanan Dibuat', time: trx.created_at, user: trx.waiter?.name, icon: 'bi-plus-circle-fill', color: 'text-orange-500' },
-                                        { label: 'Approval & Bayar', time: trx.ordered_at || trx.paid_at, user: trx.kasir?.name, icon: 'bi-check-circle-fill', color: 'text-green-500' },
-                                        { label: 'Mulai Masak', time: trx.cooking_at, user: trx.kitchen?.name, icon: 'bi-fire', color: 'text-orange-600' },
-                                        { label: 'Selesai Masak', time: trx.kitchen_done_at, user: trx.kitchen?.name, icon: 'bi-cup-hot-fill', color: 'text-blue-500' },
-                                        { label: 'Disajikan', time: trx.served_at, user: trx.waiter?.name, icon: 'bi-person-check-fill', color: 'text-green-600' }
-                                    ].filter(step => step.time).map((step, idx) => (
-                                        <div key={idx} className="flex gap-6 items-start relative z-10">
-                                            <div className={`w-8 h-8 rounded-full bg-white border-2 border-terminal-border flex items-center justify-center ${step.color} shadow-sm`}>
-                                                <i className={`bi ${step.icon} text-xs`}></i>
-                                            </div>
-                                            <div>
-                                                <div className="font-black text-sm uppercase tracking-wider">{step.label}</div>
-                                                <div className="text-xs text-terminal-muted font-bold">
-                                                    {new Date(step.time).toLocaleTimeString('id-ID')} oleh <span className="text-terminal-text">{step.user || 'Sistem'}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Item Details */}
-                            <div className="bg-white p-8 rounded-3xl border border-terminal-border shadow-sm">
-                                <h4 className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-6">Rincian Item</h4>
-                                <table className="w-full">
-                                    <thead>
-                                        <tr className="border-b border-terminal-border">
-                                            <th className="text-left py-4 text-[10px] font-black uppercase tracking-widest text-terminal-muted">Menu</th>
-                                            <th className="text-center py-4 text-[10px] font-black uppercase tracking-widest text-terminal-muted">Qty</th>
-                                            <th className="text-right py-4 text-[10px] font-black uppercase tracking-widest text-terminal-muted">Harga</th>
-                                            <th className="text-right py-4 text-[10px] font-black uppercase tracking-widest text-terminal-muted">Subtotal</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {trx.items.map((item, idx) => (
-                                            <tr key={idx}>
-                                                <td className="py-4">
-                                                    <div className="font-black text-terminal-text">{item.menu_name}</div>
-                                                    {item.note && <div className="text-[10px] text-orange-500 font-bold italic">Note: {item.note}</div>}
-                                                </td>
-                                                <td className="py-4 text-center font-bold">{item.qty}</td>
-                                                <td className="py-4 text-right font-bold">{new Intl.NumberFormat('id-ID').format(item.price)}</td>
-                                                <td className="py-4 text-right font-black">{new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="w-[380px] bg-white border-l border-terminal-border p-10 flex flex-col justify-between">
-                        <div className="space-y-8">
-                            <div>
-                                <label className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-4 block">Informasi Pembayaran</label>
-                                <div className="bg-orange-50 rounded-3xl p-6 border border-orange-100 space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-black text-orange-800 uppercase tracking-widest">Metode</span>
-                                        <span className="font-black text-orange-600 uppercase">{trx.payment_method}</span>
-                                    </div>
-                                    {trx.voucher_code && (
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[10px] font-black text-orange-800 uppercase tracking-widest">Voucher</span>
-                                            <span className="font-black text-orange-600 uppercase">{trx.voucher_code}</span>
-                                        </div>
-                                    )}
-                                    <div className="pt-4 border-t border-orange-200 flex justify-between items-center">
-                                        <span className="text-lg font-black text-orange-900 uppercase">Total</span>
-                                        <span className="text-2xl font-black text-orange-600">
-                                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(trx.total)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {trx.stage === 'VOID' && (
-                                <div className="bg-red-50 rounded-3xl p-6 border border-red-100">
-                                    <label className="text-[10px] font-black text-red-800 uppercase tracking-widest mb-2 block">Alasan Void</label>
-                                    <p className="text-sm font-bold text-red-600 italic">"{trx.void_reason || 'Tidak ada alasan'}"</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="space-y-4">
-                            <Button variant="primary" className="w-full py-5 bg-orange-500 border-none shadow-lg shadow-orange-500/20" icon="bi-printer-fill" onClick={() => printReceipt('STRUK', trx)}>RE-PRINT STRUK</Button>
-                            {trx.stage !== 'VOID' && (
-                                <Button variant="secondary" className="w-full py-5 text-terminal-danger hover:bg-red-50" icon="bi-trash-fill" onClick={() => onVoid(trx)}>VOID TRANSAKSI</Button>
-                            )}
-                            <Button variant="dark" className="w-full py-5" onClick={onClose}>TUTUP</Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         );
-    };
-
-    const ReportsView = ({ reportData }) => (
-        <div className="flex-1 flex flex-col p-8 bg-terminal-bg/30 overflow-y-auto custom-scrollbar">
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-8 text-terminal-text">Ikhtisar Penjualan</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-                <div className="bg-white p-8 rounded-[2rem] border border-terminal-border shadow-sm group hover:border-orange-500 transition-all">
-                    <div className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-2 group-hover:text-orange-500">Total Penjualan</div>
-                    <div className="text-3xl font-black tracking-tighter text-terminal-text">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(reportData.total_sales || 0)}</div>
-                </div>
-                <div className="bg-white p-8 rounded-[2rem] border border-terminal-border shadow-sm group hover:border-orange-500 transition-all">
-                    <div className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-2 group-hover:text-orange-500">Transaksi Sukses</div>
-                    <div className="text-3xl font-black tracking-tighter text-terminal-text">{reportData.order_count || 0}</div>
-                </div>
-                <div className="bg-white p-8 rounded-[2rem] border border-terminal-border shadow-sm group hover:border-red-500 transition-all">
-                    <div className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-2 group-hover:text-red-500 text-terminal-danger">Dibatalkan (Void)</div>
-                    <div className="text-3xl font-black tracking-tighter text-terminal-danger">{reportData.void_count || 0}</div>
-                </div>
-                <div className="bg-white p-8 rounded-[2rem] border border-terminal-border shadow-sm group hover:border-orange-500 transition-all">
-                    <div className="text-[10px] font-black text-terminal-muted uppercase tracking-[0.3em] mb-2 group-hover:text-orange-500">Rata-rata Bill</div>
-                    <div className="text-3xl font-black tracking-tighter text-terminal-text">
-                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((reportData.total_sales / (reportData.order_count || 1)) || 0)}
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-10 rounded-[3rem] border border-terminal-border shadow-sm">
-                    <h3 className="text-xl font-black uppercase tracking-widest mb-8 border-b pb-4 border-terminal-border">Penjualan per Kategori</h3>
-                    <div className="space-y-6">
-                        {(reportData.category_sales || []).map(cat => (
-                            <div key={cat.category} className="space-y-2">
-                                <div className="flex justify-between items-end">
-                                    <span className="font-black uppercase text-[10px] tracking-widest text-terminal-muted">{cat.category}</span>
-                                    <span className="font-black text-terminal-text">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(cat.total)}</span>
-                                </div>
-                                <div className="h-3 bg-terminal-bg rounded-full overflow-hidden border border-terminal-border">
-                                    <div className="h-full bg-orange-500 rounded-full" style=@{{ width: `${(cat.total / (reportData.total_sales || 1)) * 100}%` }}></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div className="bg-white p-10 rounded-[3rem] border border-terminal-border shadow-sm flex flex-col items-center justify-center text-center space-y-4 opacity-50">
-                    <i className="bi bi-pie-chart-fill text-8xl text-orange-200"></i>
-                    <p className="font-bold text-terminal-muted uppercase tracking-widest text-xs">Visualisasi Grafik Segera Hadir</p>
-                </div>
-            </div>
-        </div>
-    );
-
-    const SettingsView = () => (
-        <div className="flex-1 flex flex-col p-8 bg-terminal-bg/30 overflow-y-auto custom-scrollbar">
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-8">Pengaturan Perangkat</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-3xl border border-terminal-border shadow-sm space-y-6">
-                    <h3 className="text-xl font-black uppercase tracking-widest border-b pb-4 border-terminal-border">Thermal Printer</h3>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <div className="font-black">Printer Bluetooth POS-58</div>
-                            <div className="text-xs text-terminal-accent font-bold">Terhubung</div>
-                        </div>
-                        <Button size="sm" variant="secondary">Putuskan</Button>
-                    </div>
-                    <Button variant="primary" icon="bi-lightning-charge" className="w-full">Test Print</Button>
-                </div>
-                <div className="bg-white p-8 rounded-3xl border border-terminal-border shadow-sm space-y-6">
-                    <h3 className="text-xl font-black uppercase tracking-widest border-b pb-4 border-terminal-border">Cash Drawer</h3>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <div className="font-black">USB Cash Drawer</div>
-                            <div className="text-xs text-terminal-muted font-bold">Tidak Terdeteksi</div>
-                        </div>
-                        <Button size="sm" variant="primary">Hubungkan</Button>
-                    </div>
-                    <Button variant="secondary" icon="bi-box-arrow-up" className="w-full">Buka Laci</Button>
-                </div>
-            </div>
-        </div>
-    );
-
-    const Numpad = ({ value, onChange, onConfirm, onCancel, total }) => {
-        const buttons = [1, 2, 3, 4, 5, 6, 7, 8, 9, '000', 0, 'C'];
-        const quickCash = [total, 50000, 100000, 200000];
-
-        const handleKey = (key) => {
-            if (key === 'C') onChange(0);
-            else if (key === '000') onChange(parseInt(value.toString() + '000') || 0);
-            else onChange(parseInt(value.toString() + key.toString()) || 0);
-        };
-
-        const change = value - total;
-
-        return (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[150] flex items-center justify-center p-4">
-                <div className="bg-white rounded-[3rem] w-full max-w-4xl overflow-hidden shadow-2xl flex animate-in zoom-in duration-300">
-                    <div className="flex-1 p-10 bg-terminal-bg/30">
-                        <div className="mb-8">
-                            <label className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">Uang Diterima (CASH)</label>
-                            <div className="text-7xl font-black text-orange-600 tracking-tighter">
-                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(value)}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4 mb-8">
-                            {buttons.map(btn => (
-                                <button
-                                    key={btn}
-                                    onClick={() => handleKey(btn)}
-                                    className={`h-24 rounded-[2rem] text-3xl font-black transition-all active:scale-90 ${btn === 'C' ? 'bg-red-50 text-red-600 border-2 border-red-100' : 'bg-white border-2 border-terminal-border text-terminal-text hover:border-orange-500 hover:text-orange-500 shadow-sm'}`}
-                                >
-                                    {btn}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="flex gap-4">
-                            <Button variant="secondary" className="flex-1 py-8 text-lg" onClick={onCancel}>BATAL</Button>
-                            <Button variant="primary" className="flex-1 py-8 text-lg bg-orange-500 border-none shadow-xl shadow-orange-500/30" onClick={onConfirm} disabled={value < total}>KONFIRMASI BAYAR</Button>
-                        </div>
-                    </div>
-
-                    <div className="w-[350px] bg-white border-l border-terminal-border p-10 flex flex-col justify-between">
-                        <div>
-                            <div className="mb-10">
-                                <label className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">Total Tagihan</label>
-                                <div className="text-3xl font-black text-terminal-muted">
-                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(total)}
-                                </div>
-                            </div>
-
-                            <div className="mb-10">
-                                <label className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">Kembalian</label>
-                                <div className={`text-7xl font-black leading-none tracking-tighter ${change >= 0 ? 'text-green-500' : 'text-terminal-danger'}`}>
-                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Math.max(0, change))}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-black text-terminal-muted uppercase tracking-widest block">Uang Pas / Cepat</label>
-                            {quickCash.map(amount => (
-                                <button
-                                    key={amount}
-                                    onClick={() => onChange(amount)}
-                                    className="w-full py-4 border-2 border-terminal-border rounded-2xl font-black text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent transition-all active:scale-95"
-                                >
-                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount)}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    const SplitBillModal = ({ order, onConfirm, onCancel }) => {
-        const [selectedItems, setSelectedItems] = useState([]);
-
-        const toggleItem = (idx, maxQty) => {
-            const existing = selectedItems.find(i => i.idx === idx);
-            if (existing) {
-                if (existing.qty < maxQty) {
-                    setSelectedItems(selectedItems.map(i => i.idx === idx ? {...i, qty: i.qty + 1} : i));
-                } else {
-                    setSelectedItems(selectedItems.filter(i => i.idx !== idx));
-                }
-            } else {
-                setSelectedItems([...selectedItems, { idx, qty: 1, item: order.items[idx] }]);
-            }
-        };
-
-        const splitTotal = selectedItems.reduce((sum, i) => sum + (i.item.price * i.qty), 0);
-
-        return (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[150] flex items-center justify-center p-4">
-                <div className="bg-white rounded-[3rem] w-full max-w-4xl h-[80vh] overflow-hidden shadow-2xl flex animate-in zoom-in duration-300">
-                    <div className="flex-1 flex flex-col p-10 bg-terminal-bg/30">
-                        <h3 className="text-3xl font-black uppercase tracking-tighter mb-2">Split Bill</h3>
-                        <p className="text-terminal-muted font-bold mb-8 text-sm">Pilih item yang akan dipindah ke Bill Baru.</p>
-
-                        <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-4">
-                            {order.items.map((item, idx) => {
-                                const selected = selectedItems.find(i => i.idx === idx);
-                                return (
-                                    <div
-                                        key={idx}
-                                        onClick={() => toggleItem(idx, item.qty)}
-                                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${selected ? 'border-terminal-accent bg-terminal-accent/5' : 'border-white bg-white hover:border-terminal-border'}`}
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black ${selected ? 'bg-terminal-accent text-white' : 'bg-terminal-bg text-terminal-muted'}`}>
-                                                {selected ? selected.qty : item.qty}
-                                            </div>
-                                            <div>
-                                                <div className="font-black text-terminal-text">{item.menu_name}</div>
-                                                <div className="text-xs text-terminal-muted font-bold">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price)}</div>
-                                            </div>
-                                        </div>
-                                        {selected && <i className="bi bi-check-circle-fill text-terminal-accent text-2xl"></i>}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="w-[350px] bg-white border-l border-terminal-border p-10 flex flex-col justify-between">
-                        <div>
-                            <div className="mb-10">
-                                <label className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">Total Bill Baru</label>
-                                <div className="text-5xl font-black text-terminal-accent tracking-tighter">
-                                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(splitTotal)}
-                                </div>
-                                <div className="text-xs font-bold text-terminal-muted mt-2">({selectedItems.length} item terpilih)</div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <Button variant="secondary" className="w-full py-5" onClick={onCancel}>BATAL</Button>
-                            <Button variant="primary" className="w-full py-5" disabled={selectedItems.length === 0} onClick={() => onConfirm(selectedItems)}>PINDAH KE BILL BARU</Button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // --- Main Application ---
-    const KasirTerminal = () => {
-        const [activeTab, setActiveTab] = useState('ORDERING');
-        const [activeOrder, setActiveOrder] = useState(null);
-        const [paymentMethod, setPaymentMethod] = useState('cash');
-        const [amountPaid, setAmountPaid] = useState(0);
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [isEditing, setIsEditing] = useState(false);
-        const [couponCode, setCouponCode] = useState('');
-        const [appliedCoupon, setAppliedCoupon] = useState(null);
-        const [discountPercent, setDiscountPercent] = useState(0);
-
-        // Voucher States
-        const [voucherCode, setVoucherCode] = useState('');
-        const [appliedVoucher, setAppliedVoucher] = useState(null);
-        const [voucherDiscount, setVoucherDiscount] = useState(0);
-
-        const [orders, setOrders] = useState([]);
-        const [history, setHistory] = useState([]);
-        const [reportData, setReportData] = useState({});
-        const [menuItems] = useState(@json($menuItems));
-        const [categories] = useState(['All', ...@json($categories)]);
-        const [tables] = useState(@json($tables));
-
-        // UI States
-        const [showVoidModal, setShowVoidModal] = useState(false);
-        const [showNumpad, setShowNumpad] = useState(false);
-        const [showSplitModal, setShowSplitModal] = useState(false);
-        const [voidTarget, setVoidTarget] = useState(null);
-        const [voidReason, setVoidReason] = useState('');
-        const [voidPin, setVoidPin] = useState('');
-        const [voidType, setVoidType] = useState('ORDER'); // 'ORDER' or 'ITEM'
-        const [voidItemIdx, setVoidItemIdx] = useState(null);
-
-        const fetchOrders = useCallback(async () => {
-            try {
-                const response = await fetch('/terminal/orders?role=kasir', {
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) throw new Error('Failed to fetch orders');
-                const data = await response.json();
-                setOrders(data.filter(o => o.status === 'pending' || o.stage === 'WAITING_CASHIER'));
-            } catch (e) { console.error('Failed to fetch orders', e); }
-        }, []);
-
-        const fetchHistory = useCallback(async () => {
-            try {
-                const response = await fetch('/terminal/orders/history', {
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) throw new Error('Failed to fetch history');
-                const data = await response.json();
-                setHistory(data);
-            } catch (e) { console.error('Failed to fetch history', e); }
-        }, []);
-
-        const fetchReports = useCallback(async () => {
-            try {
-                const response = await fetch('/terminal/reports/summary', {
-                    headers: { 'Accept': 'application/json' }
-                });
-                if (!response.ok) throw new Error('Failed to fetch reports');
-                const data = await response.json();
-                setReportData(data);
-            } catch (e) { console.error('Failed to fetch reports', e); }
-        }, []);
-
-        useEffect(() => {
-            fetchOrders();
-            const interval = setInterval(fetchOrders, 10000);
-            return () => clearInterval(interval);
-        }, [fetchOrders]);
-
-        useEffect(() => {
-            if (activeTab === 'HISTORY') fetchHistory();
-            if (activeTab === 'REPORTS') fetchReports();
-        }, [activeTab]);
-
-        const handleSelectOrder = (order) => {
-            const orderCopy = JSON.parse(JSON.stringify(order));
-            // Ensure all items have a type (DINE_IN/TAKE_AWAY)
-            orderCopy.items = orderCopy.items.map(i => ({ ...i, type: i.type || orderCopy.order_type || 'DINE_IN' }));
-            setActiveOrder(orderCopy);
-            setAmountPaid(orderCopy.total * 1.16); // Total with tax/service
-            setPaymentMethod('cash');
-            setIsEditing(false);
-            setCouponCode('');
-            setAppliedCoupon(null);
-            setDiscountPercent(0);
-            setVoucherCode('');
-            setAppliedVoucher(null);
-            setVoucherDiscount(0);
-        };
-
-        const handleAddItem = (menu) => {
-            if (!activeOrder) {
-                const newOrder = {
-                    id: null,
-                    table_id: tables[0]?.id || 1,
-                    table: tables[0] || { name: 'Direct' },
-                    code: 'POS-' + Date.now().toString().slice(-6),
-                    items: [],
-                    total: 0,
-                    guest_category: 'REGULER',
-                    order_type: 'TAKE_AWAY'
-                };
-                setActiveOrder(newOrder);
-                updateItems(newOrder, menu);
-            } else {
-                updateItems(activeOrder, menu);
-            }
-        };
-
-        const updateItems = (order, menu) => {
-            const newItems = [...order.items];
-            const existing = newItems.find(i => i.menu_item_id === menu.id);
-            if (existing) {
-                existing.qty++;
-            } else {
-                newItems.push({
-                    menu_item_id: menu.id,
-                    menu_name: menu.name,
-                    price: menu.price,
-                    qty: 1,
-                    note: '',
-                    type: order.order_type || 'DINE_IN'
-                });
-            }
-            recalculate(order, newItems);
-        };
-
-        const recalculate = (order, items) => {
-            const subtotal = items.reduce((sum, i) => sum + (i.price * i.qty), 0);
-            const totalWithTax = subtotal * 1.16; // 5% service + 11% tax
-            setActiveOrder({ ...order, items, total: subtotal });
-            setAmountPaid(totalWithTax * (1 - discountPercent/100));
-        };
-
-        const handleUpdateQty = (index, delta) => {
-            const newItems = [...activeOrder.items];
-            newItems[index].qty += delta;
-            if (newItems[index].qty <= 0) {
-                handleVoidItemRequest(index);
-                return;
-            }
-            recalculate(activeOrder, newItems);
-        };
-
-        const handleUpdateItemNote = (index, note) => {
-            const newItems = [...activeOrder.items];
-            newItems[index].note = note;
-            setActiveOrder({ ...activeOrder, items: newItems });
-        };
-
-        const handleCheckCoupon = async () => {
-            if (!couponCode) return;
-            try {
-                const response = await fetch('/terminal/coupons/check', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({ code: couponCode })
-                });
-                const data = await response.json();
-                if (!response.ok) {
-                    alert(data.error || data.message || 'Gagal mengecek kupon');
-                } else {
-                    setAppliedCoupon(data.code);
-                    setDiscountPercent(data.discount_percent);
-                    const subtotal = activeOrder.total;
-                    const totalWithTax = subtotal * 1.16;
-                    setAmountPaid(totalWithTax * (1 - data.discount_percent/100));
-                }
-            } catch (e) { alert('Error: ' + e.message); }
-        };
-
-    const handleCheckVoucher = async () => {
-        if (!voucherCode) return;
-        try {
-            const cartCategories = activeOrder.items.map(item => {
-                const menuItem = menuItems.find(m => m.id === item.menu_item_id);
-                return menuItem ? menuItem.category : null;
-            }).filter(Boolean);
-
-            const response = await fetch('/terminal/vouchers/check', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({ code: voucherCode, cart_categories: cartCategories })
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                alert(data.error || data.message || 'Gagal mengecek voucher');
-            } else {
-                setAppliedVoucher(data.code);
-                let discountAmount = 0;
-                const subtotal = activeOrder.total;
-                const totalWithTax = subtotal * 1.16;
-
-                if (data.type === 'percentage') {
-                    discountAmount = totalWithTax * (data.value / 100);
-                } else {
-                    discountAmount = data.value;
-                }
-
-                setVoucherDiscount(discountAmount);
-                setAmountPaid(totalWithTax * (1 - discountPercent/100) - discountAmount);
-            }
-        } catch (e) { alert('Error: ' + e.message); }
-    };
-
-    const printReceipt = (type = 'STRUK', orderData = null) => {
-        const data = orderData || activeOrder;
-        if (!data) return;
-
-        const subtotal = data.items.reduce((sum, i) => sum + (i.price * i.qty), 0);
-        const discount = data.discount || 0;
-        const tax = (subtotal - discount) * 0.11;
-        const service = subtotal * 0.05;
-        const grandTotal = subtotal - discount + tax + service;
-
-        const printWindow = window.open('', '_blank', 'width=400,height=600');
-        printWindow.document.write(`
-            <html>
-            <head>
-                <style>
-                    @page { margin: 0; }
-                    body { font-family: 'Courier New', Courier, monospace; font-size: 12px; padding: 20px; width: 300px; line-height: 1.2; }
-                    .center { text-align: center; }
-                    .bold { font-weight: bold; }
-                    .header { margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-                    .title { font-size: 18px; margin-bottom: 5px; }
-                    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-                    .item-name { padding-top: 5px; }
-                    .item-detail { font-size: 10px; color: #666; padding-bottom: 5px; border-bottom: 1px dotted #eee; }
-                    .totals { border-top: 1px dashed #000; padding-top: 10px; }
-                    .footer { margin-top: 30px; border-top: 1px dashed #000; padding-top: 10px; font-size: 10px; }
-                    .grand-total { font-size: 16px; border-top: 1px double #000; padding-top: 5px; margin-top: 5px; }
-                </style>
-            </head>
-            <body>
-                <div class="header center">
-                    <div class="title bold">MAJAR SIGNATURE</div>
-                    <div>Jl. Raya Majar No. 88, Jakarta</div>
-                    <div>Telp: (021) 555-1234</div>
-                    <div style="margin-top: 10px;">
-                        ID: #${data.code}<br>
-                        Kasir: ${data.kasir?.name || 'Sistem'}<br>
-                        Meja: ${data.table?.name || '-'}<br>
-                        Waktu: ${new Date().toLocaleString('id-ID')}
-                    </div>
-                </div>
-
-                <table>
-                    <thead>
-                        <tr class="bold">
-                            <th align="left">ITEM</th>
-                            <th align="center">QTY</th>
-                            <th align="right">SUB</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.items.map(item => `
-                            <tr>
-                                <td class="item-name bold">${item.menu_name}</td>
-                                <td align="center">${item.qty}</td>
-                                <td align="right">${new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</td>
-                            </tr>
-                            ${item.note ? `<tr><td colspan="3" class="item-detail italic">Note: ${item.note}</td></tr>` : ''}
-                        `).join('')}
-                    </tbody>
-                </table>
-
-                <div class="totals">
-                    <div style="display:flex; justify-content: space-between;"><span>Subtotal</span><span>${new Intl.NumberFormat('id-ID').format(subtotal)}</span></div>
-                    ${discount > 0 ? `<div style="display:flex; justify-content: space-between; color: red;"><span>Discount</span><span>-${new Intl.NumberFormat('id-ID').format(discount)}</span></div>` : ''}
-                    <div style="display:flex; justify-content: space-between;"><span>Service (5%)</span><span>${new Intl.NumberFormat('id-ID').format(service)}</span></div>
-                    <div style="display:flex; justify-content: space-between;"><span>Tax (11%)</span><span>${new Intl.NumberFormat('id-ID').format(tax)}</span></div>
-                    <div class="grand-total bold" style="display:flex; justify-content: space-between;">
-                        <span>GRAND TOTAL</span>
-                        <span>${new Intl.NumberFormat('id-ID').format(grandTotal)}</span>
-                    </div>
-                </div>
-
-                <div style="margin-top: 15px; font-size: 10px;">
-                    <div style="display:flex; justify-content: space-between;"><span>Bayar: ${data.payment_method?.toUpperCase() || 'CASH'}</span><span>${new Intl.NumberFormat('id-ID').format(data.amount_paid || grandTotal)}</span></div>
-                    ${data.amount_paid > grandTotal ? `<div style="display:flex; justify-content: space-between;"><span>Kembalian</span><span>${new Intl.NumberFormat('id-ID').format(data.amount_paid - grandTotal)}</span></div>` : ''}
-                </div>
-
-                <div class="footer center">
-                    <p class="bold text-orange-500">Terima kasih telah berkunjung ke Majar Signature!</p>
-                    <p>Follow us @majarsignature</p>
-                </div>
-                <script>
-                    window.onload = function() { window.print(); window.close(); }
-                <\/script>
-    </body>
-
-    </html>
-    `);
-    printWindow.document.close();
-    };
-
-    const handleProcessPayment = async () => {
-    if (paymentMethod === 'cash' && !showNumpad) {
-    setShowNumpad(true);
-    return;
-    }
-
-    setIsProcessing(true);
-    try {
-    const response = await fetch(`/terminal/orders/${activeOrder.id || 'new'}/approve-and-pay`, {
-    method: 'POST',
-    headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-    },
-    body: JSON.stringify({
-    table_id: activeOrder.table_id,
-    customer_name: activeOrder.customer_name,
-    payment_method: paymentMethod,
-    amount_paid: amountPaid,
-    coupon_code: appliedCoupon,
-    voucher_code: appliedVoucher,
-    discount_percent: discountPercent,
-    guest_category: activeOrder.guest_category,
-    order_type: activeOrder.order_type,
-    items: activeOrder.items.map(i => ({ menu_item_id: i.menu_item_id, qty: i.qty, note: i.note, type: i.type }))
-    })
-    });
-
-    const data = await response.json();
-    if (response.ok) {
-    printReceipt('STRUK', data.order);
-    printReceipt('KITCHEN', data.order);
-    setActiveOrder(null);
-    setShowNumpad(false);
-    fetchOrders();
-    } else {
-    throw new Error(data.error || data.message || 'Gagal memproses transaksi');
-    }
-    } catch (e) { alert('Error: ' + e.message); }
-    finally { setIsProcessing(false); }
-    };
-
-    const handleVoidRequest = (trx) => {
-    setVoidTarget(trx);
-    setVoidType('ORDER');
-    setShowVoidModal(true);
-    setVoidReason('');
-    setVoidPin('');
-    };
-
-    const handleVoidItemRequest = (idx) => {
-    // Only require PIN if the order is already saved in DB (has ID)
-    if (!activeOrder.id) {
-    const newItems = [...activeOrder.items];
-    newItems.splice(idx, 1);
-    recalculate(activeOrder, newItems);
-    return;
-    }
-    setVoidItemIdx(idx);
-    setVoidType('ITEM');
-    setShowVoidModal(true);
-    setVoidReason('');
-    setVoidPin('');
-    };
-
-    const confirmVoid = async () => {
-    if (!voidReason || !voidPin) return;
-    if (voidPin !== '1234') { alert('PIN Manager Salah!'); return; }
-
-    if (voidType === 'ITEM') {
-    const newItems = [...activeOrder.items];
-    newItems.splice(voidItemIdx, 1);
-    recalculate(activeOrder, newItems);
-    setShowVoidModal(false);
-    return;
-    }
-
-    setIsProcessing(true);
-    try {
-    const response = await fetch(`/terminal/orders/${voidTarget.id}/void`, {
-    method: 'POST',
-    headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-    },
-    body: JSON.stringify({ reason: voidReason, pin: voidPin })
-    });
-    const result = await response.json();
-    if (response.ok) {
-    alert('Transaksi berhasil di-void!');
-    setShowVoidModal(false);
-    fetchHistory();
-    } else {
-    throw new Error(result.error || result.message || 'Gagal melakukan void');
-    }
-    } catch (e) { alert('Error: ' + e.message); }
-    finally { setIsProcessing(false); }
-    };
-
-    const handleSplitConfirm = async (selectedItems) => {
-    if (!activeOrder.id) { alert('Hanya pesanan tersimpan yang bisa di-split'); return; }
-    setIsProcessing(true);
-    try {
-    const response = await fetch(`/terminal/orders/${activeOrder.id}/split`, {
-    method: 'POST',
-    headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-    },
-    body: JSON.stringify({
-    items: selectedItems.map(i => ({ order_item_id: i.item.id, qty: i.qty }))
-    })
-    });
-    const data = await response.json();
-    if (response.ok) {
-    alert('Bill berhasil dipisah!');
-    setShowSplitModal(false);
-    setActiveOrder(null);
-    fetchOrders();
-    } else {
-    throw new Error(data.error || data.message || 'Gagal melakukan split bill');
-    }
-    } catch (e) { alert('Error: ' + e.message); }
-    finally { setIsProcessing(false); }
-    };
-
-    const handleMergeTable = async () => {
-    if (!activeOrder.id) { alert('Hanya pesanan tersimpan yang bisa digabung'); return; }
-    const tableId = prompt("Masukkan ID Meja yang akan digabung ke sini:");
-    if (!tableId) return;
-
-    try {
-    const response = await fetch(`/terminal/orders/${activeOrder.id}/merge`, {
-    method: 'POST',
-    headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-    },
-    body: JSON.stringify({ source_table_id: tableId })
-    });
-    const result = await response.json();
-    if (response.ok) {
-    alert('Meja berhasil digabung!');
-    handleSelectOrder(result.order);
-    fetchOrders();
-    } else {
-    alert(result.error || result.message || 'Gagal menggabungkan meja');
-    }
-    } catch (e) { alert('Error: ' + e.message); }
-    };
-
-    const GUEST_COLORS = {
-    'REGULER': 'bg-terminal-accent',
-    'RESERVED': 'bg-terminal-warning',
-    'MAJAR_PRIORITY': 'bg-blue-500',
-    'MAJAR_OWNER': 'bg-purple-500'
-    };
-
-    return (
-    <div className="flex w-full h-full bg-white overflow-hidden font-sans">
-        {/* Sidebar Navigation */}
-        <div className="w-32 bg-white border-r border-terminal-border flex flex-col flex-shrink-0 z-30 shadow-2xl">
-            <div className="p-4 border-b border-terminal-border bg-terminal-accent/5">
-                <img className="w-full h-auto grayscale opacity-50" src="/favicon.ico" alt="Majar" />
-            </div>
-            <SidebarItem id="ORDERING" label="Ordering" icon="bi-grid-fill" active={activeTab === 'ORDERING'}
-                onClick={setActiveTab} />
-            <SidebarItem id="PENDING" label="Pending" icon="bi-hourglass-split" active={activeTab === 'PENDING'}
-                onClick={setActiveTab} />
-            <SidebarItem id="HISTORY" label="History" icon="bi-receipt-cutoff" active={activeTab === 'HISTORY'}
-                onClick={setActiveTab} />
-            <SidebarItem id="REPORTS" label="Reports" icon="bi-graph-up-arrow" active={activeTab === 'REPORTS'}
-                onClick={setActiveTab} />
-            <div className="mt-auto">
-                <SidebarItem id="SETTINGS" label="Settings" icon="bi-gear-fill" active={activeTab === 'SETTINGS'}
-                    onClick={setActiveTab} />
-            </div>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col relative overflow-hidden">
-            {activeTab === 'ORDERING' &&
-            <OrderingView menuItems={menuItems} categories={categories} tables={tables} onAddItem={handleAddItem} />}
-            {activeTab === 'PENDING' &&
-            <PendingApprovalView orders={orders} onSelect={handleSelectOrder} />}
-            {activeTab === 'HISTORY' &&
-            <TransactionHistoryView history={history} onVoid={handleVoidRequest} onSelect={setActiveOrder} />}
-            {activeTab === 'REPORTS' &&
-            <ReportsView reportData={reportData} />}
-            {activeTab === 'SETTINGS' &&
-            <SettingsView />}
-
-            {/* Audit Detail Modal */}
-            {activeTab === 'HISTORY' && activeOrder && !isEditing && (
-            <AuditDetailModal trx={activeOrder} onClose={()=> setActiveOrder(null)}
-                onVoid={handleVoidRequest}
-                />
-                )}
-        </div>
-
-        {/* Right: Active Order / Cart (Persistent for Ordering/Pending) */}
-        {(activeTab === 'ORDERING' || (activeTab === 'PENDING' && activeOrder)) && (
-        <div className="w-[400px] flex flex-col bg-white border-l border-terminal-border shadow-2xl z-20">
-            {!activeOrder ? (
-            <div
-                className="flex-1 flex flex-col items-center justify-center opacity-10 text-terminal-muted p-8 text-center">
-                <i className="bi bi-cart-x text-[6rem] mb-4"></i>
-                <h3 className="text-xl font-black uppercase">Belum ada pesanan aktif</h3>
-                <p className="text-xs font-bold mt-2">Pilih menu atau antrean untuk memulai</p>
-            </div>
-            ) : (
-            <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="p-6 bg-terminal-bg/50 border-b border-terminal-border">
-                    <div className="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 className="text-2xl font-black">Meja {activeOrder.table?.name}</h3>
-                            <div className="text-[10px] font-mono text-terminal-muted">#{activeOrder.code}</div>
-                        </div>
-                        <button onClick={()=> setActiveOrder(null)}
-                            className="text-terminal-muted hover:text-terminal-danger"><i
-                                className="bi bi-x-circle text-2xl"></i></button>
-                    </div>
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
-                            <i className="bi bi-person-fill absolute left-3 top-1/2 -translate-y-1/2 text-orange-400"></i>
-                            <input
-                                className="w-full bg-white border border-orange-100 rounded-xl pl-10 pr-4 py-2 text-xs font-black uppercase focus:outline-none shadow-sm"
-                                type="text"
-                                placeholder="NAMA TAMU"
-                                value={activeOrder.customer_name || ''}
-                                onChange={e=> setActiveOrder({...activeOrder, customer_name: e.target.value})}
-                            />
-                        </div>
-                        <div className="flex gap-1">
-                            <button
-                                className="w-10 h-10 rounded-xl border border-terminal-border flex items-center justify-center text-terminal-muted hover:text-orange-500 hover:border-orange-500 bg-white shadow-sm transition-all"
-                                title="Gabung Meja" onClick={handleMergeTable}>
-                                <i className="bi bi-diagram-2"></i>
-                            </button>
-                            <button onClick={()=> setShowSplitModal(true)}
-                                className="w-10 h-10 rounded-xl border border-terminal-border flex items-center justify-center text-terminal-muted hover:text-red-500 hover:border-red-500 bg-white shadow-sm transition-all"
-                                title="Split Bill"
-                                >
-                                <i className="bi bi-scissors"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div className="mt-2">
-                        <select
-                            className="w-full bg-white border border-terminal-border rounded-xl px-3 py-2 text-xs font-black uppercase focus:outline-none shadow-sm text-orange-600 border-orange-100"
-                            value={activeOrder.guest_category} onChange={e=> setActiveOrder({...activeOrder, guest_category:
-                            e.target.value})}
-                            >
-                            <option value="REGULER">Reguler</option>
-                            <option value="RESERVED">Reserved</option>
-                            <option value="MAJAR_PRIORITY">Priority</option>
-                            <option value="MAJAR_OWNER">Owner</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                    {activeOrder.items.map((item, idx) => (
-                    <div className="bg-white border border-terminal-border rounded-2xl p-4 shadow-sm space-y-3 relative overflow-hidden group"
-                        key={idx}>
-                        {/* Item Type Badge */}
-                        <div className="absolute top-0 right-0">
-                            <button onClick={()=> {
-                                const newItems = [...activeOrder.items];
-                                newItems[idx].type = item.type === 'TAKE_AWAY' ? 'DINE_IN' : 'TAKE_AWAY';
-                                setActiveOrder({...activeOrder, items: newItems});
-                                }}
-                                className={`text-[8px] font-black px-2 py-1 rounded-bl-xl transition-colors ${item.type
-                                === 'TAKE_AWAY' ? 'bg-terminal-danger text-white' : 'bg-terminal-accent text-white'}`}
-                                >
-                                {item.type === 'TAKE_AWAY' ? 'TAKE AWAY' : 'DINE IN'}
-                            </button>
-                        </div>
-
-                        <div className="flex justify-between items-start">
-                            <div className="font-black text-sm leading-tight flex-1 pr-8 text-terminal-text">
-                                {item.menu_name}</div>
-                            <div className="font-black text-terminal-accent text-lg">
-                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits:
-                                0 }).format(item.price * item.qty)}
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-4">
-                            <div
-                                className="flex items-center gap-2 bg-terminal-bg p-1 rounded-lg border border-terminal-border">
-                                <button onClick={()=> handleUpdateQty(idx, -1)}
-                                    className="w-8 h-8 rounded flex items-center justify-center hover:bg-black/5 text-terminal-text">-</button>
-                                <span className="font-black min-w-[20px] text-center text-terminal-text">{item.qty}</span>
-                                <button onClick={()=> handleUpdateQty(idx, 1)}
-                                    className="w-8 h-8 rounded flex items-center justify-center hover:bg-black/5 text-terminal-text">+</button>
-                            </div>
-
-                            <div className="flex-1 flex items-center gap-2">
-                                <div className="relative flex-1">
-                                    <i
-                                        className="bi bi-pencil-fill absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-terminal-muted"></i>
-                                    <input
-                                        className="w-full bg-terminal-bg border border-terminal-border rounded-lg pl-6 pr-2 py-1.5 text-[10px] focus:outline-none focus:border-terminal-accent text-terminal-text"
-                                        type="text"
-                                        value={item.note || ''}
-                                        placeholder="Tambah catatan..."
-                                        onChange={e=> handleUpdateItemNote(idx, e.target.value)}
-                                    />
-                                </div>
-                                <button onClick={()=> handleVoidItemRequest(idx)}
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-terminal-danger hover:bg-terminal-danger/10 transition-colors"
-                                    >
-                                    <i className="bi bi-trash-fill"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    ))}
-                </div>
-
-                <div className="p-6 border-t-2 border-terminal-border bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                    <div className="space-y-3 mb-6">
-                        <div className="flex gap-2 mb-4">
-                            <div className="relative flex-1">
-                                <i
-                                    className="bi bi-tag-fill absolute left-3 top-1/2 -translate-y-1/2 text-terminal-muted text-sm"></i>
-                                <input
-                                    className="w-full bg-terminal-bg border border-terminal-border rounded-xl pl-10 pr-4 py-2 text-xs font-bold uppercase focus:outline-none focus:border-orange-500"
-                                    type="text" value={couponCode} placeholder="KODE KUPON" onChange={e=>
-                                setCouponCode(e.target.value.toUpperCase())}
-                                />
-                            </div>
-                            <Button size="sm" variant="dark" onClick={handleCheckCoupon}>CEK</Button>
-                        </div>
-
-                        <div className="flex gap-2 mb-6">
-                            <div className="relative flex-1">
-                                <i
-                                    className="bi bi-ticket-perforated absolute left-3 top-1/2 -translate-y-1/2 text-terminal-muted text-sm"></i>
-                                <input
-                                    className="w-full bg-terminal-bg border border-terminal-border rounded-xl pl-10 pr-4 py-2 text-xs font-bold uppercase focus:outline-none focus:border-orange-500"
-                                    type="text" value={voucherCode} placeholder="INPUT VOUCHER CODE" onChange={e=>
-                                setVoucherCode(e.target.value.toUpperCase())}
-                                />
-                            </div>
-                            <Button className="bg-orange-500 border-none" size="sm" variant="primary"
-                                onClick={handleCheckVoucher}>APPLY</Button>
-                        </div>
-
-                        <div
-                            className="flex justify-between text-terminal-muted font-bold text-xs uppercase tracking-widest">
-                            <span>Subtotal</span><span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR',
-                                minimumFractionDigits: 0 }).format(activeOrder.total)}</span>
-                        </div>
-                        <div
-                            className="flex justify-between text-terminal-muted font-bold text-xs uppercase tracking-widest">
-                            <span>Service Charge (5%)</span><span>{new Intl.NumberFormat('id-ID', { style: 'currency',
-                                currency: 'IDR', minimumFractionDigits: 0 }).format(activeOrder.total * 0.05)}</span>
-                        </div>
-                        <div
-                            className="flex justify-between text-terminal-muted font-bold text-xs uppercase tracking-widest">
-                            <span>Tax (11%)</span><span>{new Intl.NumberFormat('id-ID', { style: 'currency', currency:
-                                'IDR', minimumFractionDigits: 0 }).format((activeOrder.total * 1.05) * 0.11)}</span>
-                        </div>
-                        {discountPercent > 0 && <div
-                            className="flex justify-between text-red-500 font-black text-xs uppercase tracking-widest">
-                            <span>Diskon ({discountPercent}%)</span><span>-{new Intl.NumberFormat('id-ID', { style:
-                                'currency', currency: 'IDR', minimumFractionDigits: 0 }).format((activeOrder.total * 1.16) *
-                                (discountPercent/100))}</span>
-                        </div>}
-                        {voucherDiscount > 0 && (
-                        <div className="flex justify-between text-red-500 font-black text-xs uppercase tracking-widest">
-                            <span>Voucher ({appliedVoucher})</span>
-                            <span>-{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR',
-                                minimumFractionDigits: 0 }).format(voucherDiscount)}</span>
-                        </div>
-                        )}
-                        <div className="flex justify-between items-center pt-2 border-t border-terminal-border">
-                            <span className="text-xl font-black text-terminal-text uppercase tracking-tighter">Total
-                                Akhir</span>
-                            <span className="text-4xl font-black text-orange-600 tracking-tighter">
-                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits:
-                                0 }).format((activeOrder.total * 1.16) * (1 - discountPercent/100) - voucherDiscount)}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 mb-4">
-                        {['cash', 'qris', 'card'].map(m => (
-                        <button key={m} onClick={()=> setPaymentMethod(m)}
-                            className={`py-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1
-                            transition-all ${paymentMethod === m ? 'border-orange-500 bg-orange-500 text-white shadow-lg
-                            shadow-orange-500/20' : 'border-terminal-border bg-white text-terminal-muted
-                            hover:border-orange-200'}`}
-                            >
-                            <i className={`bi bi-${m === 'cash' ? 'cash-stack' : m === 'qris' ? 'qr-code-scan'
-                                : 'credit-card' } text-lg`}></i>
-                            <span className="text-[8px] font-black uppercase tracking-widest">{m}</span>
-                        </button>
-                        ))}
-                    </div>
-                    <Button
-                        className="w-full py-5 text-xl uppercase tracking-widest shadow-2xl bg-orange-500 border-none hover:bg-orange-600 transition-all active:scale-95"
-                        variant="primary" disabled={isProcessing || activeOrder.items.length===0}
-                        onClick={handleProcessPayment}>
-                        {isProcessing ? 'PROSES...' : activeTab === 'PENDING' ? 'APPROVE & KIRIM KE DAPUR' : 'BAYAR
-                        SEKARANG'}
-                    </Button>
-                </div>
-            </div>
-            )}
-        </div>
-        )}
-
-        {/* --- Modals --- */}
-        {showNumpad && <Numpad value={amountPaid} onChange={setAmountPaid} onConfirm={handleProcessPayment} onCancel={()=>
-            setShowNumpad(false)} total={(activeOrder.total * 1.16) * (1 - discountPercent/100)} />}
-            {showSplitModal && <SplitBillModal order={activeOrder} onConfirm={handleSplitConfirm} onCancel={()=>
-                setShowSplitModal(false)} />}
-
-                {/* --- Void Modal --- */}
-                {showVoidModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-                    <div
-                        className="bg-white border border-terminal-border rounded-[3rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-                        <div className="p-10 text-center space-y-6">
-                            <div
-                                className="w-20 h-20 bg-terminal-danger/10 rounded-full flex items-center justify-center mx-auto text-terminal-danger">
-                                <i className="bi bi-exclamation-triangle-fill text-4xl"></i>
-                            </div>
-                            <h3 className="text-3xl font-black uppercase tracking-tighter">Otorisasi Void</h3>
-                            <p className="text-terminal-muted font-bold">Membatalkan pesanan <span
-                                    className="text-terminal-text">#{voidTarget?.code}</span> memerlukan otorisasi manager.
-                            </p>
-
-                            <div className="space-y-4 text-left">
-                                <div>
-                                    <label
-                                        className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">Alasan
-                                        Void</label>
-                                    <textarea
-                                        className="w-full bg-terminal-bg border border-terminal-border rounded-2xl p-4 focus:outline-none focus:border-terminal-danger"
-                                        value={voidReason} rows="3" placeholder="Contoh: Kesalahan input item..." onChange={e=> setVoidReason(e.target.value)}
-                                                                                                                ></textarea>
-                                </div>
-                                <div>
-                                    <label
-                                        className="text-[10px] font-black text-terminal-muted uppercase tracking-widest mb-2 block">PIN
-                                        Manager</label>
-                                    <input
-                                        className="w-full bg-terminal-bg border border-terminal-border rounded-2xl px-4 py-4 text-center text-3xl font-black tracking-[1em] focus:outline-none focus:border-terminal-danger"
-                                        type="password" value={voidPin} maxLength="4" placeholder="****" onChange={e=>
-                                    setVoidPin(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-8 bg-gray-50 border-t border-terminal-border flex gap-4">
-                            <Button className="flex-1" variant="secondary" onClick={()=>
-                                setShowVoidModal(false)}>BATAL</Button>
-                            <Button className="flex-1" variant="danger" disabled={!voidReason || voidPin.length < 4 ||
-                                isProcessing} onClick={confirmVoid}>
-                                KONFIRMASI VOID
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-                )}
-
-                <style>
-                    {
-                        ` .custom-scrollbar::-webkit-scrollbar {
-                            width: 4px;
-                        }
-
-                        .custom-scrollbar::-webkit-scrollbar-track {
-                            background: transparent;
-                        }
-
-                        .custom-scrollbar::-webkit-scrollbar-thumb {
-                            background: #cbd5e1;
-                            border-radius: 10px;
-                        }
-
-                        `
-                    }
-                </style>
-    </div>
-    );
     };
 
     const root = ReactDOM.createRoot(document.getElementById('kasir-root'));
-    root.render(
-    <KasirTerminal />);
-    </script>
+    root.render(<KasirTerminal />);
+
+</script>
+
+<style>
+    /* Custom Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #E5E7EB;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #D1D5DB;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+</style>
 @endsection

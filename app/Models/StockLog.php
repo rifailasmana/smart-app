@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class StockLog extends Model
 {
-    protected $fillable = ['ingredient_id', 'user_id', 'type', 'quantity', 'price', 'reference_type', 'reference_id', 'notes'];
+    protected $fillable = ['ingredient_id', 'user_id', 'supplier_id', 'type', 'quantity', 'price', 'reference_type', 'reference_id', 'notes'];
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
 
     public function ingredient()
     {

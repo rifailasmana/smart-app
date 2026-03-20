@@ -170,16 +170,22 @@
                 <div class="demo-accounts">
                     <h6><i class="fas fa-info-circle"></i> Test Accounts (Pass: 123456)</h6>
                     <div class="row">
-                        <div class="col-6">
+                        <div class="col-4">
                             <div class="demo-item">Owner: <span class="demo-user">owner</span></div>
                             <div class="demo-item">Manager: <span class="demo-user">manager</span></div>
-                            <div class="demo-item">Cashier: <span class="demo-user">cashier</span></div>
                             <div class="demo-item">HRD: <span class="demo-user">hrd</span></div>
+                            <div class="demo-item">Inv: <span class="demo-user">inventory</span></div>
                         </div>
-                        <div class="col-6">
-                            <div class="demo-item">Waiter: <span class="demo-user">waiter</span></div>
-                            <div class="demo-item">Kitchen: <span class="demo-user">kitchen</span></div>
-                            <div class="demo-item">Inventory: <span class="demo-user">inventory</span></div>
+                        <div class="col-4">
+                            <div class="demo-item">Cashier 1: <span class="demo-user">cashier</span></div>
+                            <div class="demo-item">Cashier 2: <span class="demo-user">cashier2</span></div>
+                            <div class="demo-item">Waiter 1: <span class="demo-user">waiter</span></div>
+                            <div class="demo-item">Waiter 2: <span class="demo-user">waiter2</span></div>
+                        </div>
+                        <div class="col-4">
+                            <div class="demo-item">Kitchen 1: <span class="demo-user">kitchen</span></div>
+                            <div class="demo-item">Kitchen 2: <span class="demo-user">kitchen2</span></div>
+                            <div class="demo-item">Admin: <span class="demo-user">admin</span></div>
                         </div>
                     </div>
                 </div>

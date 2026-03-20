@@ -51,10 +51,6 @@ class Order extends Model
         'total' => 'decimal:2',
     ];
 
-    // public function waiter() { return $this->belongsTo(User::class, 'waiter_id'); }
-    // public function kasir() { return $this->belongsTo(User::class, 'kasir_id'); }
-    // public function kitchen() { return $this->belongsTo(User::class, 'kitchen_id'); }
-
     public function warung()
     {
         return $this->belongsTo(Warung::class);
