@@ -155,11 +155,12 @@ class TerminalController extends Controller
 
                 $order = Order::create([
                     'warung_id' => $user->warung_id,
-                    'waiter_id' => $user->id,
+                    'waiter_id' => $user->role === 'waiter' ? $user->id : null,
+                    'kasir_id' => $user->role === 'kasir' ? $user->id : null,
                     'customer_name' => $validated['reservation_name'] ?? 'Guest',
                     'code' => 'T' . strtoupper(uniqid()),
                     'table_id' => $validated['table_id'],
-                    'stage' => 'DRAFT',
+                    'stage' => $user->role === 'kasir' ? 'WAITING_CASHIER' : 'DRAFT',
                     'status' => 'pending',
                     'subtotal' => 0,
                     'total' => 0,
