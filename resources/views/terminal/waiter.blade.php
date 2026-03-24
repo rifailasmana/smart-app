@@ -36,6 +36,40 @@
 
     // --- Components ---
 
+    const Toast = ({ message, type = 'success', onClose }) => {
+        useEffect(() => {
+            const timer = setTimeout(onClose, 3000);
+            return () => clearTimeout(timer);
+        }, [onClose]);
+
+        return (
+            <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] animate-in slide-in-from-bottom duration-300`}>
+                <div className={`px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                    <i className={`bi ${type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'}`}></i>
+                    <span className="font-bold text-sm">{message}</span>
+                </div>
+            </div>
+        );
+    };
+
+    const ConfirmModal = ({ title, message, onConfirm, onClose, confirmText = 'Konfirmasi', cancelText = 'Batal', type = 'info' }) => (
+        <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                <div className="p-8 text-center">
+                    <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 ${type === 'danger' ? 'bg-red-50 text-red-500' : 'bg-orange-50 text-orange-500'}`}>
+                        <i className={`bi ${type === 'danger' ? 'bi-exclamation-triangle-fill' : 'bi-question-circle-fill'} text-4xl`}></i>
+                    </div>
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-2">{title}</h2>
+                    <p className="text-gray-400 font-medium text-sm leading-relaxed mb-8">{message}</p>
+                    <div className="flex gap-3">
+                        <button onClick={onClose} className="flex-1 py-4 bg-gray-100 text-gray-400 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-gray-200 transition-all">{cancelText}</button>
+                        <button onClick={onConfirm} className={`flex-1 py-4 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl transition-all active:scale-95 ${type === 'danger' ? 'bg-red-500 shadow-red-500/30' : 'bg-orange-500 shadow-orange-500/30'}`}>{confirmText}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     const SidebarIcon = ({ icon, label, active = false, onClick }) => (
         <div
             onClick={onClick}
@@ -221,10 +255,14 @@
         </div>
     );
 
-    const MenuView = ({ menuItems, categories, orderType, selectedTable, guestCount, onBack }) => {
+    const MenuView = ({ menuItems, categories, orderType, selectedTable, guestCount, onBack, onShowToast }) => {
         const [activeCategory, setActiveCategory] = useState('Semua');
         const [cart, setCart] = useState([]);
         const [searchQuery, setSearchQuery] = useState('');
+        const [customerName, setCustomerName] = useState('');
+        const [customerCategory, setCustomerCategory] = useState('Reguler');
+        const [showConfirm, setShowConfirm] = useState(false);
+        const [submitting, setSubmitting] = useState(false);
 
         const filteredMenu = useMemo(() => {
             return menuItems.filter(item => {
@@ -251,6 +289,60 @@
 
         const subtotal = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
 
+        const handleConfirmOrder = async () => {
+            if (cart.length === 0) return;
+            if (!customerName.trim()) {
+                onShowToast('Nama Pelanggan wajib diisi', 'error');
+                setShowConfirm(false);
+                return;
+            }
+
+            setSubmitting(true);
+            try {
+                const res = await fetch('/terminal/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        table_id: selectedTable ? selectedTable.id : 1,
+                        customer_name: customerName,
+                        guest_category: customerCategory,
+                        order_type: orderType,
+                        items: cart.map(i => ({
+                            menu_item_id: i.id,
+                            qty: i.qty,
+                            note: ''
+                        }))
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.id) {
+                    const submitRes = await fetch(`/terminal/orders/${data.id}/submit-to-cashier`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                    });
+                    
+                    if (submitRes.ok) {
+                        onShowToast('Pesanan berhasil dikirim ke Kasir!');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        onShowToast('Gagal mengirim ke kasir', 'error');
+                    }
+                } else {
+                    onShowToast(data.error || 'Gagal memproses pesanan', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                onShowToast('Terjadi kesalahan sistem.', 'error');
+            } finally {
+                setSubmitting(false);
+                setShowConfirm(false);
+            }
+        };
+
         return (
             <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
                 {/* Main: Menu Area */}
@@ -274,17 +366,29 @@
                         </div>
                     </div>
 
-                    {/* Category Tabs */}
-                    <div className="flex gap-3 mb-8 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
-                        {['Semua', ...categories].map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => setActiveCategory(cat)}
-                                className={`px-8 py-3 rounded-2xl font-black text-sm transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white text-gray-400 hover:bg-gray-100'}`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
+                    {/* Category Tabs & Search */}
+                    <div className="flex justify-between items-center mb-8 gap-4">
+                        <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar no-scrollbar flex-1">
+                            {['Semua', ...categories].map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setActiveCategory(cat)}
+                                    className={`px-8 py-3 rounded-2xl font-black text-sm transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white text-gray-400 hover:bg-gray-100'}`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="relative w-64">
+                            <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <input
+                                type="text"
+                                placeholder="Cari menu..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-white border-none rounded-2xl py-3 pl-12 pr-4 text-sm font-bold shadow-sm focus:ring-2 focus:ring-orange-500 transition-all"
+                            />
+                        </div>
                     </div>
 
                     {/* Menu Grid */}
@@ -315,6 +419,32 @@
                     <div className="flex items-center gap-3 mb-8">
                         <i className="bi bi-cart-fill text-2xl text-orange-500"></i>
                         <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pesanan</h2>
+                    </div>
+
+                    {/* Customer Info Section */}
+                    <div className="space-y-6 mb-8">
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Nama Pelanggan</label>
+                            <input
+                                type="text"
+                                placeholder="Input nama..."
+                                value={customerName}
+                                onChange={(e) => setCustomerName(e.target.value)}
+                                className="w-full bg-gray-50 border-none rounded-2xl p-4 font-bold text-gray-900 focus:ring-2 focus:ring-orange-500 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Kategori Pelanggan</label>
+                            <select
+                                value={customerCategory}
+                                onChange={(e) => setCustomerCategory(e.target.value)}
+                                className="w-full bg-gray-50 border-none rounded-2xl p-4 font-bold text-gray-900 focus:ring-2 focus:ring-orange-500 transition-all appearance-none cursor-pointer"
+                            >
+                                {['Reguler', 'Member', 'Staff', 'Majar Owner'].map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
@@ -355,13 +485,24 @@
                             <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
                         </div>
                         <button
-                            disabled={cart.length === 0}
+                            disabled={cart.length === 0 || submitting}
+                            onClick={() => setShowConfirm(true)}
                             className="w-full py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-orange-500/30 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none mt-4"
                         >
-                            Kirim Pesanan <i className="bi bi-send-fill ml-2"></i>
+                            {submitting ? 'Mengirim...' : 'Kirim Pesanan'} <i className="bi bi-send-fill ml-2"></i>
                         </button>
                     </div>
                 </div>
+
+                {showConfirm && (
+                    <ConfirmModal
+                        title="Kirim Pesanan?"
+                        message={`Apakah Anda yakin ingin mengirim ${cart.length} item pesanan ini ke Kasir?`}
+                        onConfirm={handleConfirmOrder}
+                        onClose={() => setShowConfirm(false)}
+                        confirmText="Ya, Kirim"
+                    />
+                )}
             </div>
         );
     }
@@ -375,14 +516,16 @@
         const [selectedTable, setSelectedTable] = useState(null);
         const [tables, setTables] = useState(@json($tables));
         const [loadingTables, setLoadingTables] = useState(false);
+        const [toast, setToast] = useState(null);
+
+        const onShowToast = (message, type = 'success') => {
+            setToast({ message, type });
+        };
 
         const fetchTables = useCallback(async () => {
             try {
                 const res = await fetch('/terminal/tables');
                 const data = await res.json();
-                if (!data || data.length === 0) {
-                    console.error('Table list is empty or null');
-                }
                 setTables(data || []);
             } catch (e) { 
                 console.error('Failed to fetch tables:', e); 
@@ -393,7 +536,6 @@
 
         useEffect(() => {
             fetchTables();
-            // Real-time Sync: Sync every 5 seconds to keep table status updated
             const interval = setInterval(fetchTables, 5000);
             return () => clearInterval(interval);
         }, [fetchTables]);
@@ -422,7 +564,7 @@
         const renderView = () => {
             switch (view) {
                 case 'ORDER_STATUS':
-                    return <OrderStatusView role="waiter" onBack={() => setView('ORDER_TYPE')} />;
+                    return <OrderStatusView role="waiter" onBack={() => setView('ORDER_TYPE')} onShowToast={onShowToast} />;
                 case 'ORDER_HISTORY':
                     return <OrderHistoryView onBack={() => setView('ORDER_TYPE')} />;
                 case 'TABLE_SELECT':
@@ -446,6 +588,7 @@
                             selectedTable={selectedTable}
                             guestCount={guestCount}
                             onBack={handleBack}
+                            onShowToast={onShowToast}
                         />
                     );
                 case 'ORDER_TYPE':
@@ -477,15 +620,18 @@
                 <div className="flex-1 h-full overflow-hidden bg-[#daaa68]">
                     {renderView()}
                 </div>
+
+                {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             </div>
         );
     };
 
     // --- Order Status & History Components ---
 
-    const OrderStatusView = ({ role, onBack }) => {
+    const OrderStatusView = ({ role, onBack, onShowToast }) => {
         const [orders, setOrders] = useState([]);
         const [loading, setLoading] = useState(true);
+        const [confirmItem, setConfirmItem] = useState(null); // { orderId, itemId, menuName }
 
         const fetchOrders = useCallback(async () => {
             try {
@@ -502,31 +648,62 @@
             return () => clearInterval(interval);
         }, [fetchOrders]);
 
-        const handleServe = async (id) => {
-            if (!confirm('Tandai pesanan sudah di-serve?')) return;
-            const res = await fetch(`/terminal/orders/${id}/serve`, {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-            });
-            if (res.ok) fetchOrders();
+        const handleItemServe = async () => {
+            if (!confirmItem) return;
+            try {
+                const res = await fetch(`/terminal/orders/${confirmItem.orderId}/items/${confirmItem.itemId}/status`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+                    },
+                    body: JSON.stringify({ status: 'served' })
+                });
+                if (res.ok) {
+                    onShowToast(`${confirmItem.menuName} berhasil disajikan!`);
+                    fetchOrders();
+                } else {
+                    const data = await res.json();
+                    onShowToast(data.error || 'Gagal menyajikan item', 'error');
+                }
+            } catch (e) {
+                onShowToast('Terjadi kesalahan sistem', 'error');
+            } finally {
+                setConfirmItem(null);
+            }
         };
 
-        const getBadgeClass = (stage) => {
-            switch(stage) {
-                case 'WAITING_CASHIER': return 'bg-yellow-100 text-yellow-600';
-                case 'READY_FOR_KITCHEN': return 'bg-orange-100 text-orange-600';
-                case 'COOKING': return 'bg-blue-100 text-blue-600';
-                case 'READY': return 'bg-green-100 text-green-600';
-                case 'SERVED': return 'bg-purple-100 text-purple-600';
-                default: return 'bg-gray-100 text-gray-600';
+        const handleVoidItem = async (orderId, itemId, menuName) => {
+            if (!window.confirm(`Apakah Anda yakin ingin VOID ${menuName}?`)) return;
+            try {
+                const res = await fetch(`/terminal/orders/${orderId}/items/${itemId}/void`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    onShowToast('Item berhasil di-VOID');
+                    fetchOrders();
+                } else {
+                    onShowToast(data.error || 'Gagal melakukan VOID', 'error');
+                }
+            } catch (e) {
+                onShowToast('Terjadi kesalahan sistem', 'error');
             }
         };
 
         return (
             <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
-                <div className="flex items-center gap-4 mb-8">
-                    <button onClick={onBack} className="text-gray-400 hover:text-gray-900"><i className="bi bi-arrow-left text-2xl"></i></button>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Status Pesanan</h1>
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <button onClick={onBack} className="text-gray-400 hover:text-gray-900"><i className="bi bi-arrow-left text-2xl"></i></button>
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Monitoring Meja</h1>
+                    </div>
+                    <div className="flex gap-2">
+                        <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Cooking</span>
+                        <span className="bg-green-100 text-green-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Ready</span>
+                        <span className="bg-purple-100 text-purple-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Served</span>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar pr-2">
@@ -537,37 +714,68 @@
                         </div>
                     )}
                     {orders.map(order => (
-                        <div key={order.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex flex-col">
+                        <div key={order.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex flex-col h-fit">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <h4 className="font-black text-gray-900">Meja {order.table?.name || 'TA'}</h4>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">#{order.code}</p>
+                                    <h4 className="font-black text-gray-900 text-xl">Meja {order.table?.name || 'TA'}</h4>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{order.customer_name}</p>
                                 </div>
-                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getBadgeClass(order.stage)}`}>
-                                    {order.stage.replace(/_/g, ' ')}
+                                <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${order.stage === 'READY' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                                    {order.stage}
                                 </span>
                             </div>
 
-                            <div className="flex-1 space-y-2 mb-6">
-                                {order.items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between text-sm">
-                                        <span className="text-gray-600 font-medium">{item.qty}x {item.menu_name}</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="pt-4 border-t border-gray-50 mt-auto">
-                                <div className="flex justify-between items-center mb-4">
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Tipe</span>
-                                    <span className="font-black text-gray-900">{order.order_type}</span>
-                                </div>
-                                {order.stage === 'READY' && (
-                                    <button onClick={() => handleServe(order.id)} className="w-full py-3 bg-green-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-500/20 active:scale-95 transition-all">Selesaikan Serve</button>
-                                )}
+                            <div className="space-y-3 mb-4">
+                                {order.items.map((item, idx) => {
+                                    const statusColors = {
+                                        'cooking': 'bg-blue-100 text-blue-600',
+                                        'ready': 'bg-green-100 text-green-600',
+                                        'served': 'bg-purple-100 text-purple-600',
+                                        'void': 'bg-red-100 text-red-600'
+                                    };
+                                    return (
+                                        <div key={idx} className="p-3 rounded-2xl bg-gray-50 flex flex-col gap-2">
+                                            <div className="flex justify-between items-center group">
+                                                <span className="text-xs font-bold text-gray-900">{item.qty}x {item.menu_name}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${statusColors[item.status] || 'bg-gray-200 text-gray-400'}`}>
+                                                        {item.status}
+                                                    </span>
+                                                    {(item.status === 'pending' || item.status === 'cooking') && (
+                                                        <button 
+                                                            onClick={() => handleVoidItem(order.id, item.id, item.menu_name)}
+                                                            className="w-6 h-6 rounded-full bg-red-50 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                                                        >
+                                                            <i className="bi bi-trash"></i>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {item.status === 'ready' && (
+                                                <button 
+                                                    onClick={() => setConfirmItem({ orderId: order.id, itemId: item.id, menuName: item.menu_name })}
+                                                    className="w-full py-2 bg-green-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-md shadow-green-500/20"
+                                                >
+                                                    Mark as Served
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     ))}
                 </div>
+
+                {confirmItem && (
+                    <ConfirmModal
+                        title="Sajikan Menu?"
+                        message={`Konfirmasi bahwa ${confirmItem.menuName} sudah diantarkan ke meja?`}
+                        onConfirm={handleItemServe}
+                        onClose={() => setConfirmItem(null)}
+                        confirmText="Ya, Sajikan"
+                    />
+                )}
             </div>
         );
     };

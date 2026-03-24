@@ -91,7 +91,7 @@ class ManagerController extends Controller
 
         // 🧾 9. OUTSTANDING INVOICES
         $outstandingInvoices = AccountReceivable::where('warung_id', $warungId)
-            ->where('status', 'unpaid')
+            ->where('status', 'outstanding')
             ->orderBy('created_at', 'desc')
             ->get();
 

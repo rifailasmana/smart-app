@@ -534,7 +534,7 @@ class OrderController extends Controller
         // If it's an invoice payment, update the AccountReceivable record
         if ($isInvoicePayment) {
             AccountReceivable::where('order_id', $order->id)
-                ->where('status', 'unpaid')
+                ->where('status', 'outstanding')
                 ->update([
                     'status' => 'paid',
                     'paid_at' => now(),
@@ -611,7 +611,7 @@ class OrderController extends Controller
                 'admin_fee' => $order->admin_fee,
                 'discount' => $order->diskon_manual,
                 'total' => $order->total,
-                'status' => 'unpaid',
+                'status' => 'outstanding',
                 'revenue_recognized_at' => now(), // Accrual Accounting: recognize revenue today
                 'cashier_id' => $user->id,
                 'cashier_name' => $user->name,

@@ -100,7 +100,7 @@ class DashboardController extends Controller
             ->get();
 
         $outstandingInvoices = AccountReceivable::where('warung_id', $user->warung_id)
-            ->where('status', 'unpaid')
+            ->where('status', 'outstanding')
             ->orderBy('created_at', 'desc')
             ->get();
 

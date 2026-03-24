@@ -102,10 +102,10 @@ class TerminalController extends Controller
             $query->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY', 'SERVED']);
         } elseif ($role === 'kasir') {
             // Kasir sees orders waiting for approval OR orders served waiting for payment
-            $query->whereIn('stage', ['WAITING_CASHIER', 'SERVED', 'READY_FOR_KITCHEN', 'COOKING', 'READY']);
+            $query->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY', 'SERVED']);
         } elseif ($role === 'kitchen') {
             // Kitchen sees orders ready for production
-            $query->whereIn('stage', ['READY_FOR_KITCHEN', 'COOKING', 'READY']);
+            $query->whereIn('stage', ['COOKING', 'READY']);
         }
 
         return response()->json($query->orderBy('created_at', 'desc')->get());
@@ -251,6 +251,132 @@ class TerminalController extends Controller
     }
 
     /**
+     * Void an item from an active order
+     */
+    public function voidItem(Request $request, Order $order, OrderItem $item)
+    {
+        $user = auth()->user();
+        if ($user->warung_id !== $order->warung_id || $order->id !== $item->order_id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (in_array($order->status, ['paid', 'cancelled', 'invoiced'])) {
+            return response()->json(['error' => 'Pesanan sudah selesai, tidak bisa melakukan VOID'], 400);
+        }
+
+        return DB::transaction(function () use ($order, $item) {
+            // Log void activity (Persistent Audit Trail)
+            Log::info("Item VOID: Order #{$order->code}, Item: {$item->menu_name}, Qty: {$item->qty}, By: " . auth()->user()->name);
+
+            // Delete the item
+            $item->delete();
+
+            // Recalculate order total
+            $order->refresh();
+            $newSubtotal = $order->items->sum(function($i) {
+                return $i->price * $i->qty;
+            });
+            
+            $order->update([
+                'subtotal' => $newSubtotal,
+                'total' => $newSubtotal + ($order->admin_fee ?? 0) - ($order->diskon_manual ?? 0)
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Item berhasil di-VOID']);
+        });
+    }
+
+    /**
+     * Finalize payment for an active order
+     */
+    public function finalizePayment(Request $request, Order $order)
+    {
+        $user = auth()->user();
+        if ($user->warung_id !== $order->warung_id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'payment_method' => 'required|in:cash,qris,card,other,tunai,edc,invoice',
+            'amount_paid' => 'required|numeric',
+            'discount_amount' => 'nullable|numeric|min:0'
+        ]);
+
+        // Ensure relationships are loaded
+        $order->load(['items', 'table']);
+
+        try {
+            return DB::transaction(function () use ($user, $order, $validated) {
+                $isInvoice = (strtolower($validated['payment_method']) === 'invoice');
+                $discount = $validated['discount_amount'] ?? 0;
+                $subtotal = (float) $order->subtotal;
+                $adminFee = (float) ($order->admin_fee ?? 0);
+                $finalTotal = max(0, $subtotal + $adminFee - $discount);
+
+                // 1. Update Order status
+                $order->update([
+                    'status' => $isInvoice ? 'invoiced' : 'paid',
+                    'stage' => 'DONE',
+                    'kasir_id' => $user->id,
+                    'paid_at' => now(),
+                    'payment_method' => $validated['payment_method'],
+                    'amount_paid' => $validated['amount_paid'],
+                    'diskon_manual' => $discount,
+                    'total' => $finalTotal,
+                    'revenue_recognized_at' => $order->created_at ?? now(), // Accrual
+                ]);
+
+                // 2. If Invoice, create AccountReceivable record
+                if ($isInvoice) {
+                    AccountReceivable::create([
+                        'warung_id' => $order->warung_id,
+                        'order_id' => $order->id,
+                        'table_id' => $order->table_id,
+                        'table_number' => $order->table ? $order->table->name : 'N/A',
+                        'customer_name' => $order->customer_name ?? 'Guest',
+                        'order_code' => $order->code,
+                        'subtotal' => $subtotal,
+                        'admin_fee' => $adminFee,
+                        'discount' => $discount,
+                        'total' => $finalTotal,
+                        'status' => 'outstanding',
+                        'revenue_recognized_at' => $order->created_at ?? now(),
+                        'cashier_id' => $user->id,
+                        'cashier_name' => $user->name,
+                        'items_snapshot' => $order->items->map(fn($i) => [
+                            'menu_name' => $i->menu_name,
+                            'qty' => $i->qty,
+                            'price' => $i->price,
+                        ])->toArray(),
+                    ]);
+                }
+
+                // 3. Free Table
+                $this->syncTableStatuses($order);
+
+                // 4. Stock deduction
+                try {
+                    StockService::reduceStockForOrder($order);
+                } catch (\Exception $e) {
+                    Log::error("Stock reduction failed during payment: " . $e->getMessage());
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $isInvoice ? 'Pesanan berhasil dipindahkan ke Invoice' : 'Pembayaran berhasil diselesaikan',
+                    'order' => $order->load('items')
+                ]);
+            });
+        } catch (\Exception $e) {
+            Log::error("Finalize Payment Failed: " . $e->getMessage());
+            return response()->json([
+                'error' => 'Gagal memproses pembayaran: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString() // For debugging
+            ], 500);
+        }
+    }
+
+    /**
      * Get draft for a specific table
      */
     public function getTableDraft($tableId)
@@ -292,12 +418,13 @@ class TerminalController extends Controller
 
         $validated = $request->validate([
             'table_id' => 'required|exists:restaurant_tables,id',
-            'payment_method' => 'required|in:cash,qris,card,other',
+            'payment_method' => 'required|in:cash,qris,card,other,tunai,edc,invoice',
             'amount_paid' => 'required|numeric',
             'customer_name' => 'nullable|string',
             'coupon_code' => 'nullable|string',
             'voucher_code' => 'nullable|string',
             'discount_percent' => 'nullable|numeric|min:0|max:100',
+            'discount_amount' => 'nullable|numeric|min:0',
             'guest_category' => 'nullable|string',
             'order_type' => 'nullable|string',
             'items' => 'required|array',
@@ -312,20 +439,18 @@ class TerminalController extends Controller
                     'warung_id' => $user->warung_id,
                     'table_id' => $validated['table_id'],
                     'kasir_id' => $user->id,
-                    'customer_name' => 'Walk-in',
-                    'stage' => 'READY_FOR_KITCHEN',
-                    'status' => 'paid',
+                    'customer_name' => $validated['customer_name'] ?? 'Walk-in',
+                    'stage' => 'DONE',
+                    'status' => (strtolower($validated['payment_method']) === 'invoice') ? 'invoiced' : 'paid',
                     'code' => 'POS-' . strtoupper(uniqid()),
                     'subtotal' => 0,
                     'total' => 0,
                     'guest_category' => $validated['guest_category'] ?? 'REGULER',
                     'order_type' => $validated['order_type'] ?? 'TAKE_AWAY',
+                    'revenue_recognized_at' => now(),
                 ]);
             } else {
                 $order = Order::findOrFail($orderId);
-                if (!in_array($order->stage, ['WAITING_CASHIER', 'CASHIER_APPROVED', 'DRAFT'])) {
-                    return response()->json(['error' => 'Order cannot be paid in current stage'], 400);
-                }
             }
 
             // Sync items
@@ -342,47 +467,60 @@ class TerminalController extends Controller
                     'qty' => $itemData['qty'],
                     'price' => $menuItem->price,
                     'note' => $itemData['note'] ?? null,
+                    'status' => 'served',
+                    'served_at' => now(),
                 ]);
                 $subtotal += $itemSubtotal;
             }
 
-            $discountAmount = 0;
+            $discountAmount = $validated['discount_amount'] ?? 0;
             if (isset($validated['discount_percent']) && $validated['discount_percent'] > 0) {
                 $discountAmount = $subtotal * ($validated['discount_percent'] / 100);
             }
 
+            $isInvoice = (strtolower($validated['payment_method']) === 'invoice');
+
             $order->update([
-                'stage' => 'READY_FOR_KITCHEN',
-                'status' => 'paid',
+                'stage' => 'DONE',
+                'status' => $isInvoice ? 'invoiced' : 'paid',
                 'customer_name' => $validated['customer_name'] ?? $order->customer_name,
                 'paid_at' => now(),
                 'ordered_at' => now(),
                 'kasir_id' => $user->id,
-                'payment_method' => match ($validated['payment_method']) {
-                    'cash' => 'kasir',
-                    'qris' => 'qris',
-                    default => 'gateway',
-                },
+                'payment_method' => $validated['payment_method'],
+                'amount_paid' => $validated['amount_paid'],
                 'sent_to_kitchen_at' => now(),
                 'subtotal' => $subtotal,
-                'discount' => $discountAmount,
-                'total' => $subtotal - $discountAmount,
+                'diskon_manual' => $discountAmount,
+                'total' => max(0, $subtotal - $discountAmount),
                 'guest_category' => $validated['guest_category'] ?? $order->guest_category,
                 'order_type' => $validated['order_type'] ?? $order->order_type,
                 'notes' => ($validated['coupon_code'] ? "Kupon: " . $validated['coupon_code'] : $order->notes),
+                'revenue_recognized_at' => $order->revenue_recognized_at ?? now(),
             ]);
 
-            // Mark coupon as used
-            if (isset($validated['coupon_code'])) {
-                \App\Models\Coupon::where('code', $validated['coupon_code'])->increment('uses');
-            }
-
-            // Mark voucher as used
-            if (isset($validated['voucher_code'])) {
-                $v = \App\Models\Voucher::where('code', $validated['voucher_code'])->first();
-                if ($v) {
-                    $v->update(['is_used' => true, 'used_at' => now()]);
-                }
+            if ($isInvoice) {
+                AccountReceivable::create([
+                    'warung_id' => $order->warung_id,
+                    'order_id' => $order->id,
+                    'table_id' => $order->table_id,
+                    'table_number' => $order->table ? $order->table->name : 'N/A',
+                    'customer_name' => $order->customer_name ?? 'Guest',
+                    'order_code' => $order->code,
+                    'subtotal' => $subtotal,
+                    'admin_fee' => $order->admin_fee ?? 0,
+                    'discount' => $discountAmount,
+                    'total' => $order->total,
+                    'status' => 'outstanding',
+                    'revenue_recognized_at' => $order->revenue_recognized_at,
+                    'cashier_id' => $user->id,
+                    'cashier_name' => $user->name,
+                    'items_snapshot' => $order->items->map(fn($i) => [
+                        'menu_name' => $i->menu_name,
+                        'qty' => $i->qty,
+                        'price' => $i->price,
+                    ])->toArray(),
+                ]);
             }
 
             // Sync table status
@@ -403,16 +541,75 @@ class TerminalController extends Controller
             return response()->json(['error' => 'Hanya pesanan menunggu approval yang dapat disetujui'], 400);
         }
 
-        $order->update([
-            'stage' => 'READY_FOR_KITCHEN',
-            'kasir_id' => auth()->id(),
-            'approved_at' => now(),
-            'sent_to_kitchen_at' => now(),
+        return DB::transaction(function () use ($order) {
+            $order->update([
+                'stage' => 'COOKING',
+                'kasir_id' => auth()->id(),
+                'approved_at' => now(),
+                'sent_to_kitchen_at' => now(),
+                'revenue_recognized_at' => now(), // Accrual basis: recognized when approved/started
+            ]);
+
+            // Update all items to cooking status
+            $order->items()->update([
+                'status' => 'cooking',
+                'cooking_at' => now()
+            ]);
+
+            StockService::reduceStockForOrder($order);
+
+            return response()->json(['success' => true, 'order' => $order->load('items')]);
+        });
+    }
+
+    /**
+     * Update status for a specific item (Partial Confirmation)
+     */
+    public function updateItemStatus(Request $request, Order $order, OrderItem $item)
+    {
+        $user = auth()->user();
+        $validated = $request->validate([
+            'status' => 'required|in:ready,served',
         ]);
 
-        StockService::reduceStockForOrder($order);
+        if ($order->id !== $item->order_id) {
+            return response()->json(['error' => 'Item tidak sesuai dengan pesanan'], 400);
+        }
 
-        return response()->json(['success' => true, 'order' => $order]);
+        $newStatus = $validated['status'];
+
+        return DB::transaction(function () use ($order, $item, $newStatus) {
+            if ($newStatus === 'ready') {
+                // Kitchen marks item as ready
+                $item->update([
+                    'status' => 'ready',
+                    'ready_at' => now()
+                ]);
+            } elseif ($newStatus === 'served') {
+                // Waiter marks item as served
+                if ($item->status !== 'ready') {
+                    return response()->json(['error' => 'Hanya item berstatus READY yang bisa di-serve'], 400);
+                }
+                $item->update([
+                    'status' => 'served',
+                    'served_at' => now()
+                ]);
+            }
+
+            // Check if all items are served to auto-update order stage
+            $order->refresh();
+            $totalItems = $order->items()->where('status', '!=', 'void')->count();
+            $servedItems = $order->items()->where('status', 'served')->count();
+            $readyItems = $order->items()->where('status', 'ready')->count();
+
+            if ($servedItems === $totalItems && $totalItems > 0) {
+                $order->update(['stage' => 'SERVED', 'status' => 'served', 'served_at' => now()]);
+            } elseif ($readyItems + $servedItems === $totalItems && $totalItems > 0) {
+                $order->update(['stage' => 'READY']);
+            }
+
+            return response()->json(['success' => true, 'item' => $item, 'order_stage' => $order->stage]);
+        });
     }
 
     /**
@@ -429,29 +626,6 @@ class TerminalController extends Controller
             'status' => 'served',
             'served_at' => now(),
         ]);
-
-        return response()->json(['success' => true, 'order' => $order]);
-    }
-
-    /**
-     * Final Payment (Kasir step)
-     */
-    public function finalizePayment(Request $request, Order $order)
-    {
-        $validated = $request->validate([
-            'payment_method' => 'required|in:cash,qris,card,other',
-            'amount_paid' => 'required|numeric|min:' . $order->total,
-        ]);
-
-        $order->update([
-            'stage' => 'DONE',
-            'status' => 'paid',
-            'payment_method' => $validated['payment_method'],
-            'amount_paid' => $validated['amount_paid'],
-            'paid_at' => now(),
-        ]);
-
-        $this->syncTableStatuses($order);
 
         return response()->json(['success' => true, 'order' => $order]);
     }
@@ -673,7 +847,7 @@ class TerminalController extends Controller
                 'subtotal' => $order->subtotal,
                 'admin_fee' => $order->admin_fee,
                 'total' => $order->total,
-                'status' => 'unpaid',
+                'status' => 'outstanding',
                 'revenue_recognized_at' => now(),
                 'cashier_id' => $user->id,
                 'cashier_name' => $user->name,

@@ -603,6 +603,12 @@ Route::middleware('auth')->group(function () {
 
         // API routes within terminal prefix for easier management
         Route::get('/orders', [App\Http\Controllers\TerminalController::class, 'getOrders']);
+        Route::post('/orders', [App\Http\Controllers\TerminalController::class, 'createOrUpdateDraft']);
+        Route::post('/orders/{order}/submit-to-kitchen', [App\Http\Controllers\TerminalController::class, 'submitToKitchen'])->name('terminal.order.kitchen');
+        Route::post('/orders/{order}/approve', [App\Http\Controllers\TerminalController::class, 'approveOrder'])->name('terminal.order.approve');
+        Route::post('/orders/{order}/items/{item}/status', [App\Http\Controllers\TerminalController::class, 'updateItemStatus'])->name('terminal.order.item.status');
+        Route::post('/orders/{order}/finalize-payment', [App\Http\Controllers\TerminalController::class, 'finalizePayment'])->name('terminal.order.finalize');
+        Route::post('/orders/{order}/items/{item}/void', [App\Http\Controllers\TerminalController::class, 'voidItem'])->name('terminal.order.void');
         Route::get('/tables', [App\Http\Controllers\TerminalController::class, 'getTables']);
         Route::get('/tables/{table}/draft', [App\Http\Controllers\TerminalController::class, 'getTableDraft']);
         Route::post('/orders', [App\Http\Controllers\TerminalController::class, 'storeOrder']);
