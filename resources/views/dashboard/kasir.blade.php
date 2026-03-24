@@ -149,10 +149,13 @@
                     <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#active-orders">Approval & Antrian <span class="badge bg-white text-dark ms-1">{{ $pendingOrders->count() + $inProgressOrders->count() }}</span></button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#ready-payment">Siap Bayar <span class="badge bg-white text-dark ms-1">{{ $verifiedOrders->count() }}</span></button>
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#payment-queue">Siap Bayar <span class="badge bg-white text-dark ms-1">{{ $verifiedOrders->count() }}</span></button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#menu-grid">Menu Grid</button>
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#outstanding-invoices">Piutang (Invoice) <span class="badge bg-white text-dark ms-1">{{ $outstandingInvoices->count() }}</span></button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#menu-grid">Buka Menu POS</button>
                 </li>
             </ul>
 
@@ -195,8 +198,8 @@
                     </div>
                 </div>
 
-                <!-- Tab: Ready for Payment -->
-                <div class="tab-pane fade" id="ready-payment">
+                <!-- Tab: Siap Bayar -->
+                <div class="tab-pane fade" id="payment-queue">
                     <div class="row g-3">
                         @foreach($verifiedOrders as $order)
                         <div class="col-md-6">
@@ -209,6 +212,27 @@
                                     <span class="badge bg-success">READY TO PAY</span>
                                 </div>
                                 <div class="mt-2 fw-bold text-dark">Total: Rp {{ number_format($order->total, 0, ',', '.') }}</div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <!-- Tab: Outstanding Invoices -->
+                <div class="tab-pane fade" id="outstanding-invoices">
+                    <div class="row g-3">
+                        @foreach($outstandingInvoices as $invoice)
+                        <div class="col-md-6">
+                            <div class="order-card shadow-sm" style="border-left-color: #f59e0b;" onclick="selectInvoice({{ json_encode($invoice) }})">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-bold text-dark">#{{ $invoice->order_code }}</div>
+                                        <div class="small text-muted">{{ $invoice->customer_name }} • Meja {{ $invoice->table_number }}</div>
+                                    </div>
+                                    <span class="badge bg-warning text-dark">PIUTANG (UNPAID)</span>
+                                </div>
+                                <div class="mt-2 fw-bold text-dark">Tagihan: Rp {{ number_format($invoice->total, 0, ',', '.') }}</div>
+                                <div class="small text-muted mt-1">Dibuat: {{ $invoice->created_at->format('d M, H:i') }}</div>
                             </div>
                         </div>
                         @endforeach
@@ -270,6 +294,7 @@
 
                 <div class="d-grid gap-2">
                     <button class="btn btn-primary btn-pos" id="btn-pay" disabled onclick="handlePayment()">BAYAR SEKARANG</button>
+                    <button class="btn btn-outline-warning btn-pos fw-bold" id="btn-invoice" disabled onclick="settleToInvoice()">SETTLE TO INVOICE</button>
                     <div class="row g-2">
                         <div class="col-6">
                             <button class="btn btn-outline-dark btn-sm w-100 fw-bold" onclick="handleSplit()">SPLIT BILL</button>
@@ -286,6 +311,50 @@
 
 <script>
     let selectedOrder = null;
+
+    function selectInvoice(invoice) {
+        selectedOrder = {
+            id: invoice.order_id,
+            code: invoice.order_code,
+            total: invoice.total,
+            subtotal: invoice.subtotal,
+            admin_fee: invoice.admin_fee,
+            status: 'invoice',
+            items: invoice.items || []
+        };
+        
+        document.getElementById('cart-order-code').innerText = 'INV#' + invoice.order_code;
+        
+        let itemsHtml = '';
+        (invoice.items || []).forEach(item => {
+            itemsHtml += `
+                <div class="cart-item">
+                    <div>
+                        <div class="fw-bold text-dark">${item.menu_name}</div>
+                        <small class="text-muted">${item.qty} x Rp ${item.price.toLocaleString('id-ID')}</small>
+                    </div>
+                    <div class="fw-bold">Rp ${(item.qty * item.price).toLocaleString('id-ID')}</div>
+                </div>
+            `;
+        });
+        
+        if(itemsHtml === '') {
+            itemsHtml = '<div class="text-center py-3 text-muted small">Detail item tidak tersedia</div>';
+        }
+        
+        document.getElementById('cart-items-list').innerHTML = itemsHtml;
+        document.getElementById('bill-subtotal').innerText = 'Rp ' + invoice.subtotal.toLocaleString('id-ID');
+        document.getElementById('bill-tax').innerText = 'Rp ' + (invoice.admin_fee || 0).toLocaleString('id-ID');
+        document.getElementById('bill-total').innerText = 'Rp ' + invoice.total.toLocaleString('id-ID');
+        
+        const btnPay = document.getElementById('btn-pay');
+        btnPay.disabled = false;
+        btnPay.innerText = 'BAYAR PELUNASAN';
+        btnPay.onclick = () => processPayment(invoice.order_id, invoice.total);
+
+        const btnInvoice = document.getElementById('btn-invoice');
+        if(btnInvoice) btnInvoice.disabled = true;
+    }
 
     function selectOrder(order) {
         selectedOrder = order;
@@ -311,16 +380,36 @@
         
         const btnPay = document.getElementById('btn-pay');
         btnPay.disabled = false;
+
+        const btnInvoice = document.getElementById('btn-invoice');
+        if(btnInvoice) btnInvoice.disabled = false;
         
         if(order.status === 'pending') {
             btnPay.innerText = 'APPROVE PAYMENT';
             btnPay.onclick = () => verifyPayment(order.id);
-        } else if(order.status === 'served') {
+        } else if(order.status === 'served' || order.status === 'ready') {
             btnPay.innerText = 'MARK AS PAID';
             btnPay.onclick = () => processPayment(order.id, order.total);
         } else {
             btnPay.disabled = true;
             btnPay.innerText = 'IN PROGRESS';
+        }
+    }
+
+    async function settleToInvoice() {
+        if(!selectedOrder) return alert('Pilih pesanan terlebih dahulu');
+        if(!confirm(`Pindahkan pesanan #${selectedOrder.code} ke Piutang (Invoice)? Meja akan langsung tersedia.`)) return;
+        
+        const res = await fetch(`/order/${selectedOrder.id}/invoice`, {
+            method: 'POST',
+            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'}
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error || 'Terjadi kesalahan');
         }
     }
 

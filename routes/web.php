@@ -476,7 +476,7 @@ Route::middleware('auth')->group(function () {
 
             $paidQuery = \App\Models\Order::where('warung_id', $warungId)
                 ->whereDate('created_at', today())
-                ->where('status', 'paid');
+                ->whereIn('status', ['paid', 'invoiced']);
 
             $transactionCount = $paidQuery->count();
             $totalSales = $paidQuery->sum('total');
@@ -510,6 +510,7 @@ Route::middleware('auth')->group(function () {
         })->name('dashboard.kasir.closing');
         Route::post('/order/{order}/verify-payment', [OrderController::class, 'verifyPayment'])->name('order.verify-payment');
         Route::post('/order/{order}/payment', [OrderController::class, 'processPayment'])->name('order.payment');
+        Route::post('/order/{order}/invoice', [OrderController::class, 'checkoutToInvoice'])->name('order.invoice');
         Route::post('/order/{order}/edit-qty', [OrderController::class, 'editQuantity'])->name('order.edit-qty');
         Route::post('/order/{order}/cancel', [OrderController::class, 'cancelOrder'])->name('order.cancel');
         Route::post('/menu-items/{id}/toggle-stock', 'App\Http\Controllers\MenuItemController@toggleStock')->name('menu.toggle-stock');
@@ -602,6 +603,13 @@ Route::middleware('auth')->group(function () {
 
         // API routes within terminal prefix for easier management
         Route::get('/orders', [App\Http\Controllers\TerminalController::class, 'getOrders']);
+        Route::post('/orders', [App\Http\Controllers\TerminalController::class, 'createOrUpdateDraft']);
+        Route::post('/orders/{order}/submit-to-kitchen', [App\Http\Controllers\TerminalController::class, 'submitToKitchen'])->name('terminal.order.kitchen');
+        Route::post('/orders/{order}/approve', [App\Http\Controllers\TerminalController::class, 'approveOrder'])->name('terminal.order.approve');
+        Route::post('/orders/{order}/items/{item}/status', [App\Http\Controllers\TerminalController::class, 'updateItemStatus'])->name('terminal.order.item.status');
+        Route::post('/orders/{order}/finalize-payment', [App\Http\Controllers\TerminalController::class, 'finalizePayment'])->name('terminal.order.finalize');
+        Route::post('/orders/{order}/items/{item}/void', [App\Http\Controllers\TerminalController::class, 'voidItem'])->name('terminal.order.void');
+        Route::get('/tables', [App\Http\Controllers\TerminalController::class, 'getTables']);
         Route::get('/tables/{table}/draft', [App\Http\Controllers\TerminalController::class, 'getTableDraft']);
         Route::post('/orders', [App\Http\Controllers\TerminalController::class, 'storeOrder']);
         Route::post('/orders/{order}/submit-to-cashier', [App\Http\Controllers\TerminalController::class, 'submitToCashier']);
@@ -612,6 +620,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/orders/{order}/finalize-payment', [App\Http\Controllers\TerminalController::class, 'finalizePayment']);
         Route::post('/orders/{order}/approve-and-pay', [App\Http\Controllers\TerminalController::class, 'approveAndPay']);
         Route::post('/orders/{order}/kitchen-status', [App\Http\Controllers\TerminalController::class, 'updateKitchenStatus']);
+        Route::post('/orders/{order}/invoice', [App\Http\Controllers\TerminalController::class, 'checkoutToInvoice'])->name('terminal.order.invoice');
         Route::get('/orders/history', [App\Http\Controllers\TerminalController::class, 'history']);
         Route::get('/reports/summary', [App\Http\Controllers\TerminalController::class, 'reports']);
         Route::post('/orders/{order}/void', [App\Http\Controllers\TerminalController::class, 'voidOrder']);

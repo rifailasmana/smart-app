@@ -32,6 +32,7 @@ class Order extends Model
         'ordered_at',
         'submitted_to_cashier_at',
         'paid_at',
+        'revenue_recognized_at',
         'cooking_at',
         'sent_to_kitchen_at',
         'kitchen_done_at',

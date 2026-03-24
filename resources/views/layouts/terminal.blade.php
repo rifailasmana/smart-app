@@ -19,7 +19,7 @@
                 extend: {
                     colors: {
                         terminal: {
-                            bg: '#e5d3bf', // Content background
+                            bg: '#daaa68', // Content background
                             panel: '#1F2937', // Lighter Dark Gray
                             accent: '#F97316', // Orange
                             warning: '#FBBF24', // Yellow
@@ -38,7 +38,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
         :root {
-            --terminal-bg: #e5d3bf;
+            --terminal-bg: #daaa68;
             --terminal-panel: #FFFFFF;
             --terminal-accent: #FF8C00;
             --terminal-warning: #FFC107;
@@ -66,7 +66,7 @@
 
         .terminal-header {
             height: 64px;
-            background-color: var(--terminal-panel);
+            background-color: #063024;
             border-bottom: 1px solid var(--terminal-border);
             display: flex;
             align-items: center;
@@ -149,8 +149,8 @@
 </head>
 
 <body>
-    <div class="terminal-container bg-gray-900 text-white">
-        <header class="terminal-header bg-gray-900 border-b border-gray-800">
+    <div class="terminal-container bg-[#063024] text-white">
+        <header class="terminal-header bg-[#063024] border-b border-[#063024]">
             <div class="flex items-center gap-4">
                 <div
                     class="w-10 h-10 bg-gradient-to-br from-orange-500 to-yellow-400 rounded-lg flex items-center justify-center">

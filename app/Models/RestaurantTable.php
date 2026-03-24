@@ -11,6 +11,13 @@ class RestaurantTable extends Model
 
     protected $fillable = ['warung_id', 'name', 'seats', 'status'];
 
+    protected $appends = ['capacity'];
+
+    public function getCapacityAttribute()
+    {
+        return $this->seats;
+    }
+
     public function warung()
     {
         return $this->belongsTo(Warung::class);

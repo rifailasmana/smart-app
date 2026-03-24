@@ -7,6 +7,7 @@ use App\Models\MenuItem;
 use App\Models\Voucher;
 use App\Models\RestockRequest;
 use App\Models\Ingredient;
+use App\Models\AccountReceivable;
 use App\Models\RestaurantTable;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -88,6 +89,12 @@ class ManagerController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
+        // 🧾 9. OUTSTANDING INVOICES
+        $outstandingInvoices = AccountReceivable::where('warung_id', $warungId)
+            ->where('status', 'outstanding')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return view('dashboard.manager', compact(
             'tab',
             'todaySales',
@@ -100,10 +107,12 @@ class ManagerController extends Controller
             'paymentMethods',
             'menuItems',
             'pendingRestockRequests',
+            'pendingApprovals',
             'staffOnShift',
             'ingredients',
             'coupons',
-            'allActiveOrders'
+            'allActiveOrders',
+            'outstandingInvoices'
         ));
     }
 

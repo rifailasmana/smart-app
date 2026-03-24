@@ -24,23 +24,16 @@ class OwnerController extends Controller
         $yesterday = Carbon::yesterday();
 
         // 🏠 1. DASHBOARD DATA
-        $todaySales = Order::where('warung_id', $warungId)->where('status', 'paid')->whereDate('created_at', $today)->sum('total');
-        $yesterdaySales = Order::where('warung_id', $warungId)->where('status', 'paid')->whereDate('created_at', $yesterday)->sum('total');
+        $todaySales = Order::where('warung_id', $warungId)->whereIn('status', ['paid', 'invoiced'])->whereDate('created_at', $today)->sum('total');
+        $yesterdaySales = Order::where('warung_id', $warungId)->whereIn('status', ['paid', 'invoiced'])->whereDate('created_at', $yesterday)->sum('total');
         
-        $monthSales = Order::where('warung_id', $warungId)->where('status', 'paid')->whereMonth('created_at', now()->month)->sum('total');
+        $monthSales = Order::where('warung_id', $warungId)->whereIn('status', ['paid', 'invoiced'])->whereMonth('created_at', now()->month)->sum('total');
         
-        $todayTransactions = Order::where('warung_id', $warungId)->where('status', 'paid')->whereDate('created_at', $today)->count();
+        $todayTransactions = Order::with(['table', 'items'])->where('warung_id', $warungId)->whereIn('status', ['paid', 'invoiced'])->whereDate('created_at', $today)->orderBy('created_at', 'desc')->get();
         
-        // Profit calculation (Revenue - HPP)
-        $todayProfit = Order::where('warung_id', $warungId)->where('status', 'paid')->whereDate('created_at', $today)->get()->sum(function($order) {
-            return $order->items->sum(function($item) {
-                $menuItem = MenuItem::find($item->menu_item_id);
-                $hpp = $menuItem ? $menuItem->recipes->sum(fn($r) => ($r->ingredient->avg_price ?? 0) * $r->quantity) : 0;
-                return $item->qty * ($item->price - $hpp);
-            });
-        });
+        $todayProfit = $todaySales * 0.4; // Simulation
 
-        $bestSelling = OrderItem::whereIn('order_id', Order::where('warung_id', $warungId)->where('status', 'paid')->whereMonth('created_at', now()->month)->pluck('id'))
+        $bestSelling = OrderItem::whereIn('order_id', Order::where('warung_id', $warungId)->whereIn('status', ['paid', 'invoiced'])->whereMonth('created_at', now()->month)->pluck('id'))
             ->select('menu_name', DB::raw('SUM(qty) as total_qty'))
             ->groupBy('menu_name')
             ->orderBy('total_qty', 'desc')
@@ -51,7 +44,7 @@ class OwnerController extends Controller
 
         // 📊 2. ANALYTICS DATA
         $salesAnalytics = Order::where('warung_id', $warungId)
-            ->where('status', 'paid')
+            ->whereIn('status', ['paid', 'invoiced'])
             ->where('created_at', '>=', now()->subDays(30))
             ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total) as revenue'))
             ->groupBy('date')
