@@ -85,13 +85,13 @@
                                 <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-2">Total Tagihan</p>
                                 <p className="text-3xl font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(finalTotal)}</p>
                             </div>
-                            
+
                             <div className="relative group mb-6">
                                 <div className="absolute -inset-4 bg-gradient-to-tr from-orange-500 to-yellow-400 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
                                 <div className="relative bg-white p-6 rounded-[2rem] shadow-xl">
-                                    <img 
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=MAJAR-POS-${order.id}-${finalTotal}`} 
-                                        alt="QRIS Dummy" 
+                                    <img
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=MAJAR-POS-${order.id}-${finalTotal}`}
+                                        alt="QRIS Dummy"
                                         className="w-48 h-48"
                                     />
                                 </div>
@@ -109,7 +109,7 @@
                             >
                                 {processing ? 'Memverifikasi...' : 'Konfirmasi Sudah Bayar'}
                             </button>
-                            <button 
+                            <button
                                 onClick={() => setShowQR(false)}
                                 className="mt-4 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
                             >
@@ -130,7 +130,7 @@
                             <h2 className="text-xl font-black text-gray-900 tracking-tight">Ringkasan</h2>
                             <button onClick={onClose} className="lg:hidden text-gray-400"><i className="bi bi-x-lg"></i></button>
                         </div>
-                        
+
                         <div className="mb-6 flex items-center gap-3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                             <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
                                 <i className="bi bi-person-badge"></i>
@@ -180,12 +180,12 @@
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Diskon & Kupon</label>
                                 {!canUseCoupon && <span className="text-[8px] font-bold text-orange-400 uppercase bg-orange-50 px-2 py-1 rounded-md">Kupon khusus Member/Owner</span>}
                             </div>
-                            
+
                             <div className="flex gap-2 mb-3">
                                 <button onClick={() => setDiscountType('nominal')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${discountType === 'nominal' ? 'bg-orange-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>Nominal</button>
                                 <button onClick={() => setDiscountType('percent')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${discountType === 'percent' ? 'bg-orange-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>Persen</button>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-3">
                                 <input
                                     type="number"
@@ -258,6 +258,84 @@
         );
     };
 
+    const VoidOrderModal = ({ order, onVoid, onClose }) => {
+        const [reason, setReason] = useState('');
+        const [pin, setPin] = useState('');
+        const [processing, setProcessing] = useState(false);
+
+        const handleSubmit = async () => {
+            if (!reason.trim() || !pin.trim()) return;
+            setProcessing(true);
+            await onVoid(reason, pin);
+            setProcessing(false);
+        };
+
+        return (
+            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                    <div className="p-8">
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-2">Void Pesanan</h2>
+                        <p className="text-gray-400 font-medium text-sm leading-relaxed mb-6">Masukkan alasan void dan PIN manager untuk melanjutkan.</p>
+
+                        <div className="mb-4">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Alasan</label>
+                            <input value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4" placeholder="Alasan void..." />
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">PIN Manager</label>
+                            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4" placeholder="PIN..." />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-2xl font-black">Batal</button>
+                            <button disabled={processing} onClick={handleSubmit} className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-black">{processing ? 'Memproses...' : 'Void Pesanan'}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const VoidItemModal = ({ target, onClose, onSubmit }) => {
+        const [qty, setQty] = useState(target?.item?.qty || 1);
+        const [reason, setReason] = useState('');
+        const [processing, setProcessing] = useState(false);
+
+        const handle = async () => {
+            if (!qty || qty < 1) return;
+            setProcessing(true);
+            await onSubmit(target.orderId, target.item.id, qty, reason);
+            setProcessing(false);
+        };
+
+        return (
+            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 text-black">
+                    <div className="p-8">
+                        <h2 className="text-2xl font-black tracking-tight mb-2">Void Item: {target?.item?.menu_name}</h2>
+                        <p className="text-gray-600 font-medium text-sm leading-relaxed mb-6">Pilih jumlah item yang akan di-VOID (maks {target?.item?.qty}).</p>
+
+                        <div className="mb-4">
+                            <label className="text-[10px] font-black text-black uppercase tracking-widest mb-2 block">Jumlah yang di-void</label>
+                            <input type="number" min="1" max={target?.item?.qty} value={qty} onChange={(e)=> setQty(Math.max(1, Math.min(target?.item?.qty || 1, parseInt(e.target.value || 0))))} className="w-full bg-gray-50 rounded-2xl p-4 text-black placeholder-gray-400" />
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="text-[10px] font-black text-black uppercase tracking-widest mb-2 block">Alasan (opsional)</label>
+                            <input value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4 text-black placeholder-gray-400" placeholder="Alasan..." />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-2xl font-black">Batal</button>
+                            <button disabled={processing} onClick={handle} className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-black">{processing ? 'Memproses...' : 'Void Item'}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const SidebarIcon = ({ icon, label, active = false, onClick, count = 0 }) => (
         <div
             onClick={onClick}
@@ -299,7 +377,7 @@
             reserved: { bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-orange-500', label: 'Reservasi' }
         };
         const config = statusConfig[table.status] || statusConfig.available;
-        
+
         // Debugging capacity
         const capacity = table.capacity || table.seats || 0;
         const isClickable = table.status === 'available' && capacity >= guestCount;
@@ -458,14 +536,17 @@
 
         // Map existing categories to 4 main categories
         const mainCategories = ['Makanan', 'Minuman', 'Snack', 'Lain-lain'];
-        
+
         const filteredMenu = useMemo(() => {
-            return menuItems.filter(item => {
-                // If the item's actual category is not in mainCategories, we might need a mapping
-                // For now, let's assume they match or fallback to 'Lain-lain'
-                const itemCat = mainCategories.includes(item.category) ? item.category : 'Lain-lain';
+            return (menuItems || []).filter(item => {
+                // Normalize category: trim and compare case-insensitively,
+                // fall back to 'Lain-lain' when no match found.
+                const rawCat = (item.category || '').toString().trim();
+                const matched = mainCategories.find(mc => mc.toLowerCase() === rawCat.toLowerCase());
+                const itemCat = matched || 'Lain-lain';
+
                 const matchCat = activeCategory === itemCat;
-                const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                const matchSearch = (item.name || '').toString().toLowerCase().includes(searchQuery.toLowerCase());
                 return matchCat && matchSearch;
             });
         }, [menuItems, activeCategory, searchQuery]);
@@ -493,7 +574,7 @@
                 onShowToast('Nama Pelanggan wajib diisi', 'error');
                 return;
             }
-            
+
             setSubmitting(true);
             try {
                 const res = await fetch('/terminal/orders', {
@@ -514,14 +595,14 @@
                         }))
                     })
                 });
-                
+
                 const data = await res.json();
                 if (data.id) {
                     await fetch(`/terminal/orders/${data.id}/submit-to-cashier`, {
                         method: 'POST',
                         headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                     });
-                    
+
                     onShowToast('Pesanan berhasil dikirim ke Kitchen!');
                     onBack();
                 } else {
@@ -705,6 +786,9 @@
         const [activeOrders, setActiveOrders] = useState([]);
         const [selectedOrder, setSelectedOrder] = useState(null);
         const [showPaymentModal, setShowPaymentModal] = useState(false);
+        const [showVoidModal, setShowVoidModal] = useState(false);
+        const [showVoidItemModal, setShowVoidItemModal] = useState(false);
+        const [voidItemTarget, setVoidItemTarget] = useState(null);
         const [toast, setToast] = useState(null);
         const [confirmAction, setConfirmAction] = useState(null); // { title, message, onConfirm }
 
@@ -721,7 +805,7 @@
                 const res = await fetch('/terminal/orders?role=kasir');
                 const data = await res.json();
                 setActiveOrders(data || []);
-                
+
                 if (selectedOrder) {
                     const updated = data.find(o => o.id === selectedOrder.id);
                     if (updated) setSelectedOrder(updated);
@@ -775,13 +859,13 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify({ 
-                        payment_method: method.toLowerCase(), 
+                    body: JSON.stringify({
+                        payment_method: method.toLowerCase(),
                         amount_paid: amount,
                         discount_amount: discount
                     })
                 });
-                
+
                 const data = await res.json();
                 if (data.success) {
                     onShowToast(method === 'INVOICE' ? 'Pesanan dipindahkan ke Invoice!' : 'Pembayaran Berhasil! Meja tersedia.');
@@ -794,6 +878,67 @@
                 }
             } catch (e) {
                 onShowToast('Terjadi kesalahan sistem.', 'error');
+            }
+        };
+
+        const handleVoidOrder = async (orderId, reason, pin) => {
+            try {
+                const res = await fetch(`/terminal/orders/${orderId}/void`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ reason, pin })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    onShowToast('Pesanan berhasil di-VOID');
+                    setShowVoidModal(false);
+                    setSelectedOrder(null);
+                    fetchActiveOrders();
+                    fetchTables();
+                } else {
+                    onShowToast(data.error || 'Gagal melakukan VOID', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                onShowToast('Terjadi kesalahan sistem', 'error');
+            }
+        };
+
+        const handleVoidItemSubmit = async (orderId, itemId, qty, reason) => {
+            try {
+                const res = await fetch(`/terminal/orders/${orderId}/items/${itemId}/void`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ qty, reason })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    onShowToast('Item berhasil di-VOID');
+                    setShowVoidItemModal(false);
+                    setVoidItemTarget(null);
+                    // refresh
+                    fetchActiveOrders();
+                    fetchTables();
+                    if (selectedOrder && selectedOrder.id === orderId) {
+                        // reload selected order from server list
+                        const updated = (await (await fetch(`/terminal/orders?role=kasir`)).json()).find(o => o.id === selectedOrder.id);
+                        if (updated) setSelectedOrder(updated);
+                        else setSelectedOrder(null);
+                    }
+                } else {
+                    onShowToast(data.error || 'Gagal melakukan VOID', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                onShowToast('Terjadi kesalahan sistem', 'error');
             }
         };
 
@@ -825,7 +970,7 @@
         const renderView = () => {
             switch (view) {
                 case 'PENDING_APPROVAL':
-                    return <PendingApprovalView activeOrders={activeOrders} onBack={() => setView('ORDER_TYPE')} onShowToast={onShowToast} fetchOrders={fetchActiveOrders} />;
+                    return <PendingApprovalView activeOrders={activeOrders} onBack={() => setView('ORDER_TYPE')} onShowToast={onShowToast} fetchOrders={fetchActiveOrders} onVoidItem={(orderId, item) => { setVoidItemTarget({ orderId, item }); setShowVoidItemModal(true); }} />;
                 case 'ORDER_STATUS':
                     return <OrderStatusView role="kasir" onBack={() => setView('ORDER_TYPE')} onShowToast={onShowToast} setConfirmAction={setConfirmAction} />;
                 case 'ORDER_HISTORY':
@@ -890,7 +1035,7 @@
                                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Monitoring Order</h3>
                                 <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">{activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').length}</span>
                             </div>
-                            
+
                             <div className="flex-1 overflow-y-auto custom-scrollbar px-4 space-y-3 pb-8">
                                 {activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').length === 0 ? (
                                     <div className="py-12 flex flex-col items-center justify-center opacity-20 text-white">
@@ -899,8 +1044,8 @@
                                     </div>
                                 ) : (
                                     activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').map(order => (
-                                        <div 
-                                            key={order.id} 
+                                        <div
+                                            key={order.id}
                                             onClick={() => setSelectedOrder(order)}
                                             className={`p-5 rounded-[1.5rem] cursor-pointer transition-all duration-300 border-2 ${selectedOrder?.id === order.id ? 'bg-orange-500 border-orange-500 shadow-lg shadow-orange-500/20' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
                                         >
@@ -945,15 +1090,15 @@
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${
-                                                item.status === 'ready' ? 'bg-green-100 text-green-600' : 
-                                                item.status === 'served' ? 'bg-purple-100 text-purple-600' : 
+                                                item.status === 'ready' ? 'bg-green-100 text-green-600' :
+                                                item.status === 'served' ? 'bg-purple-100 text-purple-600' :
                                                 'bg-blue-100 text-blue-600'
                                             }`}>
                                                 {item.status}
                                             </span>
                                             <span className="font-black text-gray-900 text-sm">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
-                                            <button 
-                                                onClick={() => handleVoidItem(selectedOrder.id, item.id)}
+                                            <button
+                                                onClick={() => { setVoidItemTarget({ orderId: selectedOrder.id, item }); setShowVoidItemModal(true); }}
                                                 className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
                                             >
                                                 <i className="bi bi-trash"></i>
@@ -968,12 +1113,20 @@
                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Bill</span>
                                     <span className="text-2xl font-black text-gray-900 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</span>
                                 </div>
-                                <button
-                                    onClick={() => setShowPaymentModal(true)}
-                                    className="w-full py-4 bg-orange-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-orange-500/30 transition-all active:scale-95"
-                                >
-                                    Selesaikan Pembayaran
-                                </button>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setShowPaymentModal(true)}
+                                        className="flex-1 py-4 bg-orange-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-orange-500/30 transition-all active:scale-95"
+                                    >
+                                        Selesaikan Pembayaran
+                                    </button>
+                                    <button
+                                        onClick={() => setShowVoidModal(true)}
+                                        className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-red-500/30 transition-all active:scale-95"
+                                    >
+                                        Void Order
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -986,10 +1139,24 @@
 
                 {/* Modals & Toasts */}
                 {showPaymentModal && selectedOrder && (
-                    <PaymentModal 
-                        order={selectedOrder} 
+                    <PaymentModal
+                        order={selectedOrder}
                         onConfirm={handleFinalizePayment}
-                        onClose={() => setShowPaymentModal(false)} 
+                        onClose={() => setShowPaymentModal(false)}
+                    />
+                )}
+                {showVoidModal && selectedOrder && (
+                    <VoidOrderModal
+                        order={selectedOrder}
+                        onClose={() => setShowVoidModal(false)}
+                        onVoid={(reason, pin) => handleVoidOrder(selectedOrder.id, reason, pin)}
+                    />
+                )}
+                {showVoidItemModal && voidItemTarget && (
+                    <VoidItemModal
+                        target={voidItemTarget}
+                        onClose={() => { setShowVoidItemModal(false); setVoidItemTarget(null); }}
+                        onSubmit={handleVoidItemSubmit}
                     />
                 )}
                 {confirmAction && (
@@ -1005,7 +1172,7 @@
 
     // --- Order Status & History Components ---
 
-    const PendingApprovalView = ({ activeOrders, onBack, onShowToast, fetchOrders }) => {
+    const PendingApprovalView = ({ activeOrders, onBack, onShowToast, fetchOrders, onVoidItem }) => {
         const pending = activeOrders.filter(o => o.stage === 'WAITING_CASHIER');
         const [processing, setProcessing] = useState(false);
 
@@ -1054,11 +1221,23 @@
                                     <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Waiting</span>
                                 </div>
 
-                                <div className="space-y-2 mb-6 border-y border-gray-50 py-4">
+                                    <div className="space-y-2 mb-6 border-y border-gray-50 py-4">
                                     {order.items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between text-xs font-bold text-gray-600">
-                                            <span>{item.qty}x {item.menu_name}</span>
-                                            <span className="text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
+                                        <div key={idx} className="flex justify-between items-center text-xs font-bold text-gray-600">
+                                            <div className="flex items-center gap-4">
+                                                <span>{item.qty}x {item.menu_name}</span>
+                                                <span className="text-[10px] text-gray-400">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
+                                                <button
+                                                    onClick={() => onVoidItem(order.id, item)}
+                                                    className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
+                                                    title="Void Item"
+                                                >
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                     <div className="flex justify-between pt-2 font-black text-gray-900 text-sm">
@@ -1067,7 +1246,7 @@
                                     </div>
                                 </div>
 
-                                <button 
+                                <button
                                     disabled={processing}
                                     onClick={() => handleApprove(order.id)}
                                     className="w-full py-4 bg-green-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-green-500/20"
@@ -1180,7 +1359,7 @@
                                     <div className="space-y-1 mb-6 max-h-32 overflow-y-auto custom-scrollbar">
                                         {renderItems(order)}
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => handleApprove(order.id)}
                                         className="w-full py-3 bg-orange-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
                                     >

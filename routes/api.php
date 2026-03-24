@@ -106,6 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/terminal/tables/{table}/draft',                [TerminalController::class, 'getTableDraft']);
     Route::post('/terminal/orders/{order}/submit-to-cashier',   [TerminalController::class, 'submitToCashier']);
     Route::post('/terminal/orders/{order}/approve',             [TerminalController::class, 'approveOrder']);
+    Route::post('/terminal/orders/{order}/items/{item}/void',   [TerminalController::class, 'voidItem']);
     Route::post('/terminal/orders/{order}/approve-and-pay',     [TerminalController::class, 'approveAndPay']);
     Route::post('/terminal/orders/{order}/finalize-payment',    [TerminalController::class, 'finalizePayment']);
     Route::post('/terminal/orders/{order}/kitchen-status',      [TerminalController::class, 'updateKitchenStatus']);

@@ -265,23 +265,66 @@ class TerminalController extends Controller
             return response()->json(['error' => 'Pesanan sudah selesai, tidak bisa melakukan VOID'], 400);
         }
 
-        return DB::transaction(function () use ($order, $item) {
-            // Log void activity (Persistent Audit Trail)
-            Log::info("Item VOID: Order #{$order->code}, Item: {$item->menu_name}, Qty: {$item->qty}, By: " . auth()->user()->name);
+        $validated = $request->validate([
+            'qty' => 'nullable|integer|min:1',
+            'reason' => 'nullable|string|max:255'
+        ]);
 
-            // Delete the item
-            $item->delete();
+        $voidQty = $validated['qty'] ?? $item->qty;
+        $reason = $validated['reason'] ?? null;
+
+        return DB::transaction(function () use ($order, $item, $voidQty, $reason) {
+            $user = auth()->user();
+
+            // Cap voidQty to item's qty
+            $voidQty = min($voidQty, $item->qty);
+
+            Log::info("Item VOID: Order #{$order->code}, Item: {$item->menu_name}, VoidQty: {$voidQty}, OriginalQty: {$item->qty}, By: " . ($user->name ?? 'system') . ($reason ? ", Reason: {$reason}" : ''));
+
+            if ($voidQty >= $item->qty) {
+                // Remove item entirely
+                $item->delete();
+            } else {
+                // Decrement quantity
+                $item->decrement('qty', $voidQty);
+            }
 
             // Recalculate order total
             $order->refresh();
-            $newSubtotal = $order->items->sum(function($i) {
+            $newSubtotal = $order->items->sum(function ($i) {
                 return $i->price * $i->qty;
             });
-            
+
             $order->update([
                 'subtotal' => $newSubtotal,
-                'total' => $newSubtotal + ($order->admin_fee ?? 0) - ($order->diskon_manual ?? 0)
+                'total' => $newSubtotal + ($order->admin_fee ?? 0) - ($order->diskon_manual ?? 0),
+                'notes' => ($order->notes ? $order->notes . ' | ' : '') . ($reason ? "VOID: {$reason}" : 'VOID by user')
             ]);
+
+            // If order has no items left, delete the order and free tables when appropriate
+            if ($order->items()->count() === 0) {
+                $tableIds = [$order->table_id];
+                if ($order->merged_table_ids) {
+                    $mergedIds = json_decode($order->merged_table_ids, true);
+                    if (is_array($mergedIds)) $tableIds = array_merge($tableIds, $mergedIds);
+                }
+
+                foreach ($tableIds as $tid) {
+                    $hasOther = Order::where('table_id', $tid)
+                        ->where('warung_id', $order->warung_id)
+                        ->whereNotIn('stage', ['DONE', 'VOID'])
+                        ->where('id', '!=', $order->id)
+                        ->exists();
+
+                    if (!$hasOther) {
+                        RestaurantTable::where('id', $tid)->update(['status' => 'available']);
+                    }
+                }
+
+                $order->delete();
+
+                return response()->json(['success' => true, 'message' => 'Item berhasil di-VOID, order kosong dihapus', 'order_deleted' => true]);
+            }
 
             return response()->json(['success' => true, 'message' => 'Item berhasil di-VOID']);
         });
@@ -298,7 +341,8 @@ class TerminalController extends Controller
         }
 
         $validated = $request->validate([
-            'payment_method' => 'required|in:cash,qris,card,other,tunai,edc,invoice',
+            // Accept frontend values but normalize below to DB enum (kasir,qris,gateway)
+            'payment_method' => 'required|in:cash,qris,card,other,tunai,edc,invoice,gateway,kasir',
             'amount_paid' => 'required|numeric',
             'discount_amount' => 'nullable|numeric|min:0'
         ]);
@@ -320,7 +364,22 @@ class TerminalController extends Controller
                     'stage' => 'DONE',
                     'kasir_id' => $user->id,
                     'paid_at' => now(),
-                    'payment_method' => $validated['payment_method'],
+                    // Normalize to DB enum: kasir, qris, gateway
+                    'payment_method' => (function ($pm) {
+                        $pm = strtolower((string)$pm);
+                        $map = [
+                            'tunai' => 'kasir',
+                            'cash' => 'kasir',
+                            'invoice' => 'kasir',
+                            'kasir' => 'kasir',
+                            'qris' => 'qris',
+                            'edc' => 'gateway',
+                            'card' => 'gateway',
+                            'gateway' => 'gateway',
+                            'other' => 'kasir',
+                        ];
+                        return $map[$pm] ?? 'kasir';
+                    })($validated['payment_method']),
                     'amount_paid' => $validated['amount_paid'],
                     'diskon_manual' => $discount,
                     'total' => $finalTotal,
@@ -488,7 +547,22 @@ class TerminalController extends Controller
                 'paid_at' => now(),
                 'ordered_at' => now(),
                 'kasir_id' => $user->id,
-                'payment_method' => $validated['payment_method'],
+                // Normalize to DB enum: kasir, qris, gateway
+                'payment_method' => (function ($pm) {
+                    $pm = strtolower((string)$pm);
+                    $map = [
+                        'tunai' => 'kasir',
+                        'cash' => 'kasir',
+                        'invoice' => 'kasir',
+                        'kasir' => 'kasir',
+                        'qris' => 'qris',
+                        'edc' => 'gateway',
+                        'card' => 'gateway',
+                        'gateway' => 'gateway',
+                        'other' => 'kasir',
+                    ];
+                    return $map[$pm] ?? 'kasir';
+                })($validated['payment_method']),
                 'amount_paid' => $validated['amount_paid'],
                 'sent_to_kitchen_at' => now(),
                 'subtotal' => $subtotal,
