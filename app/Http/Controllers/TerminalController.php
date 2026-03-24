@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\MenuItem;
+use App\Models\OrderItemVoid;
 use App\Models\AccountReceivable;
 use App\Models\RestaurantTable;
 use App\Models\Warung;
@@ -267,7 +268,8 @@ class TerminalController extends Controller
 
         $validated = $request->validate([
             'qty' => 'nullable|integer|min:1',
-            'reason' => 'nullable|string|max:255'
+            'reason' => 'nullable|string|max:255',
+            'pin' => 'nullable|string'
         ]);
 
         $voidQty = $validated['qty'] ?? $item->qty;
@@ -280,6 +282,19 @@ class TerminalController extends Controller
             $voidQty = min($voidQty, $item->qty);
 
             Log::info("Item VOID: Order #{$order->code}, Item: {$item->menu_name}, VoidQty: {$voidQty}, OriginalQty: {$item->qty}, By: " . ($user->name ?? 'system') . ($reason ? ", Reason: {$reason}" : ''));
+
+            // Record void audit
+            OrderItemVoid::create([
+                'order_id' => $order->id,
+                'order_item_id' => $item->id,
+                'menu_item_id' => $item->menu_item_id,
+                'qty' => $voidQty,
+                'prev_qty' => $item->qty,
+                'reason' => $reason,
+                'voided_by' => $user->id ?? null,
+                'voided_by_role' => $user->role ?? null,
+                'manager_pin_used' => $validated['pin'] ?? null,
+            ]);
 
             if ($voidQty >= $item->qty) {
                 // Remove item entirely
@@ -424,7 +439,8 @@ class TerminalController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => $isInvoice ? 'Pesanan berhasil dipindahkan ke Invoice' : 'Pembayaran berhasil diselesaikan',
-                    'order' => $order->load('items')
+                    // Include related warung/table so frontend can open receipt URL with proper context
+                    'order' => $order->load('items', 'warung', 'table')
                 ]);
             });
         } catch (\Exception $e) {

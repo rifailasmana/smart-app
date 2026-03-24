@@ -568,6 +568,14 @@ Route::middleware('auth')->group(function () {
     // Manager Routes
     Route::middleware('role:manager,owner,admin')->group(function () {
         Route::get('/dashboard/manager', [App\Http\Controllers\ManagerController::class, 'index'])->name('dashboard.manager');
+        // Approval CRUD routes (Manager Approval Tab)
+        Route::get('/dashboard/manager/approvals', [App\Http\Controllers\ManagerController::class, 'approvals'])->name('manager.approvals.index');
+        Route::get('/dashboard/manager/approvals/create', [App\Http\Controllers\ManagerController::class, 'createApproval'])->name('manager.approvals.create');
+        Route::post('/dashboard/manager/approvals', [App\Http\Controllers\ManagerController::class, 'storeApproval'])->name('manager.approvals.store');
+        Route::get('/dashboard/manager/approvals/{approval}/edit', [App\Http\Controllers\ManagerController::class, 'editApproval'])->name('manager.approvals.edit');
+        Route::put('/dashboard/manager/approvals/{approval}', [App\Http\Controllers\ManagerController::class, 'updateApproval'])->name('manager.approvals.update');
+        Route::delete('/dashboard/manager/approvals/{approval}', [App\Http\Controllers\ManagerController::class, 'destroyApproval'])->name('manager.approvals.destroy');
+        Route::post('/dashboard/manager/approvals/{approval}/process', [App\Http\Controllers\ManagerController::class, 'processApproval'])->name('manager.approvals.process');
         Route::post('/manager/void/{order}', [App\Http\Controllers\ManagerController::class, 'voidOrder'])->name('manager.void');
         Route::post('/manager/coupon', [App\Http\Controllers\ManagerController::class, 'createCoupon'])->name('manager.coupon.store');
         Route::post('/manager/table', [App\Http\Controllers\ManagerController::class, 'storeTable'])->name('manager.table.store');

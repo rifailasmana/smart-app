@@ -25,12 +25,12 @@ class OrderController extends Controller
     public function create(Request $request)
     {
         $warung = $request->attributes->get('warung');
-        
+
         if (!$warung) {
             $warungCode = $request->get('warung');
             $warung = Warung::where('code', $warungCode)->firstOrFail();
         }
-        
+
         $tableId = $request->get('meja') ?: $request->get('table_id');
 
         if ($tableId) {
@@ -86,12 +86,13 @@ class OrderController extends Controller
             ->orderBy('category')
             ->orderBy('name');
 
-        $bestToday = OrderItem::whereIn('order_id',
-                Order::where('warung_id', $warung->id)
-                    ->whereDate('created_at', today())
-                    ->whereIn('status', ['pending', 'verified', 'preparing', 'ready', 'served', 'paid'])
-                    ->pluck('id')
-            )
+        $bestToday = OrderItem::whereIn(
+            'order_id',
+            Order::where('warung_id', $warung->id)
+                ->whereDate('created_at', today())
+                ->whereIn('status', ['pending', 'verified', 'preparing', 'ready', 'served', 'paid'])
+                ->pluck('id')
+        )
             ->selectRaw('menu_name, SUM(qty) as total_qty')
             ->groupBy('menu_name')
             ->orderBy('total_qty', 'desc')
@@ -117,7 +118,7 @@ class OrderController extends Controller
     public function store(Request $request)
     {
         $warung = $request->attributes->get('warung');
-        
+
         if (!$warung) {
             $warung = Warung::findOrFail($request->warung_id);
         }
@@ -168,10 +169,10 @@ class OrderController extends Controller
 
             foreach ($validated['items'] as $item) {
                 $menuItem = MenuItem::findOrFail($item['menu_id']);
-                
+
                 // Use promo price if active
                 $price = ($menuItem->promo_aktif && $menuItem->harga_promo > 0) ? $menuItem->harga_promo : $menuItem->price;
-                
+
                 $itemTotal = $price * $item['qty'];
                 $subtotal += $itemTotal;
 
@@ -257,7 +258,6 @@ class OrderController extends Controller
                 'message' => "Pesanan diterima! Kode: {$order->code}, Antrian: {$order->queue_number}",
                 'redirect' => $statusUrl,
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -282,7 +282,7 @@ class OrderController extends Controller
 
         if ($warung->require_owner_auth_for_discount) {
             $user = auth()->user();
-            
+
             if (!in_array($user->role, ['owner', 'admin', 'kasir'], true)) {
                 if ($request->filled('owner_password')) {
                     $owner = \App\Models\User::where('warung_id', $warung->id)->where('role', 'owner')->first();
@@ -301,15 +301,15 @@ class OrderController extends Controller
                 return response()->json(['success' => false, 'message' => 'Diskon melebihi batas maksimal (' . $warung->max_discount_percent . '%).'], 422);
             }
         }
-        
+
         // Ensure discount doesn't exceed total
         if ($request->diskon_manual > $order->subtotal) {
-             return response()->json(['success' => false, 'message' => 'Diskon tidak boleh melebihi subtotal.'], 422);
+            return response()->json(['success' => false, 'message' => 'Diskon tidak boleh melebihi subtotal.'], 422);
         }
 
         $order->diskon_manual = $request->diskon_manual;
         $order->alasan_diskon = $request->alasan_diskon;
-        
+
         // Recalculate total
         $order->total = max(0, $order->subtotal + $order->admin_fee - $order->diskon_manual);
         $order->save();
@@ -323,12 +323,12 @@ class OrderController extends Controller
     public function status(Request $request)
     {
         $warung = $request->attributes->get('warung');
-        
+
         if (!$warung) {
             $warungCode = $request->get('warung');
             $warung = Warung::where('code', $warungCode)->firstOrFail();
         }
-        
+
         $order = Order::where('code', $request->code)
             ->where('warung_id', $warung->id)
             ->with('items', 'warung', 'table')
@@ -350,15 +350,28 @@ class OrderController extends Controller
     {
         $warung = $request->attributes->get('warung');
 
+        // If warung not provided via attribute/query, try to find the order globally by code
         if (!$warung) {
-            $warungCode = $request->get('warung');
-            $warung = Warung::where('code', $warungCode)->firstOrFail();
-        }
+            $order = Order::where('code', $request->code)
+                ->with('items', 'warung', 'table')
+                ->first();
 
-        $order = Order::where('code', $request->code)
-            ->where('warung_id', $warung->id)
-            ->with('items', 'warung', 'table')
-            ->firstOrFail();
+            if ($order) {
+                $warung = $order->warung;
+            } else {
+                $warungCode = $request->get('warung');
+                $warung = Warung::where('code', $warungCode)->firstOrFail();
+                $order = Order::where('code', $request->code)
+                    ->where('warung_id', $warung->id)
+                    ->with('items', 'warung', 'table')
+                    ->firstOrFail();
+            }
+        } else {
+            $order = Order::where('code', $request->code)
+                ->where('warung_id', $warung->id)
+                ->with('items', 'warung', 'table')
+                ->firstOrFail();
+        }
 
         if ($order->status !== 'paid') {
             return response()->json([
@@ -381,14 +394,27 @@ class OrderController extends Controller
         $warung = $request->attributes->get('warung');
 
         if (!$warung) {
-            $warungCode = $request->get('warung');
-            $warung = Warung::where('code', $warungCode)->firstOrFail();
-        }
+            // Try to find order by code first
+            $order = Order::where('code', $request->code)
+                ->with('items', 'warung', 'table')
+                ->first();
 
-        $order = Order::where('code', $request->code)
-            ->where('warung_id', $warung->id)
-            ->with('items', 'warung', 'table')
-            ->firstOrFail();
+            if ($order) {
+                $warung = $order->warung;
+            } else {
+                $warungCode = $request->get('warung');
+                $warung = Warung::where('code', $warungCode)->firstOrFail();
+                $order = Order::where('code', $request->code)
+                    ->where('warung_id', $warung->id)
+                    ->with('items', 'warung', 'table')
+                    ->firstOrFail();
+            }
+        } else {
+            $order = Order::where('code', $request->code)
+                ->where('warung_id', $warung->id)
+                ->with('items', 'warung', 'table')
+                ->firstOrFail();
+        }
 
         // Optional: Check if paid, but maybe they want to print before paying?
         // Usually receipts are for paid orders.
@@ -466,7 +492,7 @@ class OrderController extends Controller
     public function verifyPayment(Request $request, Order $order)
     {
         $user = auth()->user();
-        
+
         // Verify order belongs to user's warung
         if ($user->warung_id !== $order->warung_id) {
             return response()->json(['error' => 'Unauthorized'], 403);
@@ -492,7 +518,7 @@ class OrderController extends Controller
         NotificationService::sendOrderNotification($order, 'verified');
 
         return response()->json([
-            'success' => true, 
+            'success' => true,
             'message' => 'Pembayaran diverifikasi! Pesanan siap diproses dapur.',
             'order_status' => 'verified'
         ]);
@@ -504,7 +530,7 @@ class OrderController extends Controller
     public function processPayment(Request $request, Order $order)
     {
         $user = auth()->user();
-        
+
         // Verify order belongs to user's warung
         if ($user->warung_id !== $order->warung_id) {
             return response()->json(['error' => 'Unauthorized'], 403);
@@ -615,7 +641,7 @@ class OrderController extends Controller
                 'revenue_recognized_at' => now(), // Accrual Accounting: recognize revenue today
                 'cashier_id' => $user->id,
                 'cashier_name' => $user->name,
-                'items_snapshot' => $order->items->map(function($item) {
+                'items_snapshot' => $order->items->map(function ($item) {
                     return [
                         'menu_name' => $item->menu_name,
                         'qty' => $item->qty,
@@ -676,7 +702,7 @@ class OrderController extends Controller
         $item = OrderItem::findOrFail($validated['item_id']);
         $oldPrice = $item->price * $item->qty;
         $newPrice = $item->price * $validated['qty'];
-        
+
         $item->update(['qty' => $validated['qty']]);
 
         // Recalculate order total
@@ -729,7 +755,7 @@ class OrderController extends Controller
     public function cancelOrder(Request $request, Order $order)
     {
         $user = auth()->user();
-        
+
         // Only Kasir can cancel orders
         if (!in_array($user->role, ['kasir', 'admin'])) {
             return response()->json(['error' => 'Unauthorized'], 403);
@@ -751,7 +777,7 @@ class OrderController extends Controller
         NotificationService::sendOrderNotification($order, 'cancelled');
 
         return response()->json([
-            'success' => true, 
+            'success' => true,
             'message' => 'Order cancelled successfully!',
             'order_status' => 'cancelled'
         ]);
@@ -763,7 +789,7 @@ class OrderController extends Controller
     public function restaurantOrders(Request $request, Warung $warung)
     {
         $user = auth()->user();
-        
+
         // Only Admin can view orders from any restaurant
         if ($user->role !== 'admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
@@ -828,7 +854,7 @@ class OrderController extends Controller
     public function syncToGoogleSheet(Request $request)
     {
         $user = auth()->user();
-        
+
         if (!in_array($user->role, ['owner', 'admin'])) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
@@ -845,7 +871,7 @@ class OrderController extends Controller
         try {
             // Get existing order codes from Sheet
             $existingCodes = GoogleSheetService::getExistingOrderCodes($warung);
-            
+
             // Get all PAID orders that are NOT in the sheet
             $ordersToSync = Order::where('warung_id', $warung->id)
                 ->where('status', 'paid') // Only sync paid orders
@@ -863,7 +889,6 @@ class OrderController extends Controller
             $message = "Berhasil menyinkronkan {$syncedCount} pesanan ke sheet Transaksi.";
 
             return response()->json(['success' => true, 'message' => $message]);
-
         } catch (\Exception $e) {
             \Log::error("Manual Sync Fatal Error: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);

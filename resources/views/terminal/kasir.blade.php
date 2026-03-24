@@ -785,6 +785,7 @@
         const [loadingTables, setLoadingTables] = useState(false);
         const [activeOrders, setActiveOrders] = useState([]);
         const [selectedOrder, setSelectedOrder] = useState(null);
+        const [showOrderModal, setShowOrderModal] = useState(false);
         const [showPaymentModal, setShowPaymentModal] = useState(false);
         const [showVoidModal, setShowVoidModal] = useState(false);
         const [showVoidItemModal, setShowVoidItemModal] = useState(false);
@@ -870,9 +871,26 @@
                 if (data.success) {
                     onShowToast(method === 'INVOICE' ? 'Pesanan dipindahkan ke Invoice!' : 'Pembayaran Berhasil! Meja tersedia.');
                     setShowPaymentModal(false);
+                    // Keep order data for receipt display
+                    const paidOrder = data.order || (data.order_id ? { code: data.order_id } : null);
                     setSelectedOrder(null);
                     fetchActiveOrders();
                     fetchTables();
+
+                    // If this was a normal payment (not invoice), open printable receipt
+                    try {
+                        const code = paidOrder?.code || data.code || data.order_code;
+                        if (code && (!method || method.toLowerCase() !== 'invoice')) {
+                            // Open printable receipt view in a new window/tab
+                            // Attach warung (subdomain/slug) if available so the receipt route can resolve the correct warung
+                            const warungParam = paidOrder?.warung?.slug || paidOrder?.warung?.code || paidOrder?.warung_code || '';
+                            let url = `/order-receipt-print?code=${encodeURIComponent(code)}`;
+                            if (warungParam) url += `&warung=${encodeURIComponent(warungParam)}`;
+                            window.open(url, '_blank');
+                        }
+                    } catch (e) {
+                        console.error('Failed to open receipt window', e);
+                    }
                 } else {
                     onShowToast(data.error || 'Gagal memproses pembayaran', 'error');
                 }
@@ -1026,115 +1044,61 @@
                         <div className="p-4 grid grid-cols-3 gap-2">
                             <SidebarIcon icon="bi-plus-circle" label="Pesan" active={view === 'ORDER_TYPE' || view === 'TABLE_SELECT' || view === 'MENU'} onClick={() => setView('ORDER_TYPE')} />
                             <SidebarIcon icon="bi-shield-lock" label="Approval" active={view === 'PENDING_APPROVAL'} onClick={() => setView('PENDING_APPROVAL')} count={activeOrders.filter(o => o.stage === 'WAITING_CASHIER').length} />
-                            <SidebarIcon icon="bi-clock-history" label="History" active={view === 'ORDER_HISTORY'} onClick={() => setView('ORDER_HISTORY')} />
+                            <SidebarIcon icon="bi-desktop" label="Monitor" active={view === 'MONITORING_PAGE'} onClick={() => setView('MONITORING_PAGE')} />
                         </div>
 
-                        {/* Active Orders List */}
-                        <div className="flex-1 flex flex-col overflow-hidden border-t border-white/5">
-                            <div className="p-6 flex justify-between items-center">
-                                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Monitoring Order</h3>
-                                <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">{activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').length}</span>
+                        {/* Compact placeholder - full monitoring is a dedicated SPA view */}
+                        <div className="flex-1 flex items-center justify-center px-4">
+                            <div className="text-center text-white/60">
+                                <div className="text-2xl font-black mb-2">Monitoring Orders</div>
+                                <div className="text-sm">Click <span className="font-bold">Monitor</span> to open full-screen monitoring.</div>
+                                <div className="mt-4">
+                                    <button onClick={() => setView('MONITORING_PAGE')} className="px-4 py-2 bg-orange-500 rounded-lg font-black">Open Monitoring</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Selected order modal is shown instead of sidebar drawer when triggered */}
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1 h-full overflow-hidden">
+                    {view === 'MONITORING_PAGE' ? (
+                        <div className="p-8 h-full overflow-auto">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-2xl font-black">Monitoring Orders</h2>
+                                <div className="text-sm text-gray-500">Active: <span className="font-black">{activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').length}</span></div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto custom-scrollbar px-4 space-y-3 pb-8">
+                            <div className="grid grid-cols-3 gap-4">
                                 {activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').length === 0 ? (
-                                    <div className="py-12 flex flex-col items-center justify-center opacity-20 text-white">
-                                        <i className="bi bi-inbox text-4xl mb-2"></i>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-center px-8 leading-loose">Tidak ada pesanan aktif</p>
-                                    </div>
+                                    <div className="col-span-3 text-center text-gray-400 py-12">No active orders</div>
                                 ) : (
                                     activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').map(order => (
-                                        <div
-                                            key={order.id}
-                                            onClick={() => setSelectedOrder(order)}
-                                            className={`p-5 rounded-[1.5rem] cursor-pointer transition-all duration-300 border-2 ${selectedOrder?.id === order.id ? 'bg-orange-500 border-orange-500 shadow-lg shadow-orange-500/20' : 'bg-white/5 border-transparent hover:bg-white/10'}`}
-                                        >
+                                        <div key={order.id} onClick={() => { setSelectedOrder(order); setShowOrderModal(true); }} className={`p-6 bg-white rounded-2xl shadow-sm cursor-pointer border-2 ${selectedOrder?.id === order.id ? 'border-orange-500 shadow-lg' : 'border-transparent hover:shadow-md'}`}>
                                             <div className="flex justify-between items-start mb-3">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <h4 className={`font-black text-sm ${selectedOrder?.id === order.id ? 'text-white' : 'text-gray-200'}`}>Meja {order.table?.name || 'TA'}</h4>
-                                                        <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${selectedOrder?.id === order.id ? 'bg-white/20 text-white' : 'bg-orange-500/20 text-orange-500'}`}>
-                                                            {order.guest_category || 'Umum'}
-                                                        </span>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-black">Meja {order.table?.name || 'TA'}</h4>
+                                                        <span className="text-xs text-gray-400">{order.guest_category || 'Umum'}</span>
                                                     </div>
-                                                    <p className={`text-[10px] font-bold uppercase tracking-widest ${selectedOrder?.id === order.id ? 'text-orange-100' : 'text-gray-500'}`}>{order.customer_name || 'Guest'}</p>
+                                                    <p className="text-sm text-gray-600">{order.customer_name || 'Guest'}</p>
                                                 </div>
-                                                <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${selectedOrder?.id === order.id ? 'bg-white/20 text-white' : 'bg-gray-800 text-gray-400'}`}>
-                                                    {order.stage === 'SERVED' ? 'READY TO PAY' : order.stage.replace(/_/g, ' ')}
-                                                </span>
+                                                <div className="text-right">
+                                                    <div className="text-sm font-black text-orange-500">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</div>
+                                                    <div className="text-xs text-gray-400 mt-1">{order.stage.replace(/_/g,' ')}</div>
+                                                </div>
                                             </div>
-                                            <div className={`text-lg font-black ${selectedOrder?.id === order.id ? 'text-white' : 'text-orange-500'}`}>
-                                                Rp {new Intl.NumberFormat('id-ID').format(order.total)}
-                                            </div>
+                                            <div className="mt-2 text-sm text-gray-500">{order.items.map(i => `${i.qty}x ${i.menu_name}`).join(', ')}</div>
                                         </div>
                                     ))
                                 )}
                             </div>
                         </div>
-                    </div>
-
-                    {/* Selected Order Detail Drawer / Section */}
-                    {selectedOrder && (
-                        <div className="bg-white rounded-t-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom duration-500 max-h-[70%] flex flex-col">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-black text-gray-900 tracking-tight">Detail Tagihan</h3>
-                                <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-gray-900"><i className="bi bi-x-lg"></i></button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 mb-6 pr-2">
-                                {selectedOrder.items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between items-center group">
-                                        <div className="flex-1">
-                                            <h5 className="font-bold text-gray-900 text-sm leading-tight">{item.qty}x {item.menu_name}</h5>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${
-                                                item.status === 'ready' ? 'bg-green-100 text-green-600' :
-                                                item.status === 'served' ? 'bg-purple-100 text-purple-600' :
-                                                'bg-blue-100 text-blue-600'
-                                            }`}>
-                                                {item.status}
-                                            </span>
-                                            <span className="font-black text-gray-900 text-sm">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
-                                            <button
-                                                onClick={() => { setVoidItemTarget({ orderId: selectedOrder.id, item }); setShowVoidItemModal(true); }}
-                                                className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
-                                            >
-                                                <i className="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="pt-6 border-t border-gray-100 space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Bill</span>
-                                    <span className="text-2xl font-black text-gray-900 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</span>
-                                </div>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => setShowPaymentModal(true)}
-                                        className="flex-1 py-4 bg-orange-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-orange-500/30 transition-all active:scale-95"
-                                    >
-                                        Selesaikan Pembayaran
-                                    </button>
-                                    <button
-                                        onClick={() => setShowVoidModal(true)}
-                                        className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-red-500/30 transition-all active:scale-95"
-                                    >
-                                        Void Order
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                    ) : (
+                        renderView()
                     )}
-                </div>
-
-                {/* Content Area */}
-                <div className="flex-1 h-full overflow-hidden">
-                    {renderView()}
                 </div>
 
                 {/* Modals & Toasts */}
@@ -1144,6 +1108,51 @@
                         onConfirm={handleFinalizePayment}
                         onClose={() => setShowPaymentModal(false)}
                     />
+                )}
+                {showOrderModal && selectedOrder && (
+                    <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+                        <div className="bg-white w-full max-w-3xl rounded-[2rem] overflow-hidden shadow-2xl p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-black">Detail Order — #{selectedOrder.code || selectedOrder.id}</h3>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => { setShowOrderModal(false); setSelectedOrder(null); }} className="text-gray-500">Close</button>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <div className="mb-3 text-sm text-gray-600">Meja: <span className="font-black text-gray-900">{selectedOrder.table?.name || 'TA'}</span></div>
+                                    <div className="space-y-3 max-h-80 overflow-auto custom-scrollbar pr-2">
+                                        {selectedOrder.items.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-center p-3 border rounded-lg">
+                                                <div>
+                                                    <div className="font-bold">{item.qty}x {item.menu_name}</div>
+                                                    <div className="text-xs text-gray-500">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => { setVoidItemTarget({ orderId: selectedOrder.id, item }); setShowVoidItemModal(true); }} className="px-3 py-1 bg-red-50 text-red-500 rounded">Void Item</button>
+                                                    <div className="font-black">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="mb-4">
+                                        <div className="text-sm text-gray-500">Customer</div>
+                                        <div className="font-black">{selectedOrder.customer_name || 'Guest'}</div>
+                                    </div>
+                                    <div className="mb-4">
+                                        <div className="text-sm text-gray-500">Total</div>
+                                        <div className="text-2xl font-black text-orange-500">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</div>
+                                    </div>
+                                    <div className="flex gap-2 mt-6">
+                                        <button onClick={() => { setShowPaymentModal(true); setShowOrderModal(false); }} className="flex-1 py-3 bg-orange-500 text-white rounded-lg font-black">Bayar</button>
+                                        <button onClick={() => { setShowVoidModal(true); setShowOrderModal(false); }} className="flex-1 py-3 bg-red-500 text-white rounded-lg font-black">Void Order</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
                 {showVoidModal && selectedOrder && (
                     <VoidOrderModal

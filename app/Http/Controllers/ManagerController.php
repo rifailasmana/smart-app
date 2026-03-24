@@ -6,6 +6,8 @@ use App\Models\Order;
 use App\Models\MenuItem;
 use App\Models\Voucher;
 use App\Models\RestockRequest;
+use App\Models\ApprovalRequest;
+use App\Models\OrderItemVoid;
 use App\Models\Ingredient;
 use App\Models\AccountReceivable;
 use App\Models\RestaurantTable;
@@ -27,14 +29,14 @@ class ManagerController extends Controller
             ->where('status', 'paid')
             ->whereDate('created_at', $today)
             ->sum('total');
-        
+
         $activeOrdersCount = Order::where('warung_id', $warungId)
             ->whereIn('status', ['pending', 'preparing', 'ready', 'served'])
             ->count();
-        
+
         $tables = RestaurantTable::where('warung_id', $warungId)->get();
         $occupiedTables = $tables->where('status', 'occupied')->count();
-        
+
         $delayedOrders = Order::where('warung_id', $warungId)
             ->where('status', 'preparing')
             ->where('updated_at', '<', now()->subMinutes(15))
@@ -50,7 +52,7 @@ class ManagerController extends Controller
             ->whereDate('created_at', $today)
             ->orderBy('created_at', 'desc')
             ->get();
-        
+
         $paymentMethods = Order::where('warung_id', $warungId)
             ->where('status', 'paid')
             ->whereDate('created_at', $today)
@@ -66,10 +68,46 @@ class ManagerController extends Controller
             ->where('warung_id', $warungId)
             ->where('status', 'pending')
             ->get();
-        
+
         // Simulating void/refund/discount requests as we don't have a model for them yet
-        // In a real app, you'd have an ApprovalRequest model
-        $pendingApprovals = []; 
+        // Fetch recent void records for manager review / audit with filtering and pagination
+        $pendingApprovals = [];
+
+        $voidQuery = OrderItemVoid::with(['order', 'orderItem', 'menuItem', 'user'])
+            ->whereHas('order', function ($oq) use ($warungId) {
+                $oq->where('warung_id', $warungId);
+            });
+
+        if ($q = $request->get('q')) {
+            $voidQuery->where(function ($w) use ($q) {
+                $w->where('reason', 'like', "%{$q}%")
+                    ->orWhereHas('menuItem', function ($m) use ($q) {
+                        $m->where('name', 'like', "%{$q}%");
+                    })
+                    ->orWhereHas('order', function ($o) use ($q) {
+                        $o->where('code', 'like', "%{$q}%");
+                    })
+                    ->orWhereHas('user', function ($u) use ($q) {
+                        $u->where('name', 'like', "%{$q}%");
+                    });
+            });
+        }
+
+        if ($from = $request->get('from')) {
+            $voidQuery->whereDate('created_at', '>=', $from);
+        }
+
+        if ($to = $request->get('to')) {
+            $voidQuery->whereDate('created_at', '<=', $to);
+        }
+
+        if ($by = $request->get('by')) {
+            $voidQuery->where('voided_by', $by);
+        }
+
+        $voids = $voidQuery->orderBy('created_at', 'desc')
+            ->paginate(25)
+            ->appends($request->query());
 
         // 👥 5. STAFF MONITORING
         $staffOnShift = User::where('warung_id', $warungId)
@@ -108,6 +146,7 @@ class ManagerController extends Controller
             'menuItems',
             'pendingRestockRequests',
             'pendingApprovals',
+            'voids',
             'staffOnShift',
             'ingredients',
             'coupons',
@@ -166,7 +205,7 @@ class ManagerController extends Controller
         if ($table->status !== 'available') {
             return back()->with('error', 'Meja yang sedang digunakan atau reservasi tidak dapat dihapus');
         }
-        
+
         $table->delete();
         return back()->with('success', 'Meja berhasil dihapus');
     }
@@ -214,5 +253,94 @@ class ManagerController extends Controller
         ]);
 
         return back()->with('success', 'Kupon promo berhasil dibuat');
+    }
+
+    // Approval CRUD handlers
+    public function approvals(Request $request)
+    {
+        $warungId = auth()->user()->warung_id;
+        $approvals = ApprovalRequest::where('warung_id', $warungId)
+            ->orderBy('created_at', 'desc')
+            ->paginate(25);
+
+        return view('dashboard.manager_approvals', compact('approvals'));
+    }
+
+    public function createApproval(Request $request)
+    {
+        return view('dashboard.manager_approvals_create');
+    }
+
+    public function storeApproval(Request $request)
+    {
+        $data = $request->validate([
+            'type' => 'required|string',
+            'payload' => 'nullable|array',
+            'reason' => 'nullable|string',
+        ]);
+
+        ApprovalRequest::create([
+            'warung_id' => auth()->user()->warung_id,
+            'type' => $data['type'],
+            'payload' => $data['payload'] ?? null,
+            'requested_by' => auth()->id(),
+            'reason' => $data['reason'] ?? null,
+            'status' => 'pending',
+        ]);
+
+        return redirect()->route('manager.approvals.index')->with('success', 'Approval request dibuat');
+    }
+
+    public function editApproval(ApprovalRequest $approval)
+    {
+        return view('dashboard.manager_approvals_edit', compact('approval'));
+    }
+
+    public function updateApproval(Request $request, ApprovalRequest $approval)
+    {
+        $data = $request->validate([
+            'type' => 'required|string',
+            'payload' => 'nullable|array',
+            'reason' => 'nullable|string',
+            'status' => 'required|string',
+        ]);
+
+        $approval->update([
+            'type' => $data['type'],
+            'payload' => $data['payload'] ?? $approval->payload,
+            'reason' => $data['reason'] ?? $approval->reason,
+            'status' => $data['status'],
+        ]);
+
+        return redirect()->route('manager.approvals.index')->with('success', 'Approval request diperbarui');
+    }
+
+    public function destroyApproval(ApprovalRequest $approval)
+    {
+        $approval->delete();
+        return redirect()->route('manager.approvals.index')->with('success', 'Approval request dihapus');
+    }
+
+    public function processApproval(Request $request, ApprovalRequest $approval)
+    {
+        $action = $request->get('action'); // approve or reject
+        if ($action === 'approve') {
+            $approval->update([
+                'status' => 'approved',
+                'processed_by' => auth()->id(),
+            ]);
+            return redirect()->route('manager.approvals.index')->with('success', 'Request disetujui');
+        }
+
+        if ($action === 'reject') {
+            $approval->update([
+                'status' => 'rejected',
+                'processed_by' => auth()->id(),
+                'reason' => $request->get('reason') ?? $approval->reason,
+            ]);
+            return redirect()->route('manager.approvals.index')->with('success', 'Request ditolak');
+        }
+
+        return redirect()->back()->with('error', 'Aksi tidak diketahui');
     }
 }
