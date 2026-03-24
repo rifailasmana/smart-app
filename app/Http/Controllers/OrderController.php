@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\SubdomainHelper;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\AccountReceivable;
 use App\Models\RestaurantTable;
 use App\Models\Warung;
 use App\Models\MenuItem;
@@ -514,24 +515,40 @@ class OrderController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        // Can only mark as paid if status is 'served'
-        if ($order->status !== 'served') {
+        // Can only mark as paid if status is 'served', 'ready', or 'invoiced'
+        if (!in_array($order->status, ['served', 'ready', 'invoiced'])) {
             return response()->json([
-                'error' => 'Order can only be marked as paid when status is served',
+                'error' => 'Order can only be marked as paid when status is served, ready, or invoiced',
                 'current_status' => $order->status
             ], 400);
         }
 
+        $isInvoicePayment = ($order->status === 'invoiced');
+
         $order->update([
             'status' => 'paid',
             'kasir_id' => $user->id,
+            'paid_at' => now(),
         ]);
 
-        // Deduct stock based on recipe
-        try {
-            \App\Http\Controllers\RecipeController::deductStockForOrder($order);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Stock deduction failed for Order #{$order->id}: " . $e->getMessage());
+        // If it's an invoice payment, update the AccountReceivable record
+        if ($isInvoicePayment) {
+            AccountReceivable::where('order_id', $order->id)
+                ->where('status', 'unpaid')
+                ->update([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                ]);
+        }
+
+        // Deduct stock based on recipe (only if not already deducted)
+        // For invoiced orders, stock was already deducted during checkoutToInvoice
+        if (!$isInvoicePayment) {
+            try {
+                \App\Http\Controllers\RecipeController::deductStockForOrder($order);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Stock deduction failed for Order #{$order->id}: " . $e->getMessage());
+            }
         }
 
         // Send notification
@@ -553,6 +570,93 @@ class OrderController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Pembayaran berhasil']);
+    }
+
+    /**
+     * Settle to Account / Invoice (Majar Signature)
+     * Memindahkan pesanan aktif ke piutang tanpa mengunci meja.
+     */
+    public function checkoutToInvoice(Request $request, Order $order)
+    {
+        $user = auth()->user();
+
+        // Verify order belongs to user's warung
+        if ($user->warung_id !== $order->warung_id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Only Kasir/Admin can settle to invoice
+        if (!in_array($user->role, ['kasir', 'admin'])) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Can only settle if status is 'served' (or maybe 'verified' if they want to settle earlier)
+        if (!in_array($order->status, ['verified', 'preparing', 'ready', 'served'])) {
+            return response()->json([
+                'error' => 'Pesanan tidak dapat dipindahkan ke invoice pada status saat ini',
+                'current_status' => $order->status
+            ], 400);
+        }
+
+        return DB::transaction(function () use ($user, $order) {
+            // 1. Create AccountReceivable record (Persistent Audit Trail)
+            $receivable = AccountReceivable::create([
+                'warung_id' => $order->warung_id,
+                'order_id' => $order->id,
+                'table_id' => $order->table_id,
+                'table_number' => $order->table ? $order->table->name : 'N/A',
+                'customer_name' => $order->customer_name ?? 'Guest',
+                'order_code' => $order->code,
+                'subtotal' => $order->subtotal,
+                'admin_fee' => $order->admin_fee,
+                'discount' => $order->diskon_manual,
+                'total' => $order->total,
+                'status' => 'unpaid',
+                'revenue_recognized_at' => now(), // Accrual Accounting: recognize revenue today
+                'cashier_id' => $user->id,
+                'cashier_name' => $user->name,
+                'items_snapshot' => $order->items->map(function($item) {
+                    return [
+                        'menu_name' => $item->menu_name,
+                        'qty' => $item->qty,
+                        'price' => $item->price,
+                        'subtotal' => $item->price * $item->qty
+                    ];
+                })->toArray(),
+                'meta' => [
+                    'checkout_at' => now()->toDateTimeString(),
+                    'original_status' => $order->status,
+                    'table_id' => $order->table_id,
+                ]
+            ]);
+
+            // 2. Update Order status
+            $order->update([
+                'status' => 'invoiced', // New status for invoiced orders
+                'kasir_id' => $user->id,
+            ]);
+
+            // 3. Update Table status to AVAILABLE (Separation of Logic)
+            if ($order->table) {
+                $order->table->update(['status' => 'available']);
+            }
+
+            // 4. Inventory Decrement (Accrual Accounting)
+            try {
+                \App\Http\Controllers\RecipeController::deductStockForOrder($order);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Stock deduction failed for Invoiced Order #{$order->id}: " . $e->getMessage());
+            }
+
+            // 5. Send Notification
+            NotificationService::sendOrderNotification($order, 'payment');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pesanan berhasil dipindahkan ke Piutang (Invoice). Meja sekarang tersedia.',
+                'receivable_id' => $receivable->id
+            ]);
+        });
     }
 
     /**

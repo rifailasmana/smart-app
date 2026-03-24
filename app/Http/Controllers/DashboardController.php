@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\MenuItem;
 use App\Models\OrderItem;
+use App\Models\AccountReceivable;
 use App\Models\Warung;
 use App\Models\DailyClosure;
 use App\Models\StaffShift;
@@ -42,7 +43,7 @@ class DashboardController extends Controller
         $todayOrdersQuery = Order::where('warung_id', $user->warung_id)
             ->whereDate('created_at', today());
 
-        $todayPaidQuery = (clone $todayOrdersQuery)->where('status', 'paid');
+        $todayPaidQuery = (clone $todayOrdersQuery)->whereIn('status', ['paid', 'invoiced']);
 
         $ordersCount = (clone $todayPaidQuery)->count();
         $revenue = (clone $todayPaidQuery)->sum('total');
@@ -98,6 +99,11 @@ class DashboardController extends Controller
             ->orderBy('name')
             ->get();
 
+        $outstandingInvoices = AccountReceivable::where('warung_id', $user->warung_id)
+            ->where('status', 'unpaid')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return view('dashboard.kasir', compact(
             'kasirDailyReport',
             'pendingOrders',
@@ -106,7 +112,8 @@ class DashboardController extends Controller
             'completedOrders',
             'menuItems',
             'todayClosure',
-            'queueHistory'
+            'queueHistory',
+            'outstandingInvoices'
         ));
     }
 

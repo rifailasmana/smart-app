@@ -15,6 +15,16 @@ class StockService
     public static function reduceStockForOrder(Order $order)
     {
         DB::transaction(function () use ($order) {
+            // NOTE: Settle to Invoice & other flows may call this more than once.
+            // We keep it idempotent by checking existing usage logs for the order.
+            $alreadyDeducted = StockLog::where('reference_type', 'order')
+                ->where('reference_id', $order->id)
+                ->where('type', 'usage')
+                ->exists();
+            if ($alreadyDeducted) {
+                return;
+            }
+
             foreach ($order->items as $item) {
                 // Find menu item by name (since OrderItem only stores name sometimes)
                 $menuItem = \App\Models\MenuItem::where('warung_id', $order->warung_id)

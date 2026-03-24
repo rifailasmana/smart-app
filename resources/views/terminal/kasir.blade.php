@@ -58,11 +58,22 @@
             reserved: { bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-orange-500', label: 'Reservasi' }
         };
         const config = statusConfig[table.status] || statusConfig.available;
-        const isClickable = table.status === 'available' && table.capacity >= guestCount;
+        
+        // Debugging capacity
+        const capacity = table.capacity || table.seats || 0;
+        const isClickable = table.status === 'available' && capacity >= guestCount;
 
         return (
             <div
-                onClick={() => isClickable && onClick(table)}
+                onClick={() => {
+                    if (isClickable) {
+                        onClick(table);
+                    } else if (table.status !== 'available') {
+                        console.log(`Table ${table.name} is not available (${table.status})`);
+                    } else if (capacity < guestCount) {
+                        console.log(`Table ${table.name} capacity (${capacity}) is less than guest count (${guestCount})`);
+                    }
+                }}
                 className={`relative p-6 rounded-[2rem] border-2 transition-all duration-300 flex flex-col justify-between aspect-video ${active ? 'border-orange-500 bg-orange-50 shadow-lg' : config.border + ' ' + config.bg} ${isClickable ? 'cursor-pointer hover:shadow-md' : 'opacity-60 cursor-not-allowed'}`}
             >
                 <div className="flex justify-between items-start">
@@ -75,7 +86,7 @@
                     <h3 className={`text-2xl font-black tracking-tight ${active ? 'text-orange-600' : 'text-gray-900'}`}>{table.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                         <i className="bi bi-people-fill text-xs text-gray-400"></i>
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Maks. {table.capacity}</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Maks. {capacity}</span>
                     </div>
                 </div>
                 <div className={`mt-4 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${config.text}`}>
@@ -89,7 +100,7 @@
     // --- Main Views ---
 
     const OrderTypeView = ({ onSelect }) => (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 animate-in fade-in zoom-in duration-500">
+        <div className="w-full h-full flex flex-col items-center justify-center bg-[#daaa64] animate-in fade-in zoom-in duration-500">
             <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">Selamat Datang!</h1>
             <p className="text-xl text-gray-400 font-medium mb-16 tracking-tight">Pilih jenis pesanan Anda untuk memulai</p>
             <div className="flex gap-10 w-full max-w-4xl px-6">
@@ -348,6 +359,30 @@
         const [orderType, setOrderType] = useState('DINE_IN');
         const [guestCount, setGuestCount] = useState(2);
         const [selectedTable, setSelectedTable] = useState(null);
+        const [tables, setTables] = useState(@json($tables));
+        const [loadingTables, setLoadingTables] = useState(false);
+
+        const fetchTables = useCallback(async () => {
+            try {
+                const res = await fetch('/terminal/tables');
+                const data = await res.json();
+                if (!data || data.length === 0) {
+                    console.error('Table list is empty or null');
+                }
+                setTables(data || []);
+            } catch (e) { 
+                console.error('Failed to fetch tables:', e); 
+            } finally { 
+                setLoadingTables(false); 
+            }
+        }, []);
+
+        useEffect(() => {
+            fetchTables();
+            // Real-time Sync: Sync every 5 seconds to keep table status updated
+            const interval = setInterval(fetchTables, 5000);
+            return () => clearInterval(interval);
+        }, [fetchTables]);
 
         const handleSelectOrderType = (type) => {
             setOrderType(type);
@@ -379,7 +414,7 @@
                 case 'TABLE_SELECT':
                     return (
                         <TableSelectionView
-                            tables={ @json($tables) }
+                            tables={tables}
                             guestCount={guestCount}
                             setGuestCount={setGuestCount}
                             selectedTable={selectedTable}
@@ -408,8 +443,8 @@
         return (
             <div className="w-full h-full flex overflow-hidden">
                 {/* Fixed Sidebar */}
-                <div className="w-24 bg-gray-900 flex flex-col border-r border-gray-800">
-                    <div className="p-6 border-b border-gray-800">
+                <div className="w-24 bg-[#063024] flex flex-col border-r border-[#063024]">
+                    <div className="p-6 border-b border-[#063024]">
                         <div className="w-full aspect-square rounded-2xl bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-orange-500/30">
                             <span className="font-black text-2xl text-white">S</span>
                         </div>
@@ -419,13 +454,13 @@
                         <SidebarIcon icon="bi-list-check" label="Status" active={view === 'ORDER_STATUS'} onClick={() => setView('ORDER_STATUS')} />
                         <SidebarIcon icon="bi-clock-history" label="History" active={view === 'ORDER_HISTORY'} onClick={() => setView('ORDER_HISTORY')} />
                     </div>
-                    <div className="py-4 border-t border-gray-800">
+                    <div className="py-4 border-t border-[#063024]">
                         <SidebarIcon icon="bi-gear-fill" label="Setting" />
                     </div>
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 h-full overflow-hidden">
+                <div className="flex-1 h-full overflow-hidden bg-[#daaa68]">
                     {renderView()}
                 </div>
             </div>

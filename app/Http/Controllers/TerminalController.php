@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\MenuItem;
 use App\Models\OrderItem;
+use App\Models\MenuItem;
+use App\Models\AccountReceivable;
 use App\Models\RestaurantTable;
 use App\Models\Warung;
 use App\Models\Ingredient;
@@ -108,6 +109,21 @@ class TerminalController extends Controller
         }
 
         return response()->json($query->orderBy('created_at', 'desc')->get());
+    }
+
+    /**
+     * Get tables for terminal
+     */
+    public function getTables()
+    {
+        $user = auth()->user();
+        $tables = RestaurantTable::where('warung_id', $user->warung_id)->get();
+
+        if ($tables->isEmpty()) {
+            Log::warning("No tables found for warung_id: {$user->warung_id}");
+        }
+
+        return response()->json($tables);
     }
 
     /**
@@ -631,6 +647,57 @@ class TerminalController extends Controller
             $this->syncTableStatuses($order);
 
             return response()->json(['success' => true]);
+        });
+    }
+
+    /**
+     * Settle to Account / Invoice (Majar Signature)
+     */
+    public function checkoutToInvoice(Request $request, Order $order)
+    {
+        $user = auth()->user();
+
+        if ($user->warung_id !== $order->warung_id) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        return DB::transaction(function () use ($user, $order) {
+            // 1. Create AccountReceivable
+            AccountReceivable::create([
+                'warung_id' => $order->warung_id,
+                'order_id' => $order->id,
+                'table_id' => $order->table_id,
+                'table_number' => $order->table ? $order->table->name : 'N/A',
+                'customer_name' => $order->customer_name ?? 'Guest',
+                'order_code' => $order->code,
+                'subtotal' => $order->subtotal,
+                'admin_fee' => $order->admin_fee,
+                'total' => $order->total,
+                'status' => 'unpaid',
+                'revenue_recognized_at' => now(),
+                'cashier_id' => $user->id,
+                'cashier_name' => $user->name,
+                'items_snapshot' => $order->items->map(fn($i) => [
+                    'menu_name' => $i->menu_name,
+                    'qty' => $i->qty,
+                    'price' => $i->price,
+                ])->toArray(),
+            ]);
+
+            // 2. Update Order
+            $order->update([
+                'status' => 'invoiced',
+                'stage' => 'DONE',
+                'kasir_id' => $user->id,
+            ]);
+
+            // 3. Free Table
+            $this->syncTableStatuses($order);
+
+            // 4. Stock deduction
+            \App\Services\StockService::reduceStockForOrder($order);
+
+            return response()->json(['success' => true, 'message' => 'Settle to Invoice berhasil. Meja tersedia.']);
         });
     }
 

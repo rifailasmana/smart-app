@@ -18,7 +18,7 @@
             --brand-orange: #FF8C00;
             --brand-yellow: #FFC107;
             --brand-gradient: linear-gradient(135deg, #FF8C00, #FFC107);
-            --sidebar-bg: #062e22;
+            --sidebar-bg: #063024;
             --sidebar-text: #e0e0e0;
             --sidebar-active: #ffffff;
             --dashboard-bg: #f8f9fa;
@@ -117,7 +117,7 @@
         }
 
         .dashboard-header {
-            background: #062e22;
+            background: #063024;
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;

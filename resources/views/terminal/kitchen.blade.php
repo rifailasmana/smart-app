@@ -194,8 +194,8 @@
         return (
             <div className="w-full h-full flex overflow-hidden">
                 {/* Fixed Sidebar */}
-                <div className="w-24 bg-gray-900 flex flex-col border-r border-gray-800">
-                    <div className="p-6 border-b border-gray-800">
+                <div className="w-24 bg-[#063024] flex flex-col border-r border-[#063024]">
+                    <div className="p-6 border-b border-[#063024]">
                         <div className="w-full aspect-square rounded-2xl bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-orange-500/30">
                             <span className="font-black text-2xl text-white">S</span>
                         </div>
@@ -205,13 +205,13 @@
                         <SidebarIcon icon="bi-list-check" label="Status" active={view === 'ORDER_STATUS'} onClick={() => setView('ORDER_STATUS')} />
                         <SidebarIcon icon="bi-clock-history" label="History" active={view === 'ORDER_HISTORY'} onClick={() => setView('ORDER_HISTORY')} />
                     </div>
-                    <div className="py-4 border-t border-gray-800">
+                    <div className="py-4 border-t border-[#063024]">
                         <SidebarIcon icon="bi-gear-fill" label="Setting" />
                     </div>
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 h-full overflow-hidden">
+                <div className="flex-1 h-full overflow-hidden bg-[#daaa68]">
                     {renderView()}
                 </div>
             </div>
