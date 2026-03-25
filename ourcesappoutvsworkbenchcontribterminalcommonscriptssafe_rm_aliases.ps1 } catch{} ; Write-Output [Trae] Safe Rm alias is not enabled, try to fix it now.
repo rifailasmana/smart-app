@@ -1,0 +1,77 @@
+[33mcommit 1380e68833944fe68a0f8abb6675fee0063acd6d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: GafrielAR <gafrielalfa02@gmail.com>
+Date:   Mon Mar 23 17:27:48 2026 +0800
+
+    gitignore
+
+M	.gitignore
+
+[33mcommit df099706fdbc1583e2d4ae401ab89e7b0c7467df[m
+Author: GafrielAR <gafrielalfa02@gmail.com>
+Date:   Fri Mar 20 22:51:42 2026 +0800
+
+    checkpoint
+
+M	app/Http/Controllers/TerminalController.php
+M	resources/views/layouts/dashboard.blade.php
+M	resources/views/layouts/terminal.blade.php
+M	resources/views/terminal/kasir.blade.php
+M	resources/views/terminal/kitchen.blade.php
+M	resources/views/terminal/waiter.blade.php
+M	routes/web.php
+
+[33mcommit 81219e613cc7b42968d735ab59e135d572b9d060[m
+Merge: 8d817eb c0a0ab1
+Author: GafrielAR <gafrielalfa02@gmail.com>
+Date:   Fri Mar 20 22:04:25 2026 +0800
+
+    Merge branch 'master' of https://github.com/rifailasmana/smart-app
+    
+    # Conflicts:
+    #       app/Http/Controllers/TerminalController.php
+    #       app/Models/Order.php
+    #       composer.lock
+    #       resources/views/layouts/terminal.blade.php
+    #       resources/views/terminal/kasir.blade.php
+    #       resources/views/terminal/kitchen.blade.php
+    #       routes/web.php
+
+MM	resources/views/terminal/waiter.blade.php
+
+[33mcommit 8d817ebdea48221ccd613841f3402f203de25ab1[m
+Author: GafrielAR <gafrielalfa02@gmail.com>
+Date:   Fri Mar 20 22:02:46 2026 +0800
+
+    feat: enhance terminal views for kitchen and waiter with loading messages and buttons
+    
+    - Updated kitchen.blade.php and waiter.blade.php to include loading messages and buttons for reloading and selecting terminals.
+    - Added styles for improved user experience during loading states.
+    
+    fix: clean up whitespace in web.php
+    
+    - Removed unnecessary whitespace in web.php for better code readability.
+    
+    chore: add project configuration for Vercel deployment
+    
+    - Created .vercel/project.json to manage deployment settings.
+    
+    feat: create Coupon model
+    
+    - Added Coupon model with fillable attributes and casts for discount management.
+
+A	.vercel/project.json
+M	app/Http/Controllers/TerminalController.php
+A	app/Models/Coupon.php
+M	app/Models/Order.php
+M	composer.lock
+M	database/migrations/2026_01_17_000000_alter_table_id_nullable_on_orders_table.php
+M	database/migrations/2026_01_17_000001_alter_orders_status_enum.php
+M	database/migrations/2026_01_18_130000_make_verified_by_nullable_on_daily_closures_table.php
+M	database/migrations/2026_01_19_170500_make_customer_name_required_in_orders_table.php
+M	public/sw.js
+M	resources/views/layouts/terminal.blade.php
+M	resources/views/terminal/index.blade.php
+M	resources/views/terminal/kasir.blade.php
+M	resources/views/terminal/kitchen.blade.php
+M	resources/views/terminal/waiter.blade.php
+M	routes/web.php

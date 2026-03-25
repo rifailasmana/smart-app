@@ -121,6 +121,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Table Management Routes
     Route::post('/tables/move',   [TableManagementController::class, 'moveTable']);
     Route::post('/tables/merge',  [TableManagementController::class, 'mergeTables']);
+    Route::post('/tables/{table}/reset', [TableManagementController::class, 'resetTable']);
+    Route::post('/terminal/orders/{order}/make-takeaway', [TerminalController::class, 'makeTakeaway']);
 
     // Billing Routes
     Route::post('/billing/split',  [BillingController::class, 'splitBill']);

@@ -1,12 +1,12 @@
 {
-  "name": "SmartOrder Terminal",
-  "short_name": "Terminal",
-  "description": "SmartOrder Terminal for Waiter, Kasir, and Kitchen",
+  "name": "Majar POS Signature",
+  "short_name": "MajarPOS",
+  "description": "Premium POS System for Majar Signature",
   "start_url": "/terminal",
-  "display": "fullscreen",
-  "background_color": "#0B1220",
+  "display": "standalone",
+  "background_color": "#063024",
   "theme_color": "#FF8C00",
-  "orientation": "any",
+  "orientation": "landscape",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/562/562678.png",
@@ -21,13 +21,5 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["business", "food"],
-  "screenshots": [
-    {
-      "src": "https://via.placeholder.com/1366x768/0B1220/FFFFFF?text=Terminal+Mode",
-      "sizes": "1366x768",
-      "type": "image/png",
-      "label": "Terminal Selection"
-    }
-  ]
+  "categories": ["business", "food"]
 }

@@ -4,12 +4,7 @@
 @section('terminal_role', 'WAITER')
 
 @section('header_extra')
-    <div class="flex items-center gap-4 border-l border-gray-700 pl-4">
-        <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-            <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">System: Online</span>
-        </div>
-    </div>
+    {{-- Clock and Status are now handled by layout --}}
 @endsection
 
 @section('content')

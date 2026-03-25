@@ -4,12 +4,7 @@
 @section('terminal_role', 'KASIR')
 
 @section('header_extra')
-    <div class="flex items-center gap-4 border-l border-gray-700 pl-4">
-        <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-            <span class="text-[10px] font-bold uppercase tracking-widest text-gray-400">System: Online</span>
-        </div>
-    </div>
+    {{-- Clock and Status are now handled by layout --}}
 @endsection
 
 @section('content')
@@ -22,6 +17,84 @@
 
     // --- Components ---
 
+    const SwipeableItem = ({ children, onSwipe, threshold = 100 }) => {
+        const [offsetX, setOffsetX] = React.useState(0);
+        const [startX, setStartX] = React.useState(0);
+
+        const handleTouchStart = (e) => {
+            setStartX(e.touches[0].clientX);
+        };
+
+        const handleTouchMove = (e) => {
+            const currentX = e.touches[0].clientX;
+            const diff = currentX - startX;
+            if (diff < 0) { // Only swipe left
+                setOffsetX(diff);
+            }
+        };
+
+        const handleTouchEnd = () => {
+            if (offsetX < -threshold) {
+                onSwipe();
+            }
+            setOffsetX(0);
+        };
+
+        return (
+            <div 
+                className="relative overflow-hidden rounded-2xl bg-red-500"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            >
+                <div 
+                    className="bg-white transition-transform duration-200 flex items-center"
+                    style={ { transform: 'translateX(' + offsetX + 'px)' } }
+                >
+                    {children}
+                </div>
+                <div className="absolute inset-y-0 right-0 w-20 flex items-center justify-center text-white pointer-events-none">
+                    <i className="bi bi-trash3-fill text-xl"></i>
+                </div>
+            </div>
+        );
+    };
+
+    const Numpad = ({ value, onChange, onConfirm, label = "Bayar" }) => {
+        const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'];
+        
+        const handleClick = (key) => {
+            if (key === 'C') onChange(0);
+            else if (key === '⌫') onChange(Math.floor(value / 10));
+            else {
+                const newValue = parseInt(value.toString() + key);
+                if (!isNaN(newValue)) onChange(newValue);
+            }
+        };
+
+        return (
+            <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-3 gap-3">
+                    {keys.map(key => (
+                        <button
+                            key={key}
+                            onClick={() => handleClick(key)}
+                            className={'h-20 rounded-2xl font-black text-2xl transition-all active:scale-95 active:bg-orange-500 active:text-white ' + (key === 'C' ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-900')}
+                        >
+                            {key}
+                        </button>
+                    ))}
+                </div>
+                <button
+                    onClick={onConfirm}
+                    className="w-full py-6 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-2xl shadow-xl shadow-orange-500/30 active:scale-95 transition-all"
+                >
+                    {label}
+                </button>
+            </div>
+        );
+    };
+
     const Toast = ({ message, type = 'success', onClose }) => {
         useEffect(() => {
             const timer = setTimeout(onClose, 3000);
@@ -29,9 +102,9 @@
         }, [onClose]);
 
         return (
-            <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] animate-in slide-in-from-bottom duration-300`}>
-                <div className={`px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-                    <i className={`bi ${type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill'}`}></i>
+            <div className={'fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] animate-in slide-in-from-bottom duration-300'}>
+                <div className={'px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 ' + (type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white')}>
+                    <i className={'bi ' + (type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill')}></i>
                     <span className="font-bold text-sm">{message}</span>
                 </div>
             </div>
@@ -90,7 +163,7 @@
                                 <div className="absolute -inset-4 bg-gradient-to-tr from-orange-500 to-yellow-400 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
                                 <div className="relative bg-white p-6 rounded-[2rem] shadow-xl">
                                     <img
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=MAJAR-POS-${order.id}-${finalTotal}`}
+                                        src={'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=MAJAR-POS-' + order.id + '-' + finalTotal}
                                         alt="QRIS Dummy"
                                         className="w-48 h-48"
                                     />
@@ -123,135 +196,142 @@
 
         return (
             <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                <div className="bg-white w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col lg:flex-row">
+                <div className="bg-white w-full max-w-5xl h-full lg:h-fit lg:max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col lg:flex-row">
                     {/* Left: Summary */}
-                    <div className="w-full lg:w-[320px] bg-gray-50 p-8 border-r border-gray-100">
+                    <div className="w-full lg:w-[400px] bg-gray-50 p-10 border-r border-gray-100 flex flex-col">
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-xl font-black text-gray-900 tracking-tight">Ringkasan</h2>
-                            <button onClick={onClose} className="lg:hidden text-gray-400"><i className="bi bi-x-lg"></i></button>
+                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Tagihan</h2>
+                            <button onClick={onClose} className="lg:hidden text-gray-400 p-4 active:scale-95"><i className="bi bi-x-lg text-2xl"></i></button>
                         </div>
 
-                        <div className="mb-6 flex items-center gap-3 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                            <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
-                                <i className="bi bi-person-badge"></i>
-                            </div>
-                            <div>
-                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Kategori</p>
-                                <p className="text-xs font-black text-gray-900">{order.guest_category || 'Reguler'}</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2 mb-8">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 mb-8 space-y-4">
                             {order.items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between text-xs">
-                                    <span className="text-gray-500 font-medium">{item.qty}x {item.menu_name}</span>
-                                    <span className="font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
+                                <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                                    <div className="flex-1 pr-4">
+                                        <h5 className="font-black text-gray-900 text-sm leading-tight">{item.qty}x {item.menu_name}</h5>
+                                        <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase">@ Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
+                                    </div>
+                                    <span className="font-black text-gray-900 text-sm">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="pt-6 border-t-2 border-dashed border-gray-200 space-y-3">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Subtotal</span>
-                                <span className="font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
+                        <div className="pt-8 border-t-2 border-dashed border-gray-200 space-y-4">
+                            <div className="flex justify-between text-sm text-gray-500 font-bold uppercase tracking-widest">
+                                <span>Subtotal</span>
+                                <span>Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
                             </div>
-                            <div className="flex justify-between text-sm text-red-500">
-                                <span className="font-bold uppercase tracking-widest text-[10px]">Diskon</span>
-                                <span className="font-black">- Rp {new Intl.NumberFormat('id-ID').format(discountAmount)}</span>
-                            </div>
+                            {discountAmount > 0 && (
+                                <div className="flex justify-between text-sm text-red-500 font-bold uppercase tracking-widest">
+                                    <span>Diskon</span>
+                                    <span>- Rp {new Intl.NumberFormat('id-ID').format(discountAmount)}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between items-center pt-4">
-                                <span className="text-gray-900 font-black uppercase tracking-widest text-[10px]">Total Akhir</span>
-                                <span className="text-2xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(finalTotal)}</span>
+                                <span className="text-gray-900 font-black uppercase tracking-[0.2em] text-xs">Total</span>
+                                <span className="text-4xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(finalTotal)}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Right: Controls */}
-                    <div className="flex-1 p-10 bg-white">
+                    {/* Right: Payment Controls */}
+                    <div className="flex-1 p-10 bg-white flex flex-col overflow-y-auto custom-scrollbar">
                         <div className="hidden lg:flex justify-end mb-6">
-                            <button onClick={onClose} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                                <i className="bi bi-x-lg"></i>
+                            <button onClick={onClose} className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center active:scale-95 active:bg-gray-100 transition-colors">
+                                <i className="bi bi-x-lg text-xl"></i>
                             </button>
                         </div>
 
-                        {/* Discount Section */}
-                        <div className="mb-8">
-                            <div className="flex justify-between items-center mb-4">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Diskon & Kupon</label>
-                                {!canUseCoupon && <span className="text-[8px] font-bold text-orange-400 uppercase bg-orange-50 px-2 py-1 rounded-md">Kupon khusus Member/Owner</span>}
-                            </div>
-
-                            <div className="flex gap-2 mb-3">
-                                <button onClick={() => setDiscountType('nominal')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${discountType === 'nominal' ? 'bg-orange-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>Nominal</button>
-                                <button onClick={() => setDiscountType('percent')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${discountType === 'percent' ? 'bg-orange-500 text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>Persen</button>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <input
-                                    type="number"
-                                    value={discountValue}
-                                    onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
-                                    placeholder="Input Diskon..."
-                                    className="w-full bg-gray-50 border-none rounded-2xl p-4 font-black text-lg focus:ring-2 focus:ring-orange-500 transition-all"
-                                />
-                                <input
-                                    type="text"
-                                    disabled={!canUseCoupon}
-                                    value={couponCode}
-                                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                    placeholder="Kode Kupon..."
-                                    className="w-full bg-gray-50 border-none rounded-2xl p-4 font-black text-lg focus:ring-2 focus:ring-orange-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                                />
-                            </div>
-                        </div>
-
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Metode Pembayaran</label>
-                        <div className="grid grid-cols-2 gap-3 mb-8">
-                            {[
-                                { id: 'Tunai', icon: 'bi-cash-stack' },
-                                { id: 'QRIS', icon: 'bi-qr-code-scan' },
-                                { id: 'EDC', icon: 'bi-credit-card-2-front' },
-                                { id: 'INVOICE', icon: 'bi-file-earmark-text' }
-                            ].map(m => (
-                                <button
-                                    key={m.id}
-                                    onClick={() => setPaymentMethod(m.id)}
-                                    className={`py-4 rounded-2xl font-black transition-all flex items-center gap-4 px-6 border-2 ${method === m.id ? 'border-orange-500 bg-orange-50 text-orange-500 shadow-lg shadow-orange-500/10' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'}`}
-                                >
-                                    <i className={`bi ${m.icon} text-xl`}></i>
-                                    <span className="text-xs uppercase tracking-widest">{m.id}</span>
-                                </button>
-                            ))}
-                        </div>
-
-                        {method === 'Tunai' && (
-                            <div className="mb-8 animate-in slide-in-from-top duration-300">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Jumlah Bayar (Tunai)</label>
-                                <div className="flex items-center gap-4">
-                                    <input
-                                        type="number"
-                                        value={amountPaid}
-                                        onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
-                                        className="flex-1 bg-gray-50 border-none rounded-2xl p-4 font-black text-xl focus:ring-2 focus:ring-orange-500 transition-all"
-                                    />
-                                    <button onClick={() => setAmountPaid(finalTotal)} className="px-6 py-4 bg-gray-100 rounded-2xl font-bold text-xs hover:bg-gray-200 transition-all">Uang Pas</button>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            <div>
+                                {/* Method Selector */}
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Metode Pembayaran</label>
+                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                    {[
+                                        { id: 'Tunai', icon: 'bi-cash-stack' },
+                                        { id: 'QRIS', icon: 'bi-qr-code-scan' },
+                                        { id: 'EDC', icon: 'bi-credit-card-2-front' },
+                                        { id: 'INVOICE', icon: 'bi-file-earmark-text' }
+                                    ].map(m => (
+                                        <button
+                                            key={m.id}
+                                            onClick={() => setPaymentMethod(m.id)}
+                                            className={'h-24 rounded-3xl font-black transition-all flex flex-col items-center justify-center gap-2 border-4 ' + (method === m.id ? 'border-orange-500 bg-orange-50 text-orange-500 shadow-xl shadow-orange-500/10' : 'border-gray-50 bg-white text-gray-400 active:border-gray-200')}
+                                        >
+                                            <i className={'bi ' + m.icon + ' text-3xl'}></i>
+                                            <span className="text-[10px] uppercase tracking-[0.2em]">{m.id}</span>
+                                        </button>
+                                    ))}
                                 </div>
-                                {amountPaid > finalTotal && (
-                                    <div className="mt-4 flex justify-between items-center text-green-600 font-black">
-                                        <span className="text-xs uppercase tracking-widest">Kembalian</span>
-                                        <span>Rp {new Intl.NumberFormat('id-ID').format(amountPaid - finalTotal)}</span>
+
+                                {/* Discount Section */}
+                                <div className="p-8 bg-gray-50 rounded-[2.5rem] mb-8">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 block">Diskon & Kupon</label>
+                                    <div className="flex gap-2 mb-6">
+                                        <button onClick={() => setDiscountType('nominal')} className={'flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ' + (discountType === 'nominal' ? 'bg-orange-500 text-white shadow-lg' : 'bg-white text-gray-400 active:bg-gray-100')}>Nominal</button>
+                                        <button onClick={() => setDiscountType('percent')} className={'flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ' + (discountType === 'percent' ? 'bg-orange-500 text-white shadow-lg' : 'bg-white text-gray-400 active:bg-gray-100')}>Persen</button>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <input
+                                            type="number"
+                                            value={discountValue}
+                                            onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
+                                            placeholder="Input Diskon..."
+                                            className="w-full bg-white border-none rounded-2xl p-6 font-black text-2xl focus:ring-4 focus:ring-orange-500/20 transition-all shadow-sm"
+                                        />
+                                        <input
+                                            type="text"
+                                            disabled={!canUseCoupon}
+                                            value={couponCode}
+                                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                            placeholder="Kode Kupon..."
+                                            className="w-full bg-white border-none rounded-2xl p-6 font-black text-2xl focus:ring-4 focus:ring-orange-500/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Numpad Section */}
+                            <div className="flex flex-col">
+                                {method === 'Tunai' ? (
+                                    <>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Input Nominal Bayar (Tunai)</label>
+                                        <div className="bg-gray-900 rounded-[2.5rem] p-8 mb-6">
+                                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-2">Total Dibayar</p>
+                                            <p className="text-4xl font-black text-white tracking-tight">Rp {new Intl.NumberFormat('id-ID').format(amountPaid)}</p>
+                                            {amountPaid > finalTotal && (
+                                                <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center text-green-400 font-black">
+                                                    <span className="text-xs uppercase tracking-widest">Kembalian</span>
+                                                    <span className="text-xl">Rp {new Intl.NumberFormat('id-ID').format(amountPaid - finalTotal)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <Numpad
+                                            value={amountPaid}
+                                            onChange={setAmountPaid}
+                                            onConfirm={handleFinalize}
+                                            label={processing ? 'Memproses...' : 'Selesaikan Pembayaran'}
+                                        />
+                                        <button onClick={() => setAmountPaid(finalTotal)} className="mt-4 py-4 bg-blue-50 text-blue-600 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95">Bayar Uang Pas</button>
+                                    </>
+                                ) : (
+                                    <div className="flex-1 flex flex-col justify-center items-center text-center p-10 bg-orange-50 rounded-[3rem] border-2 border-orange-100">
+                                        <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center text-orange-500 mb-6 shadow-xl">
+                                            <i className={'bi ' + (method === 'QRIS' ? 'bi-qr-code-scan' : method === 'EDC' ? 'bi-credit-card-2-front' : 'bi-file-earmark-text') + ' text-5xl'}></i>
+                                        </div>
+                                        <h3 className="text-2xl font-black text-gray-900 tracking-tight mb-2">Konfirmasi {method}</h3>
+                                        <p className="text-gray-500 font-medium mb-10 max-w-xs">Pastikan customer sudah melakukan transaksi melalui {method}.</p>
+                                        <button
+                                            disabled={processing}
+                                            onClick={handleFinalize}
+                                            className={'w-full py-6 text-white rounded-[2rem] font-black text-2xl shadow-xl transition-all active:scale-95 disabled:opacity-30 ' + (method === 'QRIS' ? 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/30' : method === 'INVOICE' ? 'bg-gradient-to-r from-purple-600 to-indigo-700 shadow-purple-500/30' : 'bg-gradient-to-r from-orange-500 to-yellow-400 shadow-orange-500/30')}
+                                        >
+                                            {processing ? 'Memproses...' : method === 'QRIS' ? 'Generate QRIS' : method === 'INVOICE' ? 'Settle to Invoice' : 'Konfirmasi Bayar'}
+                                        </button>
                                     </div>
                                 )}
                             </div>
-                        )}
-
-                        <button
-                            disabled={processing || (method === 'Tunai' && amountPaid < finalTotal)}
-                            onClick={handleFinalize}
-                            className={`w-full py-5 text-white rounded-[2rem] font-black text-xl shadow-xl transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none ${method === 'QRIS' ? 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/30' : method === 'INVOICE' ? 'bg-gradient-to-r from-purple-600 to-indigo-700 shadow-purple-500/30' : 'bg-gradient-to-r from-orange-500 to-yellow-400 shadow-orange-500/30'}`}
-                        >
-                            {processing ? 'Memproses...' : method === 'QRIS' ? 'Generate QRIS' : method === 'INVOICE' ? 'Settle to Invoice' : 'Selesaikan Pembayaran'}
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -314,7 +394,7 @@
                 <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 text-black">
                     <div className="p-8">
                         <h2 className="text-2xl font-black tracking-tight mb-2">Void Item: {target?.item?.menu_name}</h2>
-                        <p className="text-gray-600 font-medium text-sm leading-relaxed mb-6">Pilih jumlah item yang akan di-VOID (maks {target?.item?.qty}).</p>
+                        <p className="text-black-600 font-medium text-sm leading-relaxed mb-6">Pilih jumlah item yang akan di-VOID (maks {target?.item?.qty}).</p>
 
                         <div className="mb-4">
                             <label className="text-[10px] font-black text-black uppercase tracking-widest mb-2 block">Jumlah yang di-void</label>
@@ -336,21 +416,21 @@
         );
     };
 
-    const SidebarIcon = ({ icon, label, active = false, onClick, count = 0 }) => (
+    const SidebarIcon = ({ icon, label, active = false, onClick, count = 0, collapsed = false }) => (
         <div
             onClick={onClick}
-            className={`relative flex flex-col items-center justify-center w-full py-5 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
+            className={'relative flex flex-col items-center justify-center w-full py-6 cursor-pointer transition-all duration-300 group ' + (active ? 'text-orange-500' : 'text-gray-500 active:text-orange-400')}
         >
-            {active && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-500 rounded-r-full shadow-[2px_0_10px_rgba(249,115,22,0.4)]"></div>}
-            <div className={`p-2 rounded-xl transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-gray-800'}`}>
-                <i className={`bi ${icon} text-2xl`}></i>
+            {active && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-orange-500 rounded-r-full shadow-[2px_0_10px_rgba(249,115,22,0.4)]"></div>}
+            <div className={'p-4 rounded-2xl transition-all ' + (active ? 'bg-orange-500/10' : 'active:bg-gray-800')}>
+                <i className={'bi ' + icon + ' text-4xl'}></i>
                 {count > 0 && (
-                    <span className="absolute top-4 right-4 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="absolute top-4 right-4 bg-red-500 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center animate-pulse border-2 border-[#063024]">
                         {count}
                     </span>
                 )}
             </div>
-            <span className="text-[10px] font-black uppercase tracking-tighter mt-1">{label}</span>
+            {!collapsed && <span className="text-[10px] font-black uppercase tracking-[0.2em] mt-2 animate-in fade-in duration-300">{label}</span>}
         </div>
     );
 
@@ -359,18 +439,18 @@
             onClick={onClick}
             className="w-full max-w-[340px] aspect-square bg-white rounded-[2.5rem] p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 transform hover:-translate-y-3 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] group border-2 border-transparent hover:border-orange-100"
         >
-            <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 ${color === 'orange' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-500'}`}>
-                <i className={`bi ${icon} text-5xl`}></i>
+            <div className={'w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 ' + (color === 'orange' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-500')}>
+                <i className={'bi ' + icon + ' text-5xl'}></i>
             </div>
             <h2 className="text-3xl font-black text-gray-900 tracking-tight">{title}</h2>
             <p className="text-gray-400 font-medium mt-2">{subtitle}</p>
-            <div className={`mt-10 flex items-center gap-2 font-bold text-sm ${color === 'orange' ? 'text-orange-500' : 'text-green-500'}`}>
+            <div className={'mt-10 flex items-center gap-2 font-bold text-sm ' + (color === 'orange' ? 'text-orange-500' : 'text-green-500')}>
                 {title === 'Dine In' ? 'Pilih Meja' : 'Langsung Pesan'} <i className="bi bi-arrow-right"></i>
             </div>
         </div>
     );
 
-    const TableCard = ({ table, active, onClick, guestCount }) => {
+    const TableCard = ({ table, active, onClick, guestCount, isSource, isTarget, managementAction }) => {
         const statusConfig = {
             available: { bg: 'bg-green-50', border: 'border-green-100', text: 'text-green-600', label: 'Tersedia' },
             occupied: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-400', label: 'Terisi' },
@@ -380,36 +460,50 @@
 
         // Debugging capacity
         const capacity = table.capacity || table.seats || 0;
-        const isClickable = table.status === 'available' && capacity >= guestCount;
+        
+        // In management mode, selection rules are different
+        let isClickable = false;
+        if (managementAction) {
+            if (managementAction === 'reset' || managementAction === 'takeaway') {
+                isClickable = table.status === 'occupied';
+            } else if (managementAction === 'move' || managementAction === 'merge') {
+                isClickable = true; // Can select any table as source/target
+            }
+        } else {
+            isClickable = table.status === 'available' && capacity >= guestCount;
+        }
+
+        const cardBorder = isSource ? 'border-red-500 bg-red-50 shadow-lg' : 
+                         isTarget ? 'border-blue-500 bg-blue-50 shadow-lg' :
+                         active ? 'border-orange-500 bg-orange-50 shadow-lg' : 
+                         config.border + ' ' + config.bg;
 
         return (
             <div
                 onClick={() => {
                     if (isClickable) {
                         onClick(table);
-                    } else if (table.status !== 'available') {
-                        console.log(`Table ${table.name} is not available (${table.status})`);
-                    } else if (capacity < guestCount) {
-                        console.log(`Table ${table.name} capacity (${capacity}) is less than guest count (${guestCount})`);
                     }
                 }}
-                className={`relative p-6 rounded-[2rem] border-2 transition-all duration-300 flex flex-col justify-between aspect-video ${active ? 'border-orange-500 bg-orange-50 shadow-lg' : config.border + ' ' + config.bg} ${isClickable ? 'cursor-pointer hover:shadow-md' : 'opacity-60 cursor-not-allowed'}`}
+                className={'relative p-6 rounded-[2rem] border-2 transition-all duration-300 flex flex-col justify-between aspect-video ' + cardBorder + ' ' + (isClickable ? 'cursor-pointer hover:shadow-md' : 'opacity-60 cursor-not-allowed')}
             >
                 <div className="flex justify-between items-start">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${active ? 'bg-orange-500 text-white' : 'bg-white ' + config.text}`}>
+                    <div className={'w-12 h-12 rounded-2xl flex items-center justify-center ' + (active || isSource || isTarget ? 'bg-orange-500 text-white' : 'bg-white ' + config.text)}>
                         <i className="bi bi-grid-fill text-xl"></i>
                     </div>
-                    {active && <i className="bi bi-check-circle-fill text-orange-500 text-xl"></i>}
+                    {isSource && <span className="bg-red-500 text-white text-[8px] font-black px-2 py-1 rounded-lg uppercase">Sumber</span>}
+                    {isTarget && <span className="bg-blue-500 text-white text-[8px] font-black px-2 py-1 rounded-lg uppercase">Tujuan</span>}
+                    {active && !isSource && !isTarget && <i className="bi bi-check-circle-fill text-orange-500 text-xl"></i>}
                 </div>
                 <div>
-                    <h3 className={`text-2xl font-black tracking-tight ${active ? 'text-orange-600' : 'text-gray-900'}`}>{table.name}</h3>
+                    <h3 className={'text-2xl font-black tracking-tight ' + (active || isSource || isTarget ? 'text-orange-600' : 'text-gray-900')}>{table.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                         <i className="bi bi-people-fill text-xs text-gray-400"></i>
                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Maks. {capacity}</span>
                     </div>
                 </div>
-                <div className={`mt-4 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${config.text}`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-orange-500' : config.text.replace('text-', 'bg-')}`}></div>
+                <div className={'mt-4 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ' + config.text}>
+                    <div className={'w-1.5 h-1.5 rounded-full ' + (active || isSource || isTarget ? 'bg-orange-500' : config.text.replace('text-', 'bg-'))}></div>
                     {config.label}
                 </div>
             </div>
@@ -421,7 +515,7 @@
     const OrderTypeView = ({ onSelect }) => (
         <div className="w-full h-full flex flex-col items-center justify-center bg-[#daaa64] animate-in fade-in zoom-in duration-500">
             <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">Selamat Datang!</h1>
-            <p className="text-xl text-gray-400 font-medium mb-16 tracking-tight">Pilih jenis pesanan Anda untuk memulai</p>
+            <p className="text-xl text-black font-medium mb-16 tracking-tight">Pilih jenis pesanan Anda untuk memulai</p>
             <div className="flex gap-10 w-full max-w-4xl px-6">
                 <OrderTypeCard
                     icon="bi-shop"
@@ -441,92 +535,166 @@
         </div>
     );
 
-    const TableSelectionView = ({ tables, guestCount, setGuestCount, selectedTable, onSelect, onBack, onContinue }) => (
-        <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
-            {/* Left: Guest Control */}
-            <div className="w-[320px] bg-white border-r border-gray-100 p-8 flex flex-col">
-                <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm mb-10 transition-colors">
-                    <i className="bi bi-arrow-left"></i> Kembali
-                </button>
+    const TableSelectionView = ({ 
+        tables, activeOrders, guestCount, setGuestCount, selectedTables, onSelect, onBack, onContinue, onOpenManagement,
+        managementAction, sourceTable, targetTable, onSourceSelect, onTargetSelect, onConfirmManagement, onCancelManagement
+    }) => {
+        const handleTableClick = (table) => {
+            if (managementAction) {
+                if (managementAction === 'reset' || managementAction === 'takeaway') {
+                    onSourceSelect(table);
+                } else if (managementAction === 'move' || managementAction === 'merge') {
+                    if (!sourceTable) onSourceSelect(table);
+                    else if (sourceTable.id === table.id) onSourceSelect(null);
+                    else onTargetSelect(table);
+                }
+            } else {
+                onSelect(table);
+            }
+        };
 
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs">2</div>
-                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pilih Meja</h2>
-                </div>
+        const totalSelectedCapacity = selectedTables.reduce((sum, t) => sum + (t.capacity || t.seats || 0), 0);
+        const canContinue = totalSelectedCapacity >= guestCount || selectedTables.length > 0;
 
-                <div className="mt-8">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">Jumlah Tamu</label>
-                    <div className="flex items-center justify-between bg-gray-50 rounded-3xl p-4 border border-gray-100 mb-6">
-                        <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
-                            <i className="bi bi-dash-lg text-xl"></i>
-                        </button>
-                        <span className="text-5xl font-black text-gray-900 w-20 text-center tracking-tighter">{guestCount}</span>
-                        <button onClick={() => setGuestCount(guestCount + 1)} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
-                            <i className="bi bi-plus-lg text-xl"></i>
-                        </button>
+        const actionLabels = {
+            merge: 'Gabung Meja',
+            split: 'Pisah Meja',
+            move: 'Pindah Meja',
+            takeaway: 'Tanpa Meja',
+            reset: 'Reset Meja'
+        };
+
+        return (
+            <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
+                {/* Left: Guest Control */}
+                <div className="w-[320px] bg-white border-r border-gray-100 p-8 flex flex-col">
+                    <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm mb-10 transition-colors">
+                        <i className="bi bi-arrow-left"></i> Kembali
+                    </button>
+
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs">2</div>
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pilih Meja</h2>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2 mb-10">
-                        {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
-                            <button
-                                key={n}
-                                onClick={() => setGuestCount(n)}
-                                className={`py-3 rounded-xl font-black transition-all ${guestCount === n ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                            >
-                                {n}
+                    <div className="mt-8">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">Jumlah Tamu</label>
+                        <div className="flex items-center justify-between bg-gray-50 rounded-3xl p-4 border border-gray-100 mb-6">
+                            <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                                <i className="bi bi-dash-lg text-xl"></i>
                             </button>
+                            <span className="text-5xl font-black text-gray-900 w-20 text-center tracking-tighter">{guestCount}</span>
+                            <button onClick={() => setGuestCount(guestCount + 1)} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                                <i className="bi bi-plus-lg text-xl"></i>
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-2 mb-10">
+                            {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
+                                <button
+                                    key={n}
+                                    onClick={() => setGuestCount(n)}
+                                    className={`py-3 rounded-xl font-black transition-all ${guestCount === n ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                >
+                                    {n}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="mt-auto space-y-3 pt-6 border-t border-gray-50">
+                        <button 
+                            onClick={onOpenManagement}
+                            className="w-full py-4 mb-6 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-gray-900/20 flex items-center justify-center gap-3"
+                        >
+                            <i className="bi bi-gear-fill"></i> Manajemen Meja
+                        </button>
+                        <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div> Tersedia
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            <div className="w-3 h-3 rounded-full bg-gray-300"></div> Terisi
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                            <div className="w-3 h-3 rounded-full bg-orange-500"></div> Reservasi
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right: Table Grid */}
+                <div className="flex-1 p-10 flex flex-col overflow-hidden relative">
+                    {managementAction && (
+                        <div className="absolute top-0 inset-x-0 bg-gray-900 text-white p-6 z-10 flex justify-between items-center animate-in slide-in-from-top duration-300">
+                            <div className="flex items-center gap-6">
+                                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center">
+                                    <i className="bi bi-gear-wide-connected text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 className="text-lg font-black tracking-tight">Mode: {actionLabels[managementAction]}</h4>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                        {managementAction === 'move' || managementAction === 'merge' 
+                                            ? (!sourceTable ? 'Pilih meja sumber' : !targetTable ? 'Pilih meja tujuan' : 'Siap dikonfirmasi')
+                                            : 'Pilih meja target'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button onClick={onCancelManagement} className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-black text-xs uppercase tracking-widest transition-all">Batal</button>
+                                <button 
+                                    onClick={onConfirmManagement} 
+                                    disabled={!sourceTable || ((managementAction === 'move' || managementAction === 'merge') && !targetTable)}
+                                    className="px-8 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-30 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-500/20"
+                                >
+                                    Konfirmasi
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 className="text-xl font-black text-gray-900 tracking-tight">Meja tersedia untuk {guestCount}+ tamu</h3>
+                            {selectedTables.length > 0 && (
+                                <p className="text-xs font-bold text-orange-500 uppercase tracking-widest mt-1">
+                                    Total Kapasitas Terpilih: {totalSelectedCapacity} tamu ({selectedTables.length} meja)
+                                </p>
+                            )}
+                        </div>
+                        <div className="bg-white px-4 py-2 rounded-full border border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                            {tables.filter(t => t.status === 'available').length} tersedia
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                        {tables.map(table => (
+                            <TableCard
+                                key={table.id}
+                                table={table}
+                                active={selectedTables.some(t => t.id === table.id)}
+                                guestCount={guestCount}
+                                onClick={handleTableClick}
+                                managementAction={managementAction}
+                                isSource={sourceTable?.id === table.id}
+                                isTarget={targetTable?.id === table.id}
+                            />
                         ))}
                     </div>
-                </div>
 
-                <div className="mt-auto space-y-3 pt-6 border-t border-gray-50">
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        <div className="w-3 h-3 rounded-full bg-green-500"></div> Tersedia
-                    </div>
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        <div className="w-3 h-3 rounded-full bg-gray-300"></div> Terisi
-                    </div>
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        <div className="w-3 h-3 rounded-full bg-orange-500"></div> Reservasi
+                    <div className="mt-8 flex justify-end">
+                        <button
+                            disabled={!canContinue || !!managementAction}
+                            onClick={onContinue}
+                            className="px-12 py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-orange-500/20 disabled:opacity-30 disabled:shadow-none transition-all active:scale-95"
+                        >
+                            Lanjut ke Menu <i className="bi bi-arrow-right ml-2"></i>
+                        </button>
                     </div>
                 </div>
             </div>
+        );
+    };
 
-            {/* Right: Table Grid */}
-            <div className="flex-1 p-10 flex flex-col overflow-hidden">
-                <div className="flex justify-between items-center mb-8">
-                    <h3 className="text-xl font-black text-gray-900 tracking-tight">Meja tersedia untuk {guestCount}+ tamu</h3>
-                    <div className="bg-white px-4 py-2 rounded-full border border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                        {tables.filter(t => t.status === 'available' && t.capacity >= guestCount).length} tersedia
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
-                    {tables.map(table => (
-                        <TableCard
-                            key={table.id}
-                            table={table}
-                            active={selectedTable?.id === table.id}
-                            guestCount={guestCount}
-                            onClick={onSelect}
-                        />
-                    ))}
-                </div>
-
-                <div className="mt-8 flex justify-end">
-                    <button
-                        disabled={!selectedTable}
-                        onClick={onContinue}
-                        className="px-12 py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-orange-500/20 disabled:opacity-30 disabled:shadow-none transition-all active:scale-95"
-                    >
-                        Lanjut ke Menu <i className="bi bi-arrow-right ml-2"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-
-    const MenuView = ({ menuItems, categories, orderType, selectedTable, guestCount, onBack, onShowToast }) => {
+    const MenuView = ({ menuItems, categories, orderType, selectedTables, guestCount, onBack, onShowToast }) => {
         const [activeCategory, setActiveCategory] = useState('Makanan');
         const [cart, setCart] = useState([]);
         const [searchQuery, setSearchQuery] = useState('');
@@ -577,6 +745,10 @@
 
             setSubmitting(true);
             try {
+                // Prepare table data
+                const primaryTable = selectedTables[0];
+                const mergedTableIds = selectedTables.slice(1).map(t => t.id);
+
                 const res = await fetch('/terminal/orders', {
                     method: 'POST',
                     headers: {
@@ -584,7 +756,8 @@
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
                     body: JSON.stringify({
-                        table_id: selectedTable ? selectedTable.id : 1,
+                        table_id: primaryTable ? primaryTable.id : 1,
+                        merged_table_ids: mergedTableIds.length > 0 ? JSON.stringify(mergedTableIds) : null,
                         customer_name: customerName,
                         guest_category: customerCategory,
                         order_type: orderType,
@@ -628,41 +801,41 @@
                             <div className="bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
                                 <i className="bi bi-check-circle-fill"></i> Tipe Order: {orderType === 'DINE_IN' ? 'Dine In' : 'Take Away'}
                             </div>
-                            {selectedTable && (
+                            {selectedTables.length > 0 && (
                                 <div className="bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                    <i className="bi bi-check-circle-fill"></i> Meja: {selectedTable.name}
+                                    <i className="bi bi-check-circle-fill"></i> Meja: {selectedTables.map(t => t.name).join(', ')}
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Category Tabs & Search */}
-                    <div className="flex justify-between items-center mb-8 gap-4">
-                        <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar no-scrollbar flex-1">
+                    {/* Category Tabs & Search - Touch Optimized */}
+                    <div className="flex justify-between items-center mb-10 gap-6">
+                        <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar no-scrollbar flex-1 snap-x">
                             {mainCategories.map(cat => (
                                 <button
                                     key={cat}
                                     onClick={() => setActiveCategory(cat)}
-                                    className={`px-8 py-3 rounded-2xl font-black text-sm transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white text-gray-400 hover:bg-gray-100'}`}
+                                    className={`px-10 py-4 rounded-2xl font-black text-sm transition-all whitespace-nowrap snap-start shadow-sm ${activeCategory === cat ? 'bg-orange-500 text-white shadow-orange-500/20' : 'bg-white text-gray-400 active:bg-gray-100'}`}
                                 >
                                     {cat}
                                 </button>
                             ))}
                         </div>
-                        <div className="relative w-64">
-                            <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <div className="relative w-80">
+                            <i className="bi bi-search absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
                             <input
                                 type="text"
                                 placeholder="Cari menu..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-white border-none rounded-2xl py-3 pl-12 pr-4 text-sm font-bold shadow-sm focus:ring-2 focus:ring-orange-500 transition-all"
+                                className="w-full bg-white border-none rounded-[2rem] py-5 pl-16 pr-6 text-lg font-bold shadow-sm focus:ring-4 focus:ring-orange-500/10 transition-all"
                             />
                         </div>
                     </div>
 
-                    {/* Menu Grid */}
-                    <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                    {/* Menu Grid - Tablet Friendly 3-4 columns */}
+                    <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
                         {filteredMenu.length === 0 ? (
                             <div className="col-span-full h-full flex flex-col items-center justify-center opacity-20 py-20">
                                 <i className="bi bi-egg-fried text-7xl mb-4"></i>
@@ -673,16 +846,16 @@
                                 <div
                                     key={item.id}
                                     onClick={() => addToCart(item)}
-                                    className="bg-white rounded-[2rem] p-5 flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group"
+                                    className="bg-white rounded-[2rem] p-6 flex flex-col cursor-pointer transition-all duration-300 active:scale-95 active:shadow-inner group border-2 border-transparent"
                                 >
-                                    <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-gray-50">
-                                        <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&h=200&auto=format&fit=crop'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                    <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-gray-50 shadow-inner">
+                                        <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&h=200&auto=format&fit=crop'} className="w-full h-full object-cover" />
                                     </div>
-                                    <h4 className="text-lg font-black text-gray-900 leading-tight mb-2">{item.name}</h4>
+                                    <h4 className="text-xl font-black text-gray-900 leading-tight mb-2 min-h-[3rem]">{item.name}</h4>
                                     <div className="mt-auto flex justify-between items-center">
-                                        <span className="text-orange-500 font-black text-xl">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
-                                        <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-all">
-                                            <i className="bi bi-plus-lg"></i>
+                                        <span className="text-orange-500 font-black text-2xl tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
+                                        <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center active:bg-orange-500 active:text-white transition-all shadow-sm">
+                                            <i className="bi bi-plus-lg text-2xl"></i>
                                         </div>
                                     </div>
                                 </div>
@@ -778,9 +951,14 @@
 
     const KasirTerminal = () => {
         const [view, setView] = useState('ORDER_TYPE'); // ORDER_TYPE, TABLE_SELECT, MENU
+        const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+        const [showTableManagement, setShowTableManagement] = useState(false);
+        const [tableManagementAction, setTableManagementAction] = useState(null); // 'merge', 'split', 'move', 'takeaway', 'reset'
+        const [sourceTable, setSourceTable] = useState(null);
+        const [targetTable, setTargetTable] = useState(null);
         const [orderType, setOrderType] = useState('DINE_IN');
         const [guestCount, setGuestCount] = useState(2);
-        const [selectedTable, setSelectedTable] = useState(null);
+        const [selectedTables, setSelectedTables] = useState([]);
         const [tables, setTables] = useState(@json($tables));
         const [loadingTables, setLoadingTables] = useState(false);
         const [activeOrders, setActiveOrders] = useState([]);
@@ -969,13 +1147,17 @@
             if (type === 'DINE_IN') {
                 setView('TABLE_SELECT');
             } else {
-                setSelectedTable(null);
+                setSelectedTables([]);
                 setView('MENU');
             }
         };
 
         const handleSelectTable = (table) => {
-            setSelectedTable(table);
+            setSelectedTables(prev => {
+                const isSelected = prev.find(t => t.id === table.id);
+                if (isSelected) return prev.filter(t => t.id !== table.id);
+                return [...prev, table];
+            });
         };
 
         const handleBack = () => {
@@ -983,6 +1165,128 @@
             else if (view === 'MENU') setView('TABLE_SELECT');
             else if (view === 'TABLE_SELECT') setView('ORDER_TYPE');
             else if (view === 'ORDER_STATUS' || view === 'ORDER_HISTORY') setView('ORDER_TYPE');
+        };
+
+        const handleTableAction = async (actionId) => {
+            setTableManagementAction(actionId);
+            setShowTableManagement(false);
+            setSourceTable(null);
+            setTargetTable(null);
+
+            if (actionId === 'reset') {
+                onShowToast('Pilih meja yang akan di-RESET');
+            } else if (actionId === 'move') {
+                onShowToast('Pilih meja ASAL (yang terisi)');
+            } else if (actionId === 'merge') {
+                onShowToast('Pilih meja SUMBER (yang akan digabung)');
+            } else if (actionId === 'takeaway') {
+                onShowToast('Pilih meja yang akan di-TAKE AWAY');
+            } else if (actionId === 'split') {
+                onShowToast('Pilih meja yang pesanannya akan di-PISAH');
+            }
+        };
+
+        const handleConfirmManagement = async () => {
+            if (tableManagementAction === 'move' && sourceTable && targetTable) {
+                const sourceOrder = activeOrders.find(o => o.table_id === sourceTable.id);
+                if (!sourceOrder) return onShowToast('Tidak ada pesanan di meja asal', 'error');
+
+                try {
+                    const res = await fetch('/terminal/tables/move', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                        body: JSON.stringify({ order_id: sourceOrder.id, new_table_id: targetTable.id })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        onShowToast('Meja berhasil dipindahkan');
+                        resetManagement();
+                        fetchTables();
+                        fetchActiveOrders();
+                    } else onShowToast(data.message || 'Gagal memindahkan meja', 'error');
+                } catch (e) { onShowToast('Kesalahan sistem', 'error'); }
+
+            } else if (tableManagementAction === 'merge' && sourceTable && targetTable) {
+                const sourceOrder = activeOrders.find(o => o.table_id === sourceTable.id);
+                const targetOrder = activeOrders.find(o => o.table_id === targetTable.id);
+                
+                if (sourceOrder && targetOrder) {
+                    // Both have orders, merge orders
+                    try {
+                        const res = await fetch('/terminal/tables/merge', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                            body: JSON.stringify({ target_order_id: targetOrder.id, source_order_ids: [sourceOrder.id] })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            onShowToast('Meja & Pesanan berhasil digabung');
+                            resetManagement();
+                            fetchTables();
+                            fetchActiveOrders();
+                        } else onShowToast(data.message || 'Gagal menggabungkan meja', 'error');
+                    } catch (e) { onShowToast('Kesalahan sistem', 'error'); }
+                } else {
+                    // At least one is empty, or both empty. 
+                    // We just treat them as "selected" for a new order.
+                    const tablesToSelect = [sourceTable, targetTable];
+                    setSelectedTables(tablesToSelect);
+                    setView('MENU');
+                    resetManagement();
+                    onShowToast('Silakan lanjutkan pesanan untuk meja gabungan');
+                }
+
+            } else if (tableManagementAction === 'reset' && sourceTable) {
+                setConfirmAction({
+                    title: 'RESET MEJA?',
+                    message: `Apakah Anda yakin ingin me-reset status meja ${sourceTable.name}? Ini akan mengosongkan status meja secara paksa.`,
+                    onConfirm: async () => {
+                        try {
+                            const res = await fetch(`/terminal/tables/${sourceTable.id}/reset`, {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                                onShowToast('Meja berhasil di-reset');
+                                resetManagement();
+                                fetchTables();
+                            } else onShowToast(data.error || 'Gagal me-reset meja', 'error');
+                        } catch (e) { onShowToast('Kesalahan sistem', 'error'); }
+                        finally { setConfirmAction(null); }
+                    }
+                });
+            } else if (tableManagementAction === 'takeaway' && sourceTable) {
+                const order = activeOrders.find(o => o.table_id === sourceTable.id);
+                if (!order) return onShowToast('Tidak ada pesanan di meja tersebut', 'error');
+
+                setConfirmAction({
+                    title: 'PINDAH KE TAKE AWAY?',
+                    message: `Apakah Anda yakin ingin mengubah pesanan di meja ${sourceTable.name} menjadi Tanpa Meja (Take Away)? Meja akan tersedia kembali.`,
+                    onConfirm: async () => {
+                        try {
+                            const res = await fetch(`/terminal/orders/${order.id}/make-takeaway`, {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                                onShowToast('Pesanan diubah menjadi Take Away');
+                                resetManagement();
+                                fetchTables();
+                                fetchActiveOrders();
+                            } else onShowToast(data.error || 'Gagal mengubah tipe pesanan', 'error');
+                        } catch (e) { onShowToast('Kesalahan sistem', 'error'); }
+                        finally { setConfirmAction(null); }
+                    }
+                });
+            }
+        };
+
+        const resetManagement = () => {
+            setTableManagementAction(null);
+            setSourceTable(null);
+            setTargetTable(null);
         };
 
         const renderView = () => {
@@ -997,12 +1301,21 @@
                     return (
                         <TableSelectionView
                             tables={tables}
+                            activeOrders={activeOrders}
                             guestCount={guestCount}
                             setGuestCount={setGuestCount}
-                            selectedTable={selectedTable}
+                            selectedTables={selectedTables}
                             onSelect={handleSelectTable}
                             onBack={handleBack}
                             onContinue={() => setView('MENU')}
+                            onOpenManagement={() => setShowTableManagement(true)}
+                            managementAction={tableManagementAction}
+                            sourceTable={sourceTable}
+                            targetTable={targetTable}
+                            onSourceSelect={setSourceTable}
+                            onTargetSelect={setTargetTable}
+                            onConfirmManagement={handleConfirmManagement}
+                            onCancelManagement={resetManagement}
                         />
                     );
                 case 'MENU':
@@ -1011,7 +1324,7 @@
                             menuItems={ @json($menuItems) }
                             categories={ @json($categories) }
                             orderType={orderType}
-                            selectedTable={selectedTable}
+                            selectedTables={selectedTables}
                             guestCount={guestCount}
                             onBack={() => setView('ORDER_TYPE')}
                             onShowToast={onShowToast}
@@ -1025,72 +1338,100 @@
 
         return (
             <div className="w-full h-full flex overflow-hidden bg-gray-50">
-                {/* Fixed Sidebar */}
-                <div className="w-80 bg-[#063024] flex flex-col border-r border-[#063024] shadow-2xl z-50">
-                    <div className="p-8 border-b border-white/5">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-orange-500/30">
-                                <span className="font-black text-xl text-white">M</span>
+                {/* Collapsible Sidebar */}
+                <div className={`${sidebarCollapsed ? 'w-24' : 'w-72'} bg-[#063024] flex flex-col border-r border-[#063024] shadow-2xl z-50 transition-all duration-300`}>
+                    <div className={`p-6 border-b border-white/5 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+                        {!sidebarCollapsed && (
+                            <div className="flex items-center gap-3 animate-in fade-in duration-300">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-orange-500/30">
+                                    <span className="font-black text-lg text-white">M</span>
+                                </div>
+                                <div>
+                                    <h1 className="text-white font-black text-sm tracking-tight">MAJAR POS</h1>
+                                    <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">Signature</p>
+                                </div>
                             </div>
-                            <div>
-                                <h1 className="text-white font-black tracking-tight">MAJAR POS</h1>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Signature Mode</p>
-                            </div>
-                        </div>
+                        )}
+                        <button 
+                            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                            className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white active:bg-white/10 transition-all ${sidebarCollapsed ? 'w-14 h-14' : ''}`}
+                        >
+                            <i className={`bi ${sidebarCollapsed ? 'bi-list' : 'bi-layout-sidebar-inset'} text-xl`}></i>
+                        </button>
                     </div>
 
                     <div className="flex-1 flex flex-col overflow-hidden">
-                        {/* Navigation */}
-                        <div className="p-4 grid grid-cols-3 gap-2">
-                            <SidebarIcon icon="bi-plus-circle" label="Pesan" active={view === 'ORDER_TYPE' || view === 'TABLE_SELECT' || view === 'MENU'} onClick={() => setView('ORDER_TYPE')} />
-                            <SidebarIcon icon="bi-shield-lock" label="Approval" active={view === 'PENDING_APPROVAL'} onClick={() => setView('PENDING_APPROVAL')} count={activeOrders.filter(o => o.stage === 'WAITING_CASHIER').length} />
-                            <SidebarIcon icon="bi-desktop" label="Monitor" active={view === 'MONITORING_PAGE'} onClick={() => setView('MONITORING_PAGE')} />
-                        </div>
-
-                        {/* Compact placeholder - full monitoring is a dedicated SPA view */}
-                        <div className="flex-1 flex items-center justify-center px-4">
-                            <div className="text-center text-white/60">
-                                <div className="text-2xl font-black mb-2">Monitoring Orders</div>
-                                <div className="text-sm">Click <span className="font-bold">Monitor</span> to open full-screen monitoring.</div>
-                                <div className="mt-4">
-                                    <button onClick={() => setView('MONITORING_PAGE')} className="px-4 py-2 bg-orange-500 rounded-lg font-black">Open Monitoring</button>
-                                </div>
-                            </div>
+                        {/* Navigation - Stacked Vertically for Tablet Friendliness */}
+                        <div className="flex-1 flex flex-col py-6 overflow-y-auto custom-scrollbar no-scrollbar">
+                            <SidebarIcon icon="bi-plus-circle" label="Pesan" active={view === 'ORDER_TYPE' || view === 'TABLE_SELECT' || view === 'MENU'} onClick={() => setView('ORDER_TYPE')} collapsed={sidebarCollapsed} />
+                            <SidebarIcon icon="bi-shield-lock" label="Approval" active={view === 'PENDING_APPROVAL'} onClick={() => setView('PENDING_APPROVAL')} count={activeOrders.filter(o => o.stage === 'WAITING_CASHIER').length} collapsed={sidebarCollapsed} />
+                            <SidebarIcon icon="bi-monitor" label="Monitor" active={view === 'MONITORING_PAGE'} onClick={() => setView('MONITORING_PAGE')} collapsed={sidebarCollapsed} />
+                            <SidebarIcon icon="bi-clock-history" label="History" active={view === 'ORDER_HISTORY'} onClick={() => setView('ORDER_HISTORY')} collapsed={sidebarCollapsed} />
                         </div>
                     </div>
-
-                    {/* Selected order modal is shown instead of sidebar drawer when triggered */}
+                    
+                    <div className="p-6 border-t border-white/5">
+                        <a href="/logout" className={`flex items-center gap-3 text-white/40 active:text-white transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}>
+                            <i className="bi bi-box-arrow-right text-xl"></i>
+                            {!sidebarCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">Logout</span>}
+                        </a>
+                    </div>
                 </div>
 
                 {/* Content Area */}
-                <div className="flex-1 h-full overflow-hidden">
+                <div className="flex-1 h-full overflow-hidden relative">
                     {view === 'MONITORING_PAGE' ? (
-                        <div className="p-8 h-full overflow-auto">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-2xl font-black">Monitoring Orders</h2>
-                                <div className="text-sm text-gray-500">Active: <span className="font-black">{activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').length}</span></div>
+                        <div className="p-10 h-full overflow-auto bg-gray-50">
+                            <div className="flex items-center justify-between mb-10">
+                                <div>
+                                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">Monitoring Orders</h2>
+                                    <p className="text-gray-400 font-medium mt-1 uppercase text-[10px] tracking-widest">Pantau pesanan aktif secara real-time</p>
+                                </div>
+                                <div className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100 text-sm font-black text-gray-900 uppercase tracking-widest">
+                                    Active: <span className="text-orange-500 ml-2">{activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').length}</span>
+                                </div>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                                 {activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').length === 0 ? (
-                                    <div className="col-span-3 text-center text-gray-400 py-12">No active orders</div>
+                                    <div className="col-span-full h-96 flex flex-col items-center justify-center opacity-20">
+                                        <i className="bi bi-inbox text-8xl mb-4"></i>
+                                        <p className="font-black uppercase tracking-[0.3em]">No active orders</p>
+                                    </div>
                                 ) : (
                                     activeOrders.filter(o => o.stage !== 'WAITING_CASHIER').map(order => (
-                                        <div key={order.id} onClick={() => { setSelectedOrder(order); setShowOrderModal(true); }} className={`p-6 bg-white rounded-2xl shadow-sm cursor-pointer border-2 ${selectedOrder?.id === order.id ? 'border-orange-500 shadow-lg' : 'border-transparent hover:shadow-md'}`}>
-                                            <div className="flex justify-between items-start mb-3">
+                                        <div 
+                                            key={order.id} 
+                                            onClick={() => { setSelectedOrder(order); setShowOrderModal(true); }} 
+                                            className={`p-8 bg-white rounded-[2.5rem] shadow-sm active:scale-95 transition-all border-2 ${selectedOrder?.id === order.id ? 'border-orange-500 shadow-xl' : 'border-transparent shadow-md'}`}
+                                        >
+                                            <div className="flex justify-between items-start mb-6">
                                                 <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <h4 className="font-black">Meja {order.table?.name || 'TA'}</h4>
-                                                        <span className="text-xs text-gray-400">{order.guest_category || 'Umum'}</span>
+                                                    <div className="flex items-center gap-3 mb-1">
+                                                        <h4 className="text-2xl font-black text-gray-900 tracking-tight">Meja {order.table?.name || 'TA'}</h4>
+                                                        <span className="text-[10px] font-black bg-gray-100 text-gray-400 px-2 py-0.5 rounded-lg uppercase">{order.guest_category || 'Umum'}</span>
                                                     </div>
-                                                    <p className="text-sm text-gray-600">{order.customer_name || 'Guest'}</p>
+                                                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{order.customer_name || 'Guest'}</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className="text-sm font-black text-orange-500">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</div>
-                                                    <div className="text-xs text-gray-400 mt-1">{order.stage.replace(/_/g,' ')}</div>
+                                                    <div className="text-xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</div>
+                                                    <span className={`inline-block mt-2 text-[8px] font-black px-2 py-1 rounded-md uppercase tracking-widest ${
+                                                        order.stage === 'COOKING' ? 'bg-blue-50 text-blue-500' : 
+                                                        order.stage === 'READY' ? 'bg-green-50 text-green-500' : 
+                                                        'bg-gray-100 text-gray-400'
+                                                    }`}>
+                                                        {order.stage.replace(/_/g,' ')}
+                                                    </span>
                                                 </div>
                                             </div>
-                                            <div className="mt-2 text-sm text-gray-500">{order.items.map(i => `${i.qty}x ${i.menu_name}`).join(', ')}</div>
+                                            <div className="space-y-2 border-t border-gray-50 pt-6">
+                                                {order.items.map((i, idx) => (
+                                                    <div key={idx} className="flex justify-between text-sm">
+                                                        <span className="text-gray-500 font-medium">{i.qty}x {i.menu_name}</span>
+                                                        <span className={`text-[8px] font-black uppercase ${i.status === 'ready' ? 'text-green-500' : 'text-gray-300'}`}>{i.status}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     ))
                                 )}
@@ -1110,44 +1451,70 @@
                     />
                 )}
                 {showOrderModal && selectedOrder && (
-                    <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-                        <div className="bg-white w-full max-w-3xl rounded-[2rem] overflow-hidden shadow-2xl p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-black">Detail Order — #{selectedOrder.code || selectedOrder.id}</h3>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={() => { setShowOrderModal(false); setSelectedOrder(null); }} className="text-gray-500">Close</button>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white w-full max-w-4xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                            <div className="p-10 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                                 <div>
-                                    <div className="mb-3 text-sm text-gray-600">Meja: <span className="font-black text-gray-900">{selectedOrder.table?.name || 'TA'}</span></div>
-                                    <div className="space-y-3 max-h-80 overflow-auto custom-scrollbar pr-2">
+                                    <h3 className="text-3xl font-black text-gray-900 tracking-tight">Detail Pesanan</h3>
+                                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-1">Order ID: #{selectedOrder.code || selectedOrder.id}</p>
+                                </div>
+                                <button onClick={() => { setShowOrderModal(false); setSelectedOrder(null); }} className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-400 active:text-gray-900 active:scale-95 transition-all"><i className="bi bi-x-lg text-2xl"></i></button>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                                <div className="p-10 border-r border-gray-100">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="text-lg font-black text-gray-900">Items</div>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Swipe left to Void</div>
+                                    </div>
+                                    <div className="space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-4 no-scrollbar">
                                         {selectedOrder.items.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between items-center p-3 border rounded-lg">
-                                                <div>
-                                                    <div className="font-bold">{item.qty}x {item.menu_name}</div>
-                                                    <div className="text-xs text-gray-500">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</div>
+                                            <SwipeableItem 
+                                                key={idx} 
+                                                onSwipe={() => { setVoidItemTarget({ orderId: selectedOrder.id, item }); setShowVoidItemModal(true); }}
+                                                threshold={80}
+                                            >
+                                                <div className="flex-1 flex justify-between items-center p-5 bg-white border border-gray-50 rounded-2xl">
+                                                    <div>
+                                                        <div className="text-lg font-black text-gray-900 leading-tight">{item.qty}x {item.menu_name}</div>
+                                                        <div className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-lg font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</div>
+                                                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md mt-1 inline-block ${
+                                                            item.status === 'ready' ? 'bg-green-50 text-green-500' : 
+                                                            item.status === 'cooking' ? 'bg-blue-50 text-blue-500' : 
+                                                            'bg-gray-50 text-gray-400'
+                                                        }`}>{item.status}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button onClick={() => { setVoidItemTarget({ orderId: selectedOrder.id, item }); setShowVoidItemModal(true); }} className="px-3 py-1 bg-red-50 text-red-500 rounded">Void Item</button>
-                                                    <div className="font-black">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</div>
-                                                </div>
-                                            </div>
+                                            </SwipeableItem>
                                         ))}
                                     </div>
                                 </div>
-                                <div>
-                                    <div className="mb-4">
-                                        <div className="text-sm text-gray-500">Customer</div>
-                                        <div className="font-black">{selectedOrder.customer_name || 'Guest'}</div>
+                                
+                                <div className="p-10 bg-gray-50/30 flex flex-col justify-between">
+                                    <div className="space-y-8">
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
+                                                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Meja</div>
+                                                <div className="text-3xl font-black text-gray-900 tracking-tight">{selectedOrder.table?.name || 'TA'}</div>
+                                            </div>
+                                            <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
+                                                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Customer</div>
+                                                <div className="text-xl font-black text-gray-900 tracking-tight truncate">{selectedOrder.customer_name || 'Guest'}</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="p-8 bg-gray-900 rounded-[2.5rem] shadow-xl">
+                                            <div className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-3">Total Tagihan</div>
+                                            <div className="text-5xl font-black text-white tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</div>
+                                        </div>
                                     </div>
-                                    <div className="mb-4">
-                                        <div className="text-sm text-gray-500">Total</div>
-                                        <div className="text-2xl font-black text-orange-500">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</div>
-                                    </div>
-                                    <div className="flex gap-2 mt-6">
-                                        <button onClick={() => { setShowPaymentModal(true); setShowOrderModal(false); }} className="flex-1 py-3 bg-orange-500 text-white rounded-lg font-black">Bayar</button>
-                                        <button onClick={() => { setShowVoidModal(true); setShowOrderModal(false); }} className="flex-1 py-3 bg-red-500 text-white rounded-lg font-black">Void Order</button>
+                                    
+                                    <div className="flex gap-4 mt-10">
+                                        <button onClick={() => { setShowVoidModal(true); setShowOrderModal(false); }} className="flex-1 py-6 bg-red-50 text-red-500 rounded-[2rem] font-black text-lg uppercase tracking-widest active:scale-95 transition-all">Void Order</button>
+                                        <button onClick={() => { setShowPaymentModal(true); setShowOrderModal(false); }} className="flex-[2] py-6 bg-orange-500 text-white rounded-[2rem] font-black text-xl uppercase tracking-widest shadow-xl shadow-orange-500/30 active:scale-95 transition-all">Bayar Sekarang</button>
                                     </div>
                                 </div>
                             </div>
@@ -1175,6 +1542,15 @@
                     />
                 )}
                 {toast && <Toast {...toast} onClose={() => setToast(null)} />}
+                
+                {showTableManagement && (
+                    <TableManagementModal
+                        onClose={() => setShowTableManagement(false)}
+                        onAction={handleTableAction}
+                        tables={tables}
+                        activeOrders={activeOrders}
+                    />
+                )}
             </div>
         );
     };
@@ -1206,62 +1582,73 @@
             }
         };
 
+        const renderItems = (order) => {
+            return order.items.map((item, idx) => (
+                <SwipeableItem 
+                    key={idx} 
+                    onSwipe={() => onVoidItem(order.id, item)}
+                    threshold={80}
+                >
+                    <div className="flex-1 flex justify-between items-center p-6 border-b border-gray-50 last:border-none">
+                        <div>
+                            <span className="text-xl font-black text-gray-900 leading-tight">{item.qty}x {item.menu_name}</span>
+                            <div className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</div>
+                        </div>
+                        <span className="text-xl font-black text-gray-900 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
+                    </div>
+                </SwipeableItem>
+            ));
+        };
+
         return (
-            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
-                <div className="flex items-center gap-4 mb-8">
-                    <button onClick={onBack} className="text-gray-400 hover:text-gray-900"><i className="bi bi-arrow-left text-2xl"></i></button>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Pending Approval</h1>
+            <div className="w-full h-full flex flex-col p-10 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
+                <div className="flex items-center justify-between mb-10">
+                    <div className="flex items-center gap-6">
+                        <button onClick={onBack} className="w-16 h-16 rounded-2xl bg-white shadow-md flex items-center justify-center text-gray-400 active:text-gray-900 active:scale-95 transition-all"><i className="bi bi-arrow-left text-3xl"></i></button>
+                        <h1 className="text-4xl font-black text-gray-900 tracking-tighter">Pending Approval</h1>
+                    </div>
+                    <div className="bg-orange-500 text-white px-8 py-4 rounded-[2rem] font-black text-lg uppercase tracking-widest shadow-xl shadow-orange-500/20">
+                        {pending.length} Pesanan
+                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 content-start custom-scrollbar pr-2">
+                <div className="flex-1 overflow-x-auto pb-10 flex gap-10 items-start snap-x snap-mandatory no-scrollbar pr-20">
                     {pending.length === 0 ? (
-                        <div className="col-span-full h-64 flex flex-col items-center justify-center opacity-20">
-                            <i className="bi bi-shield-check text-7xl"></i>
-                            <p className="font-bold uppercase tracking-widest mt-4">Semua pesanan sudah disetujui</p>
+                        <div className="flex-1 h-full flex flex-col items-center justify-center opacity-10">
+                            <i className="bi bi-shield-check text-[12rem]"></i>
+                            <p className="font-black uppercase tracking-[0.5em] mt-10 text-2xl">Antrian Kosong</p>
                         </div>
                     ) : (
                         pending.map(order => (
-                            <div key={order.id} className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-gray-100 flex flex-col h-fit">
-                                <div className="flex justify-between items-start mb-4">
+                            <div key={order.id} className="min-w-[480px] bg-white rounded-[3.5rem] p-10 shadow-2xl border border-gray-100 flex flex-col h-fit snap-center transition-transform active:scale-[0.98]">
+                                <div className="flex justify-between items-start mb-10">
                                     <div>
-                                        <h4 className="font-black text-gray-900 text-xl">Meja {order.table?.name || 'TA'}</h4>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{order.customer_name} • {order.guest_category}</p>
+                                        <h4 className="font-black text-gray-900 text-4xl tracking-tight mb-2">Meja {order.table?.name || 'TA'}</h4>
+                                        <p className="text-sm font-bold text-gray-400 uppercase tracking-[0.3em]">{order.customer_name} • {order.guest_category}</p>
                                     </div>
-                                    <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Waiting</span>
+                                    <span className="text-xs font-black bg-orange-50 text-orange-500 px-4 py-2 rounded-xl tracking-widest">WAITING</span>
                                 </div>
 
-                                    <div className="space-y-2 mb-6 border-y border-gray-50 py-4">
-                                    {order.items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-center text-xs font-bold text-gray-600">
-                                            <div className="flex items-center gap-4">
-                                                <span>{item.qty}x {item.menu_name}</span>
-                                                <span className="text-[10px] text-gray-400">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
-                                                <button
-                                                    onClick={() => onVoidItem(order.id, item)}
-                                                    className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
-                                                    title="Void Item"
-                                                >
-                                                    <i className="bi bi-trash"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="flex justify-between pt-2 font-black text-gray-900 text-sm">
-                                        <span>Total</span>
-                                        <span>Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
-                                    </div>
+                                <div className="space-y-1 mb-10 border-y-2 border-dashed border-gray-100 py-8 max-h-[40vh] overflow-y-auto custom-scrollbar no-scrollbar">
+                                    {renderItems(order)}
                                 </div>
 
-                                <button
+                                <div className="flex justify-between items-center mb-10 px-4">
+                                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Total Tagihan</span>
+                                    <span className="text-4xl font-black text-gray-900 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
+                                </div>
+
+                                <button 
                                     disabled={processing}
                                     onClick={() => handleApprove(order.id)}
-                                    className="w-full py-4 bg-green-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-green-500/20"
+                                    className="w-full py-8 bg-orange-500 text-white rounded-[2.5rem] font-black text-2xl uppercase tracking-widest active:scale-95 transition-all shadow-2xl shadow-orange-500/30"
                                 >
-                                    {processing ? 'Memproses...' : 'Approve & Kirim ke Dapur'}
+                                    {processing ? 'Memproses...' : 'Setujui & Kirim'}
                                 </button>
+                                <div className="mt-6 flex items-center justify-center gap-2 text-gray-300">
+                                    <i className="bi bi-chevron-double-left text-sm animate-pulse"></i>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest">Geser kiri pada item untuk Void</span>
+                                </div>
                             </div>
                         ))
                     )}
@@ -1433,6 +1820,7 @@
     const OrderHistoryView = ({ onBack }) => {
         const [history, setHistory] = useState([]);
         const [loading, setLoading] = useState(true);
+        const [selectedOrder, setSelectedOrder] = useState(null);
 
         useEffect(() => {
             fetch('/terminal/orders/history')
@@ -1444,9 +1832,9 @@
         }, []);
 
         return (
-            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
+            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden relative">
                 <div className="flex items-center gap-4 mb-8">
-                    <button onClick={onBack} className="text-gray-400 hover:text-gray-900"><i className="bi bi-arrow-left text-2xl"></i></button>
+                    <button onClick={onBack} className="text-gray-400 hover:text-gray-900 active:scale-95 transition-all"><i className="bi bi-arrow-left text-2xl"></i></button>
                     <h1 className="text-3xl font-black text-gray-900 tracking-tighter">History Hari Ini</h1>
                 </div>
 
@@ -1458,18 +1846,27 @@
                                 <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Kode</th>
                                 <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Meja</th>
                                 <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
+                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Kasir</th>
                                 <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {history.map(order => (
-                                <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                                    <td className="p-6 text-sm font-bold text-gray-600">{new Date(order.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</td>
-                                    <td className="p-6 text-sm font-black text-gray-900">{order.code}</td>
+                                <tr 
+                                    key={order.id} 
+                                    onClick={() => setSelectedOrder(order)}
+                                    className="border-b border-gray-50 hover:bg-orange-50 cursor-pointer transition-colors group"
+                                >
+                                    <td className="p-6 text-sm font-bold text-gray-600">
+                                        <div>{new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</div>
+                                        <div className="text-[10px] text-gray-400 font-medium">{new Date(order.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</div>
+                                    </td>
+                                    <td className="p-6 text-sm font-black text-gray-900 group-hover:text-orange-600 transition-colors">{order.code}</td>
                                     <td className="p-6 text-sm font-bold text-gray-600">{order.table?.name || 'TA'}</td>
                                     <td className="p-6 text-sm font-black text-orange-500">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</td>
+                                    <td className="p-6 text-sm font-bold text-gray-600">{order.kasir?.name || '-'}</td>
                                     <td className="p-6">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${order.stage === 'DONE' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+                                        <span className={'px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ' + (order.stage === 'DONE' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400')}>
                                             {order.stage}
                                         </span>
                                     </td>
@@ -1477,6 +1874,107 @@
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Detail Modal */}
+                {selectedOrder && (
+                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col">
+                            <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                                <div>
+                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Detail Transaksi</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{selectedOrder.code}</p>
+                                </div>
+                                <button onClick={() => setSelectedOrder(null)} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-400 active:scale-95 transition-all"><i className="bi bi-x-lg text-xl"></i></button>
+                            </div>
+
+                            <div className="p-8 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-4 bg-gray-50 rounded-2xl">
+                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Waktu Transaksi</p>
+                                        <p className="text-sm font-black text-gray-900">
+                                            {new Date(selectedOrder.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                            <span className="mx-2 text-gray-300">|</span>
+                                            {new Date(selectedOrder.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB
+                                        </p>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 rounded-2xl">
+                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Kasir</p>
+                                        <p className="text-sm font-black text-gray-900">{selectedOrder.kasir?.name || '-'}</p>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 rounded-2xl">
+                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Kategori Pelanggan</p>
+                                        <p className="text-sm font-black text-gray-900">{selectedOrder.guest_category || 'Reguler'}</p>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 rounded-2xl">
+                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Metode Pembayaran</p>
+                                        <p className="text-sm font-black text-orange-500 uppercase">{selectedOrder.payment_method || 'Tunai'}</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Item Pesanan</p>
+                                    <div className="space-y-3">
+                                        {selectedOrder.items?.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between items-center p-4 border border-gray-50 rounded-2xl">
+                                                <div>
+                                                    <p className="text-sm font-black text-gray-900">{item.qty}x {item.menu_name}</p>
+                                                    <p className="text-[10px] font-bold text-gray-400 uppercase">@ Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
+                                                </div>
+                                                <p className="text-sm font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t-2 border-dashed border-gray-100">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Total Bayar</span>
+                                        <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-8 bg-gray-50 border-t border-gray-100 flex justify-center">
+                                <button onClick={() => setSelectedOrder(null)} className="px-10 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-gray-900/20">Tutup Detail</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const TableManagementModal = ({ onClose, onAction, tables, activeOrders }) => {
+        const actions = [
+            { id: 'merge', label: 'Gabung Meja', icon: 'bi-intersect' },
+            { id: 'split', label: 'Pisah Meja', icon: 'bi-exclude' },
+            { id: 'move', label: 'Pindah Meja', icon: 'bi-arrow-right-square' },
+            { id: 'takeaway', label: 'Tanpa Meja', icon: 'bi-bag-x' },
+            { id: 'reset', label: 'Reset Meja', icon: 'bi-arrow-counterclockwise' }
+        ];
+
+        return (
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-md rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col">
+                    <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <h3 className="text-2xl font-black text-gray-900 tracking-tight">Manajemen Meja</h3>
+                        <button onClick={onClose} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-400 active:scale-95 transition-all"><i className="bi bi-x-lg text-xl"></i></button>
+                    </div>
+                    <div className="p-6 grid grid-cols-1 gap-3">
+                        {actions.map(action => (
+                            <button
+                                key={action.id}
+                                onClick={() => onAction(action.id)}
+                                className="flex items-center gap-6 p-6 rounded-[2rem] bg-white border-2 border-gray-50 hover:border-orange-100 active:scale-[0.98] active:bg-orange-50 transition-all group"
+                            >
+                                <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-sm">
+                                    <i className={'bi ' + action.icon + ' text-2xl'}></i>
+                                </div>
+                                <span className="text-xl font-black text-gray-700 group-hover:text-gray-900">{action.label}</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
         );

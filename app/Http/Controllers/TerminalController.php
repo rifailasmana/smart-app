@@ -138,6 +138,7 @@ class TerminalController extends Controller
             $validated = $request->validate([
                 'order_id' => 'nullable|exists:orders,id',
                 'table_id' => 'required|exists:restaurant_tables,id',
+                'customer_name' => 'nullable|string',
                 'guest_category' => 'nullable|string',
                 'order_type' => 'nullable|string',
                 'reservation_name' => 'nullable|required_if:guest_category,RESERVED|string',
@@ -161,20 +162,26 @@ class TerminalController extends Controller
                 $order->items()->delete();
             } else {
                 // Check if table is already occupied by non-draft order
-                $existingActive = Order::where('table_id', $validated['table_id'])
+                $tableIdsToCheck = [$validated['table_id']];
+                if ($validated['merged_table_ids']) {
+                    $mergedIds = json_decode($validated['merged_table_ids'], true);
+                    if (is_array($mergedIds)) $tableIdsToCheck = array_merge($tableIdsToCheck, $mergedIds);
+                }
+
+                $existingActive = Order::whereIn('table_id', $tableIdsToCheck)
                     ->where('warung_id', $user->warung_id)
-                    ->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY'])
+                    ->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY', 'SERVED'])
                     ->first();
 
                 if ($existingActive) {
-                    return response()->json(['error' => 'Meja sedang digunakan oleh pesanan lain'], 400);
+                    return response()->json(['error' => 'Salah satu meja sedang digunakan oleh pesanan lain'], 400);
                 }
 
                 $order = Order::create([
                     'warung_id' => $user->warung_id,
                     'waiter_id' => $user->role === 'waiter' ? $user->id : null,
                     'kasir_id' => $user->role === 'kasir' ? $user->id : null,
-                    'customer_name' => $validated['reservation_name'] ?? 'Guest',
+                    'customer_name' => $validated['reservation_name'] ?? $validated['customer_name'] ?? 'Guest',
                     'code' => 'T' . strtoupper(uniqid()),
                     'table_id' => $validated['table_id'],
                     'stage' => $user->role === 'kasir' ? 'WAITING_CASHIER' : 'DRAFT',
@@ -207,7 +214,7 @@ class TerminalController extends Controller
 
             $order->update([
                 'table_id' => $validated['table_id'],
-                'customer_name' => $validated['reservation_name'] ?? $order->customer_name ?? 'Guest',
+                'customer_name' => $validated['reservation_name'] ?? $validated['customer_name'] ?? $order->customer_name ?? 'Guest',
                 'subtotal' => $total,
                 'total' => $total,
                 'guest_category' => $validated['guest_category'] ?? $order->guest_category,
@@ -561,7 +568,7 @@ class TerminalController extends Controller
                 'status' => $isInvoice ? 'invoiced' : 'paid',
                 'customer_name' => $validated['customer_name'] ?? $order->customer_name,
                 'paid_at' => now(),
-                'ordered_at' => now(),
+                'ordered_at' => $order->ordered_at ?? now(),
                 'kasir_id' => $user->id,
                 // Normalize to DB enum: kasir, qris, gateway
                 'payment_method' => (function ($pm) {
@@ -580,7 +587,7 @@ class TerminalController extends Controller
                     return $map[$pm] ?? 'kasir';
                 })($validated['payment_method']),
                 'amount_paid' => $validated['amount_paid'],
-                'sent_to_kitchen_at' => now(),
+                'sent_to_kitchen_at' => $order->sent_to_kitchen_at ?? now(),
                 'subtotal' => $subtotal,
                 'diskon_manual' => $discountAmount,
                 'total' => max(0, $subtotal - $discountAmount),
@@ -963,6 +970,23 @@ class TerminalController extends Controller
             \App\Services\StockService::reduceStockForOrder($order);
 
             return response()->json(['success' => true, 'message' => 'Settle to Invoice berhasil. Meja tersedia.']);
+        });
+    }
+
+    /**
+     * Change order to take away and free the table
+     */
+    public function makeTakeaway(Order $order)
+    {
+        return DB::transaction(function () use ($order) {
+            $order->update([
+                'order_type' => 'TAKE_AWAY',
+                'table_id' => null, 
+            ]);
+
+            $this->syncTableStatuses($order);
+
+            return response()->json(['success' => true]);
         });
     }
 

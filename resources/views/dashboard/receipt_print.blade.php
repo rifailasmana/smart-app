@@ -57,7 +57,7 @@
     <table class="mb-2">
         <tr>
             <td>Tgl</td>
-            <td class="text-right">{{ $order->created_at->format('d/m/Y H:i') }}</td>
+            <td class="text-right">{{ $order->paid_at ? $order->paid_at->format('d/m/Y H:i') : ($order->created_at ? $order->created_at->format('d/m/Y H:i') : now()->format('d/m/Y H:i')) }}</td>
         </tr>
         <tr>
             <td>Order</td>
@@ -71,6 +71,12 @@
             <td>Meja</td>
             <td class="text-right">{{ $order->table->name ?? 'Takeaway' }}</td>
         </tr>
+        @if($order->kasir)
+        <tr>
+            <td>Kasir</td>
+            <td class="text-right">{{ $order->kasir->name }}</td>
+        </tr>
+        @endif
         @if($order->payment_method)
         <tr>
             <td>Bayar</td>
