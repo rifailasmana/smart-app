@@ -6,7 +6,7 @@
     "display": "fullscreen",
     "background_color": "#063024",
     "theme_color": "#FF8C00",
-    "orientation": "landscape",
+    "orientation": "landscape-primary",
     "icons": [
         {
             "src": "https://cdn-icons-png.flaticon.com/512/562/562678.png",
@@ -20,7 +20,7 @@
             "type": "image/png",
             "purpose": "any maskable"
         }
-    ],
+    ], 
     "categories": [
         "business",
         "food"

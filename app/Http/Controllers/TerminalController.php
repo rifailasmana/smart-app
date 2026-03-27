@@ -184,7 +184,7 @@ class TerminalController extends Controller
                     'customer_name' => $validated['reservation_name'] ?? $validated['customer_name'] ?? 'Guest',
                     'code' => 'T' . strtoupper(uniqid()),
                     'table_id' => $validated['table_id'],
-                    'stage' => $user->role === 'kasir' ? 'WAITING_CASHIER' : 'DRAFT',
+                    'stage' => $user->role === 'kasir' ? 'COOKING' : 'DRAFT',
                     'status' => 'pending',
                     'subtotal' => 0,
                     'total' => 0,
@@ -193,6 +193,7 @@ class TerminalController extends Controller
                     'reservation_name' => $validated['reservation_name'] ?? null,
                     'reservation_code' => $validated['reservation_code'] ?? null,
                     'merged_table_ids' => $validated['merged_table_ids'] ?? null,
+                    'sent_to_kitchen_at' => $user->role === 'kasir' ? now() : null,
                 ]);
             }
 
@@ -208,6 +209,8 @@ class TerminalController extends Controller
                     'qty' => $itemData['qty'],
                     'price' => $menuItem->price,
                     'note' => $itemData['note'] ?? null,
+                    'status' => $user->role === 'kasir' ? 'cooking' : 'pending',
+                    'cooking_at' => $user->role === 'kasir' ? now() : null,
                 ]);
                 $total += $subtotal;
             }
@@ -300,15 +303,15 @@ class TerminalController extends Controller
                 'reason' => $reason,
                 'voided_by' => $user->id ?? null,
                 'voided_by_role' => $user->role ?? null,
-                'manager_pin_used' => $validated['pin'] ?? null,
+                // 'manager_pin_used' => $validated['pin'] ?? null, // Re-enable if pin is passed
             ]);
 
             if ($voidQty >= $item->qty) {
                 // Remove item entirely
                 $item->delete();
             } else {
-                // Decrement quantity
-                $item->decrement('qty', $voidQty);
+                // Update quantity directly instead of decrement
+                $item->update(['qty' => $item->qty - $voidQty]);
             }
 
             // Recalculate order total

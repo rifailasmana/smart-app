@@ -12,6 +12,36 @@
 @endsection
 
 @section('extra_js')
+    <style>
+        .fluid-text-h1 {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+        }
+        .fluid-text-h2 {
+            font-size: clamp(1.25rem, 3vw, 2rem);
+        }
+        .fluid-text-body {
+            font-size: clamp(0.875rem, 2vw, 1rem);
+        }
+        .fluid-icon {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+        }
+        .fluid-card-padding {
+            padding: clamp(0.75rem, 1.5vw, 1rem);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
     <script type="text/babel">
     const { useState, useEffect, useMemo, useCallback } = React;
 
@@ -419,18 +449,18 @@
     const SidebarIcon = ({ icon, label, active = false, onClick, count = 0, collapsed = false }) => (
         <div
             onClick={onClick}
-            className={'relative flex flex-col items-center justify-center w-full py-6 cursor-pointer transition-all duration-300 group ' + (active ? 'text-orange-500' : 'text-gray-500 active:text-orange-400')}
+            className={`relative flex items-center justify-center w-full py-5 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
         >
             {active && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-orange-500 rounded-r-full shadow-[2px_0_10px_rgba(249,115,22,0.4)]"></div>}
-            <div className={'p-4 rounded-2xl transition-all ' + (active ? 'bg-orange-500/10' : 'active:bg-gray-800')}>
-                <i className={'bi ' + icon + ' text-4xl'}></i>
+            <div className={`p-3 rounded-xl transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-gray-800'}`}>
+                <i className={`bi ${icon} text-2xl`}></i>
                 {count > 0 && (
-                    <span className="absolute top-4 right-4 bg-red-500 text-white text-[10px] font-black w-6 h-6 rounded-full flex items-center justify-center animate-pulse border-2 border-[#063024]">
+                    <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-pulse border-2 border-[#063024]">
                         {count}
                     </span>
                 )}
             </div>
-            {!collapsed && <span className="text-[10px] font-black uppercase tracking-[0.2em] mt-2 animate-in fade-in duration-300">{label}</span>}
+            {!collapsed && <span className="text-[10px] font-black uppercase tracking-widest mt-1 ml-3 flex-1 animate-in fade-in duration-300">{label}</span>}
         </div>
     );
 
@@ -514,9 +544,9 @@
 
     const OrderTypeView = ({ onSelect }) => (
         <div className="w-full h-full flex flex-col items-center justify-center bg-[#daaa64] animate-in fade-in zoom-in duration-500">
-            <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">Selamat Datang!</h1>
-            <p className="text-xl text-black font-medium mb-16 tracking-tight">Pilih jenis pesanan Anda untuk memulai</p>
-            <div className="flex gap-10 w-full max-w-4xl px-6">
+            <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter mb-2 text-center px-4">Selamat Datang!</h1>
+            <p className="text-lg md:text-xl text-black font-medium mb-10 md:mb-16 tracking-tight text-center px-4">Pilih jenis pesanan Anda untuk memulai</p>
+            <div className="flex flex-col md:flex-row gap-6 md:gap-10 w-full max-w-4xl px-6">
                 <OrderTypeCard
                     icon="bi-shop"
                     title="Dine In"
@@ -701,6 +731,7 @@
         const [customerName, setCustomerName] = useState('');
         const [customerCategory, setCustomerCategory] = useState('Umum');
         const [submitting, setSubmitting] = useState(false);
+        const [isCartOpen, setIsCartOpen] = useState(true);
 
         // Map existing categories to 4 main categories
         const mainCategories = ['Makanan', 'Minuman', 'Snack', 'Lain-lain'];
@@ -725,6 +756,7 @@
                 if (existing) return prev.map(i => i.id === item.id ? {...i, qty: i.qty + 1} : i);
                 return [...prev, {...item, qty: 1}];
             });
+            setIsCartOpen(true); // Auto-open cart when item is added
         };
 
         const updateQty = (id, delta) => {
@@ -771,11 +803,6 @@
 
                 const data = await res.json();
                 if (data.id) {
-                    await fetch(`/terminal/orders/${data.id}/submit-to-cashier`, {
-                        method: 'POST',
-                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-                    });
-
                     onShowToast('Pesanan berhasil dikirim ke Kitchen!');
                     onBack();
                 } else {
@@ -792,70 +819,75 @@
         return (
             <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
                 {/* Main: Menu Area */}
-                <div className="flex-1 flex flex-col overflow-hidden p-8">
-                    <div className="flex items-center gap-6 mb-8">
-                        <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm transition-colors">
-                            <i className="bi bi-arrow-left"></i> Kembali
-                        </button>
-                        <div className="flex gap-2">
-                            <div className="bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                <i className="bi bi-check-circle-fill"></i> Tipe Order: {orderType === 'DINE_IN' ? 'Dine In' : 'Take Away'}
-                            </div>
-                            {selectedTables.length > 0 && (
-                                <div className="bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                    <i className="bi bi-check-circle-fill"></i> Meja: {selectedTables.map(t => t.name).join(', ')}
+                <div className="flex-1 flex flex-col overflow-hidden p-8 transition-all duration-500">
+                    <div className="flex items-center justify-between gap-6 mb-8">
+                        <div className="flex items-center gap-6">
+                            <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm transition-colors">
+                                <i className="bi bi-arrow-left"></i> Kembali
+                            </button>
+                            <div className="flex gap-2">
+                                <div className="bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <i className="bi bi-check-circle-fill"></i> Tipe Order: {orderType === 'DINE_IN' ? 'Dine In' : 'Take Away'}
                                 </div>
-                            )}
+                                {selectedTables.length > 0 && (
+                                    <div className="bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                        <i className="bi bi-check-circle-fill"></i> Meja: {selectedTables.map(t => t.name).join(', ')}
+                                    </div>
+                                )}
+                            </div>
                         </div>
+                        <button onClick={() => setIsCartOpen(!isCartOpen)} className="w-14 h-14 flex items-center justify-center bg-white rounded-2xl shadow-sm text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                            <i className={`bi ${isCartOpen ? 'bi-chevron-right' : 'bi-chevron-left'} text-xl`}></i>
+                        </button>
                     </div>
 
-                    {/* Category Tabs & Search - Touch Optimized */}
-                    <div className="flex justify-between items-center mb-10 gap-6">
-                        <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar no-scrollbar flex-1 snap-x">
+                    {/* Category Tabs & Search - Vertical Space Optimized */}
+                    <div className="flex justify-between items-center mb-6 gap-4">
+                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar flex-1 snap-x">
                             {mainCategories.map(cat => (
                                 <button
                                     key={cat}
                                     onClick={() => setActiveCategory(cat)}
-                                    className={`px-10 py-4 rounded-2xl font-black text-sm transition-all whitespace-nowrap snap-start shadow-sm ${activeCategory === cat ? 'bg-orange-500 text-white shadow-orange-500/20' : 'bg-white text-gray-400 active:bg-gray-100'}`}
+                                    className={`px-6 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap snap-start ${activeCategory === cat ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
                                 >
                                     {cat}
                                 </button>
                             ))}
                         </div>
-                        <div className="relative w-80">
-                            <i className="bi bi-search absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                        <div className="relative w-64">
+                            <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                             <input
                                 type="text"
                                 placeholder="Cari menu..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-white border-none rounded-[2rem] py-5 pl-16 pr-6 text-lg font-bold shadow-sm focus:ring-4 focus:ring-orange-500/10 transition-all"
+                                className="w-full bg-white border-none rounded-xl py-2.5 pl-10 pr-4 text-sm font-medium shadow-sm focus:ring-2 focus:ring-orange-500/20 transition-all"
                             />
                         </div>
                     </div>
 
-                    {/* Menu Grid - Tablet Friendly 3-4 columns */}
-                    <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                    {/* Dynamic Menu Grid */}
+                    <div className={`flex-1 overflow-y-auto pr-2 grid gap-4 content-start custom-scrollbar transition-all duration-500 ${isCartOpen ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'}`}>
                         {filteredMenu.length === 0 ? (
-                            <div className="col-span-full h-full flex flex-col items-center justify-center opacity-20 py-20">
-                                <i className="bi bi-egg-fried text-7xl mb-4"></i>
-                                <p className="font-black uppercase tracking-widest">Tidak ada menu di kategori ini</p>
+                            <div className="col-span-full h-full flex flex-col items-center justify-center opacity-20 py-10">
+                                <i className="bi bi-egg-fried text-5xl mb-2"></i>
+                                <p className="font-bold text-xs uppercase tracking-widest">Tidak ada menu</p>
                             </div>
                         ) : (
                             filteredMenu.map(item => (
                                 <div
                                     key={item.id}
                                     onClick={() => addToCart(item)}
-                                    className="bg-white rounded-[2rem] p-6 flex flex-col cursor-pointer transition-all duration-300 active:scale-95 active:shadow-inner group border-2 border-transparent"
+                                    className="bg-white rounded-xl flex flex-col cursor-pointer transition-all duration-300 active:scale-95 group border border-transparent hover:border-orange-200 fluid-card-padding shadow-sm"
                                 >
-                                    <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-gray-50 shadow-inner">
-                                        <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&h=200&auto=format&fit=crop'} className="w-full h-full object-cover" />
+                                    <div className="aspect-square rounded-lg overflow-hidden mb-2 bg-gray-50">
+                                        <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&h=200&auto=format&fit=crop'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                     </div>
-                                    <h4 className="text-xl font-black text-gray-900 leading-tight mb-2 min-h-[3rem]">{item.name}</h4>
+                                    <h4 className="font-bold text-gray-800 leading-tight mb-1 min-h-[2rem] text-[13px]">{item.name}</h4>
                                     <div className="mt-auto flex justify-between items-center">
-                                        <span className="text-orange-500 font-black text-2xl tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
-                                        <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center active:bg-orange-500 active:text-white transition-all shadow-sm">
-                                            <i className="bi bi-plus-lg text-2xl"></i>
+                                        <span className="text-orange-500 font-black text-sm">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
+                                        <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-all">
+                                            <i className="bi bi-plus text-lg"></i>
                                         </div>
                                     </div>
                                 </div>
@@ -864,31 +896,33 @@
                     </div>
                 </div>
 
-                {/* Right: Cart Area */}
-                <div className="w-[420px] bg-white border-l border-gray-100 flex flex-col p-8 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
-                    <div className="flex items-center gap-3 mb-8">
-                        <i className="bi bi-cart-fill text-2xl text-orange-500"></i>
-                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pesanan Baru</h2>
+                {/* Right: Compact Cart Area */}
+                <div className={`bg-white border-l border-gray-100 flex flex-col shadow-[-4px_0_20px_rgba(0,0,0,0.02)] transition-all duration-500 ease-in-out ${isCartOpen ? 'w-[360px] p-6' : 'w-0 p-0'} overflow-hidden`}>
+                    <div className="flex items-center justify-between mb-6 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                            <i className="bi bi-cart-fill text-xl text-orange-500"></i>
+                            <h2 className="text-xl font-black text-gray-900 tracking-tight whitespace-nowrap">Pesanan Baru</h2>
+                        </div>
                     </div>
 
-                    {/* Customer Info Section */}
-                    <div className="space-y-6 mb-8">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Nama Pelanggan</label>
+                    {/* Compact Horizontal Customer Info Section */}
+                    <div className="flex gap-3 mb-6 flex-shrink-0">
+                        <div className="flex-1">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Nama</label>
                             <input
                                 type="text"
-                                placeholder="Input nama..."
+                                placeholder="..."
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
-                                className="w-full bg-gray-50 border-none rounded-2xl p-4 font-bold text-gray-900 focus:ring-2 focus:ring-orange-500 transition-all"
+                                className="w-full bg-gray-50 border-none rounded-xl py-2 px-3 text-xs font-bold text-gray-900 focus:ring-1 focus:ring-orange-500 transition-all"
                             />
                         </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Kategori Pelanggan</label>
+                        <div className="w-32">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Kategori</label>
                             <select
                                 value={customerCategory}
                                 onChange={(e) => setCustomerCategory(e.target.value)}
-                                className="w-full bg-gray-50 border-none rounded-2xl p-4 font-bold text-gray-900 focus:ring-2 focus:ring-orange-500 transition-all appearance-none cursor-pointer"
+                                className="w-full bg-gray-50 border-none rounded-xl py-2 px-3 text-xs font-bold text-gray-900 focus:ring-1 focus:ring-orange-500 transition-all appearance-none cursor-pointer"
                             >
                                 {['Reguler', 'Member', 'Staff', 'Majar Owner'].map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
@@ -897,27 +931,26 @@
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                    <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-3 min-h-0">
                         {cart.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center opacity-30">
-                                <i className="bi bi-cart-x text-6xl mb-4"></i>
-                                <p className="font-bold text-sm uppercase tracking-widest">Belum ada produk</p>
-                                <p className="text-[10px] mt-1">Ketuk produk untuk menambahkan</p>
+                            <div className="h-full flex flex-col items-center justify-center opacity-20">
+                                <i className="bi bi-cart-x text-4xl mb-2"></i>
+                                <p className="font-bold text-[10px] uppercase tracking-widest">Keranjang Kosong</p>
                             </div>
                         ) : (
                             cart.map(item => (
-                                <div key={item.id} className="bg-gray-50 rounded-2xl p-4 flex gap-4 animate-in slide-in-from-bottom duration-300">
-                                    <img src={item.image_url} className="w-16 h-16 rounded-xl object-cover" />
-                                    <div className="flex-1">
-                                        <h5 className="font-black text-gray-900 text-sm leading-tight">{item.name}</h5>
-                                        <p className="text-orange-500 font-bold text-xs mt-1">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
-                                        <div className="flex items-center gap-3 mt-3">
-                                            <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-red-50 hover:text-red-500 transition-all"><i className="bi bi-dash"></i></button>
-                                            <span className="font-black text-gray-900 w-6 text-center">{item.qty}</span>
-                                            <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-green-50 hover:text-green-500 transition-all"><i className="bi bi-plus"></i></button>
+                                <div key={item.id} className="bg-gray-50/50 rounded-xl p-3 flex gap-3 animate-in slide-in-from-bottom duration-300 border border-gray-100/50">
+                                    <img src={item.image_url} className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <h5 className="font-bold text-gray-900 text-[11px] leading-tight truncate">{item.name}</h5>
+                                        <p className="text-orange-500 font-bold text-[10px] mt-0.5">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <button onClick={() => updateQty(item.id, -1)} className="w-11 h-11 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-red-50 hover:text-red-500 transition-all"><i className="bi bi-dash text-lg"></i></button>
+                                            <span className="font-black text-gray-900 text-sm w-6 text-center">{item.qty}</span>
+                                            <button onClick={() => updateQty(item.id, 1)} className="w-11 h-11 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-green-50 hover:text-green-500 transition-all"><i className="bi bi-plus text-lg"></i></button>
                                         </div>
                                     </div>
-                                    <div className="text-right font-black text-gray-900">
+                                    <div className="text-right font-black text-gray-900 text-[11px] self-start pt-1">
                                         Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}
                                     </div>
                                 </div>
@@ -925,21 +958,22 @@
                         )}
                     </div>
 
-                    <div className="mt-8 pt-8 border-t-2 border-dashed border-gray-100 space-y-4">
-                        <div className="flex justify-between items-center text-gray-400 font-bold">
-                            <span className="text-[10px] uppercase tracking-widest">Subtotal</span>
+                    {/* Slim Sticky Footer */}
+                    <div className="mt-auto pt-6 border-t border-dashed border-gray-200 space-y-3 flex-shrink-0">
+                        <div className="flex justify-between items-center text-gray-400 font-bold text-[10px]">
+                            <span className="uppercase tracking-widest">Subtotal</span>
                             <span>Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">Total Bill</span>
-                            <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
+                            <span className="text-sm font-black text-gray-900 uppercase tracking-tighter">Total</span>
+                            <span className="text-2xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
                         </div>
                         <button
                             disabled={cart.length === 0 || submitting}
                             onClick={handleSendToKitchen}
-                            className="w-full py-5 bg-gradient-to-r from-[#063024] to-[#0a4d3a] text-white rounded-[2rem] font-black text-xl shadow-xl shadow-[#063024]/20 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none mt-4"
+                            className="w-full py-3.5 bg-[#063024] text-white rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-[#063024]/10 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none"
                         >
-                            {submitting ? 'Mengirim...' : 'Kirim ke Kitchen'} <i className="bi bi-send-fill ml-2"></i>
+                            {submitting ? 'Mengirim...' : 'Kirim Kitchen'}
                         </button>
                     </div>
                 </div>
@@ -1403,19 +1437,19 @@
                                         <div 
                                             key={order.id} 
                                             onClick={() => { setSelectedOrder(order); setShowOrderModal(true); }} 
-                                            className={`p-8 bg-white rounded-[2.5rem] shadow-sm active:scale-95 transition-all border-2 ${selectedOrder?.id === order.id ? 'border-orange-500 shadow-xl' : 'border-transparent shadow-md'}`}
+                                            className={`p-6 bg-white rounded-[2rem] shadow-sm active:scale-95 transition-all border-2 ${selectedOrder?.id === order.id ? 'border-orange-500 shadow-xl' : 'border-transparent shadow-md'}`}
                                         >
-                                            <div className="flex justify-between items-start mb-6">
+                                            <div className="flex justify-between items-start mb-4">
                                                 <div>
-                                                    <div className="flex items-center gap-3 mb-1">
-                                                        <h4 className="text-2xl font-black text-gray-900 tracking-tight">Meja {order.table?.name || 'TA'}</h4>
-                                                        <span className="text-[10px] font-black bg-gray-100 text-gray-400 px-2 py-0.5 rounded-lg uppercase">{order.guest_category || 'Umum'}</span>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h4 className="text-xl font-black text-gray-900 tracking-tight">Meja {order.table?.name || 'TA'}</h4>
+                                                        <span className="text-[8px] font-black bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md uppercase">{order.guest_category || 'Umum'}</span>
                                                     </div>
-                                                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{order.customer_name || 'Guest'}</p>
+                                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{order.customer_name || 'Guest'}</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className="text-xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</div>
-                                                    <span className={`inline-block mt-2 text-[8px] font-black px-2 py-1 rounded-md uppercase tracking-widest ${
+                                                    <div className="text-lg font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</div>
+                                                    <span className={`inline-block mt-1 text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-widest ${
                                                         order.stage === 'COOKING' ? 'bg-blue-50 text-blue-500' : 
                                                         order.stage === 'READY' ? 'bg-green-50 text-green-500' : 
                                                         'bg-gray-100 text-gray-400'
@@ -1424,11 +1458,11 @@
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="space-y-2 border-t border-gray-50 pt-6">
+                                            <div className="space-y-1.5 border-t border-gray-50 pt-4">
                                                 {order.items.map((i, idx) => (
-                                                    <div key={idx} className="flex justify-between text-sm">
-                                                        <span className="text-gray-500 font-medium">{i.qty}x {i.menu_name}</span>
-                                                        <span className={`text-[8px] font-black uppercase ${i.status === 'ready' ? 'text-green-500' : 'text-gray-300'}`}>{i.status}</span>
+                                                    <div key={idx} className="flex justify-between text-xs">
+                                                        <span className="text-gray-500 font-medium truncate pr-4">{i.qty}x {i.menu_name}</span>
+                                                        <span className={`text-[7px] font-black uppercase flex-shrink-0 ${i.status === 'ready' ? 'text-green-500' : 'text-gray-300'}`}>{i.status}</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -1452,36 +1486,36 @@
                 )}
                 {showOrderModal && selectedOrder && (
                     <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="bg-white w-full max-w-4xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-                            <div className="p-10 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <div className="bg-white w-full max-w-4xl rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                                 <div>
-                                    <h3 className="text-3xl font-black text-gray-900 tracking-tight">Detail Pesanan</h3>
-                                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-1">Order ID: #{selectedOrder.code || selectedOrder.id}</p>
+                                    <h3 className="text-xl font-black text-gray-900 tracking-tight">Detail Pesanan</h3>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Order ID: #{selectedOrder.code || selectedOrder.id}</p>
                                 </div>
-                                <button onClick={() => { setShowOrderModal(false); setSelectedOrder(null); }} className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-400 active:text-gray-900 active:scale-95 transition-all"><i className="bi bi-x-lg text-2xl"></i></button>
+                                <button onClick={() => { setShowOrderModal(false); setSelectedOrder(null); }} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-400 active:text-gray-900 active:scale-95 transition-all"><i className="bi bi-x-lg text-xl"></i></button>
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-                                <div className="p-10 border-r border-gray-100">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div className="text-lg font-black text-gray-900">Items</div>
-                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Swipe left to Void</div>
+                                <div className="p-6 border-r border-gray-100">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="text-sm font-black text-gray-900">Items</div>
+                                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Swipe left to Void</div>
                                     </div>
-                                    <div className="space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar pr-4 no-scrollbar">
+                                    <div className="space-y-2 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2 no-scrollbar">
                                         {selectedOrder.items.map((item, idx) => (
                                             <SwipeableItem 
                                                 key={idx} 
                                                 onSwipe={() => { setVoidItemTarget({ orderId: selectedOrder.id, item }); setShowVoidItemModal(true); }}
                                                 threshold={80}
                                             >
-                                                <div className="flex-1 flex justify-between items-center p-5 bg-white border border-gray-50 rounded-2xl">
+                                                <div className="flex-1 flex justify-between items-center p-3 bg-white border border-gray-50 rounded-xl">
                                                     <div>
-                                                        <div className="text-lg font-black text-gray-900 leading-tight">{item.qty}x {item.menu_name}</div>
-                                                        <div className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</div>
+                                                        <div className="text-sm font-bold text-gray-900 leading-tight">{item.qty}x {item.menu_name}</div>
+                                                        <div className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-widest">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-lg font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</div>
-                                                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md mt-1 inline-block ${
+                                                        <div className="text-sm font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</div>
+                                                        <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md mt-1 inline-block ${
                                                             item.status === 'ready' ? 'bg-green-50 text-green-500' : 
                                                             item.status === 'cooking' ? 'bg-blue-50 text-blue-500' : 
                                                             'bg-gray-50 text-gray-400'
@@ -1493,28 +1527,28 @@
                                     </div>
                                 </div>
                                 
-                                <div className="p-10 bg-gray-50/30 flex flex-col justify-between">
-                                    <div className="space-y-8">
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
-                                                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Meja</div>
-                                                <div className="text-3xl font-black text-gray-900 tracking-tight">{selectedOrder.table?.name || 'TA'}</div>
+                                <div className="p-6 bg-gray-50/30 flex flex-col justify-between">
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
+                                                <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Meja</div>
+                                                <div className="text-xl font-black text-gray-900 tracking-tight">{selectedOrder.table?.name || 'TA'}</div>
                                             </div>
-                                            <div className="p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
-                                                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Customer</div>
-                                                <div className="text-xl font-black text-gray-900 tracking-tight truncate">{selectedOrder.customer_name || 'Guest'}</div>
+                                            <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
+                                                <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Customer</div>
+                                                <div className="text-sm font-black text-gray-900 tracking-tight truncate">{selectedOrder.customer_name || 'Guest'}</div>
                                             </div>
                                         </div>
                                         
-                                        <div className="p-8 bg-gray-900 rounded-[2.5rem] shadow-xl">
-                                            <div className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-3">Total Tagihan</div>
-                                            <div className="text-5xl font-black text-white tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</div>
+                                        <div className="p-6 bg-gray-900 rounded-[2rem] shadow-xl">
+                                            <div className="text-[9px] font-black text-orange-500 uppercase tracking-[0.2em] mb-2">Total Tagihan</div>
+                                            <div className="text-3xl font-black text-white tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</div>
                                         </div>
                                     </div>
                                     
-                                    <div className="flex gap-4 mt-10">
-                                        <button onClick={() => { setShowVoidModal(true); setShowOrderModal(false); }} className="flex-1 py-6 bg-red-50 text-red-500 rounded-[2rem] font-black text-lg uppercase tracking-widest active:scale-95 transition-all">Void Order</button>
-                                        <button onClick={() => { setShowPaymentModal(true); setShowOrderModal(false); }} className="flex-[2] py-6 bg-orange-500 text-white rounded-[2rem] font-black text-xl uppercase tracking-widest shadow-xl shadow-orange-500/30 active:scale-95 transition-all">Bayar Sekarang</button>
+                                    <div className="flex gap-3 mt-8">
+                                        <button onClick={() => { setShowVoidModal(true); setShowOrderModal(false); }} className="flex-1 py-4 bg-red-50 text-red-500 rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all">Void Order</button>
+                                        <button onClick={() => { setShowPaymentModal(true); setShowOrderModal(false); }} className="flex-[2] py-4 bg-orange-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-orange-500/30 active:scale-95 transition-all">Bayar Sekarang</button>
                                     </div>
                                 </div>
                             </div>
@@ -1589,65 +1623,65 @@
                     onSwipe={() => onVoidItem(order.id, item)}
                     threshold={80}
                 >
-                    <div className="flex-1 flex justify-between items-center p-6 border-b border-gray-50 last:border-none">
+                    <div className="flex-1 flex justify-between items-center p-4 border-b border-gray-50 last:border-none">
                         <div>
-                            <span className="text-xl font-black text-gray-900 leading-tight">{item.qty}x {item.menu_name}</span>
-                            <div className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</div>
+                            <span className="text-lg font-black text-gray-900 leading-tight">{item.qty}x {item.menu_name}</span>
+                            <div className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</div>
                         </div>
-                        <span className="text-xl font-black text-gray-900 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
+                        <span className="text-lg font-black text-gray-900 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
                     </div>
                 </SwipeableItem>
             ));
         };
 
         return (
-            <div className="w-full h-full flex flex-col p-10 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
-                <div className="flex items-center justify-between mb-10">
-                    <div className="flex items-center gap-6">
-                        <button onClick={onBack} className="w-16 h-16 rounded-2xl bg-white shadow-md flex items-center justify-center text-gray-400 active:text-gray-900 active:scale-95 transition-all"><i className="bi bi-arrow-left text-3xl"></i></button>
-                        <h1 className="text-4xl font-black text-gray-900 tracking-tighter">Pending Approval</h1>
+            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <button onClick={onBack} className="w-12 h-12 rounded-2xl bg-white shadow-md flex items-center justify-center text-gray-400 active:text-gray-900 active:scale-95 transition-all"><i className="bi bi-arrow-left text-2xl"></i></button>
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Pending Approval</h1>
                     </div>
-                    <div className="bg-orange-500 text-white px-8 py-4 rounded-[2rem] font-black text-lg uppercase tracking-widest shadow-xl shadow-orange-500/20">
+                    <div className="bg-orange-500 text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-orange-500/20">
                         {pending.length} Pesanan
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-x-auto pb-10 flex gap-10 items-start snap-x snap-mandatory no-scrollbar pr-20">
+                <div className="flex-1 overflow-x-auto pb-8 flex gap-8 items-start snap-x snap-mandatory no-scrollbar pr-20">
                     {pending.length === 0 ? (
                         <div className="flex-1 h-full flex flex-col items-center justify-center opacity-10">
-                            <i className="bi bi-shield-check text-[12rem]"></i>
-                            <p className="font-black uppercase tracking-[0.5em] mt-10 text-2xl">Antrian Kosong</p>
+                            <i className="bi bi-shield-check text-[10rem]"></i>
+                            <p className="font-black uppercase tracking-[0.5em] mt-8 text-xl">Antrian Kosong</p>
                         </div>
                     ) : (
                         pending.map(order => (
-                            <div key={order.id} className="min-w-[480px] bg-white rounded-[3.5rem] p-10 shadow-2xl border border-gray-100 flex flex-col h-fit snap-center transition-transform active:scale-[0.98]">
-                                <div className="flex justify-between items-start mb-10">
+                            <div key={order.id} className="min-w-[400px] bg-white rounded-[2.5rem] p-8 shadow-2xl border border-gray-100 flex flex-col h-fit snap-center transition-transform active:scale-[0.98]">
+                                <div className="flex justify-between items-start mb-8">
                                     <div>
-                                        <h4 className="font-black text-gray-900 text-4xl tracking-tight mb-2">Meja {order.table?.name || 'TA'}</h4>
-                                        <p className="text-sm font-bold text-gray-400 uppercase tracking-[0.3em]">{order.customer_name} • {order.guest_category}</p>
+                                        <h4 className="font-black text-gray-900 text-3xl tracking-tight mb-1">Meja {order.table?.name || 'TA'}</h4>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em]">{order.customer_name} • {order.guest_category}</p>
                                     </div>
-                                    <span className="text-xs font-black bg-orange-50 text-orange-500 px-4 py-2 rounded-xl tracking-widest">WAITING</span>
+                                    <span className="text-[10px] font-black bg-orange-50 text-orange-500 px-3 py-1.5 rounded-xl tracking-widest">WAITING</span>
                                 </div>
 
-                                <div className="space-y-1 mb-10 border-y-2 border-dashed border-gray-100 py-8 max-h-[40vh] overflow-y-auto custom-scrollbar no-scrollbar">
+                                <div className="space-y-1 mb-8 border-y-2 border-dashed border-gray-100 py-6 max-h-[40vh] overflow-y-auto custom-scrollbar no-scrollbar">
                                     {renderItems(order)}
                                 </div>
 
-                                <div className="flex justify-between items-center mb-10 px-4">
-                                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Total Tagihan</span>
-                                    <span className="text-4xl font-black text-gray-900 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
+                                <div className="flex justify-between items-center mb-8 px-2">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Tagihan</span>
+                                    <span className="text-3xl font-black text-gray-900 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
                                 </div>
 
                                 <button 
                                     disabled={processing}
                                     onClick={() => handleApprove(order.id)}
-                                    className="w-full py-8 bg-orange-500 text-white rounded-[2.5rem] font-black text-2xl uppercase tracking-widest active:scale-95 transition-all shadow-2xl shadow-orange-500/30"
+                                    className="w-full py-5 bg-orange-500 text-white rounded-[2rem] font-black text-xl uppercase tracking-widest active:scale-95 transition-all shadow-2xl shadow-orange-500/30"
                                 >
                                     {processing ? 'Memproses...' : 'Setujui & Kirim'}
                                 </button>
-                                <div className="mt-6 flex items-center justify-center gap-2 text-gray-300">
-                                    <i className="bi bi-chevron-double-left text-sm animate-pulse"></i>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest">Geser kiri pada item untuk Void</span>
+                                <div className="mt-4 flex items-center justify-center gap-2 text-gray-300">
+                                    <i className="bi bi-chevron-double-left text-xs animate-pulse"></i>
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Geser kiri pada item untuk Void</span>
                                 </div>
                             </div>
                         ))
@@ -1832,115 +1866,115 @@
         }, []);
 
         return (
-            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden relative">
-                <div className="flex items-center gap-4 mb-8">
-                    <button onClick={onBack} className="text-gray-400 hover:text-gray-900 active:scale-95 transition-all"><i className="bi bi-arrow-left text-2xl"></i></button>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">History Hari Ini</h1>
-                </div>
+            <div className="w-full h-full flex bg-gray-50 animate-in fade-in duration-500 overflow-hidden relative">
+                {/* Left Side: Transactions List (Compact Table) */}
+                <div className="flex-1 flex flex-col p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-4">
+                            <button onClick={onBack} className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-gray-400 active:scale-95 transition-all"><i className="bi bi-arrow-left text-xl"></i></button>
+                            <h1 className="text-2xl font-black text-gray-900 tracking-tighter">History Hari Ini</h1>
+                        </div>
+                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-white px-4 py-2 rounded-full border border-gray-100 shadow-sm">
+                            Total: <span className="text-orange-500 ml-1">{history.length} Transaksi</span>
+                        </div>
+                    </div>
 
-                <div className="flex-1 overflow-y-auto bg-white rounded-[2rem] border border-gray-100 shadow-sm custom-scrollbar">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-gray-50">
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Waktu</th>
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Kode</th>
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Meja</th>
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Kasir</th>
-                                <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {history.map(order => (
-                                <tr 
-                                    key={order.id} 
-                                    onClick={() => setSelectedOrder(order)}
-                                    className="border-b border-gray-50 hover:bg-orange-50 cursor-pointer transition-colors group"
-                                >
-                                    <td className="p-6 text-sm font-bold text-gray-600">
-                                        <div>{new Date(order.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</div>
-                                        <div className="text-[10px] text-gray-400 font-medium">{new Date(order.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</div>
-                                    </td>
-                                    <td className="p-6 text-sm font-black text-gray-900 group-hover:text-orange-600 transition-colors">{order.code}</td>
-                                    <td className="p-6 text-sm font-bold text-gray-600">{order.table?.name || 'TA'}</td>
-                                    <td className="p-6 text-sm font-black text-orange-500">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</td>
-                                    <td className="p-6 text-sm font-bold text-gray-600">{order.kasir?.name || '-'}</td>
-                                    <td className="p-6">
-                                        <span className={'px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ' + (order.stage === 'DONE' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400')}>
-                                            {order.stage}
-                                        </span>
-                                    </td>
+                    <div className="flex-1 overflow-y-auto bg-white rounded-2xl border border-gray-100 shadow-sm custom-scrollbar">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="sticky top-0 bg-white z-10">
+                                <tr className="border-b border-gray-50">
+                                    <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Waktu</th>
+                                    <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Kode</th>
+                                    <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Meja</th>
+                                    <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Total</th>
+                                    <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Status</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {history.map(order => (
+                                    <tr 
+                                        key={order.id} 
+                                        onClick={() => setSelectedOrder(order)}
+                                        className={'border-b border-gray-50 hover:bg-orange-50 cursor-pointer transition-colors group ' + (selectedOrder?.id === order.id ? 'bg-orange-50' : '')}
+                                    >
+                                        <td className="p-3 text-[11px] font-bold text-gray-600">
+                                            {new Date(order.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}
+                                        </td>
+                                        <td className="p-3 text-[11px] font-black text-gray-900 group-hover:text-orange-600">{order.code}</td>
+                                        <td className="p-3 text-[11px] font-bold text-gray-600">{order.table?.name || 'TA'}</td>
+                                        <td className="p-3 text-[11px] font-black text-orange-500 text-right">Rp {new Intl.NumberFormat('id-ID').format(order.total)}</td>
+                                        <td className="p-3">
+                                            <span className={'px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ' + (order.stage === 'DONE' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400')}>
+                                                {order.stage}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                {/* Detail Modal */}
-                {selectedOrder && (
-                    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="bg-white w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col">
-                            <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                {/* Right Side: Detail Panel (Compact) */}
+                <div className={'bg-white border-l border-gray-100 shadow-2xl transition-all duration-300 flex flex-col ' + (selectedOrder ? 'w-[400px]' : 'w-0 overflow-hidden')}>
+                    {selectedOrder && (
+                        <>
+                            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                                 <div>
-                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight">Detail Transaksi</h3>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{selectedOrder.code}</p>
+                                    <h3 className="text-lg font-black text-gray-900 tracking-tight">Detail Transaksi</h3>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{selectedOrder.code}</p>
                                 </div>
-                                <button onClick={() => setSelectedOrder(null)} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-400 active:scale-95 transition-all"><i className="bi bi-x-lg text-xl"></i></button>
+                                <button onClick={() => setSelectedOrder(null)} className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-400 active:scale-95 transition-all"><i className="bi bi-x-lg text-lg"></i></button>
                             </div>
 
-                            <div className="p-8 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 bg-gray-50 rounded-2xl">
-                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Waktu Transaksi</p>
-                                        <p className="text-sm font-black text-gray-900">
-                                            {new Date(selectedOrder.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
-                                            <span className="mx-2 text-gray-300">|</span>
-                                            {new Date(selectedOrder.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB
+                            <div className="p-5 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-3 bg-gray-50 rounded-xl">
+                                        <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Waktu</p>
+                                        <p className="text-[10px] font-black text-gray-900 leading-tight">
+                                            {new Date(selectedOrder.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} | {new Date(selectedOrder.created_at).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}
                                         </p>
                                     </div>
-                                    <div className="p-4 bg-gray-50 rounded-2xl">
-                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Kasir</p>
-                                        <p className="text-sm font-black text-gray-900">{selectedOrder.kasir?.name || '-'}</p>
+                                    <div className="p-3 bg-gray-50 rounded-xl">
+                                        <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Kasir</p>
+                                        <p className="text-[10px] font-black text-gray-900 leading-tight truncate">{selectedOrder.kasir?.name || '-'}</p>
                                     </div>
-                                    <div className="p-4 bg-gray-50 rounded-2xl">
-                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Kategori Pelanggan</p>
-                                        <p className="text-sm font-black text-gray-900">{selectedOrder.guest_category || 'Reguler'}</p>
+                                    <div className="p-3 bg-gray-50 rounded-xl">
+                                        <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Customer</p>
+                                        <p className="text-[10px] font-black text-gray-900 leading-tight truncate">{selectedOrder.customer_name || 'Guest'}</p>
                                     </div>
-                                    <div className="p-4 bg-gray-50 rounded-2xl">
-                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Metode Pembayaran</p>
-                                        <p className="text-sm font-black text-orange-500 uppercase">{selectedOrder.payment_method || 'Tunai'}</p>
+                                    <div className="p-3 bg-gray-50 rounded-xl">
+                                        <p className="text-[7px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Metode</p>
+                                        <p className="text-[10px] font-black text-orange-500 uppercase">{selectedOrder.payment_method || 'Tunai'}</p>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Item Pesanan</p>
-                                    <div className="space-y-3">
+                                <div className="space-y-2">
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Item Pesanan</p>
+                                    <div className="space-y-1.5">
                                         {selectedOrder.items?.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between items-center p-4 border border-gray-50 rounded-2xl">
-                                                <div>
-                                                    <p className="text-sm font-black text-gray-900">{item.qty}x {item.menu_name}</p>
-                                                    <p className="text-[10px] font-bold text-gray-400 uppercase">@ Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
+                                            <div key={idx} className="flex justify-between items-center p-2.5 border border-gray-50 rounded-xl bg-gray-50/30">
+                                                <div className="flex-1 pr-2 min-w-0">
+                                                    <p className="text-[11px] font-bold text-gray-900 leading-tight truncate">{item.qty}x {item.menu_name}</p>
+                                                    <p className="text-[8px] text-gray-400 uppercase mt-0.5">@ {new Intl.NumberFormat('id-ID').format(item.price)}</p>
                                                 </div>
-                                                <p className="text-sm font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</p>
+                                                <p className="text-[11px] font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</p>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="pt-6 border-t-2 border-dashed border-gray-100">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Total Bayar</span>
-                                        <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</span>
-                                    </div>
+                            <div className="p-5 border-t border-dashed border-gray-200 bg-white">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Bayar</span>
+                                    <span className="text-2xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(selectedOrder.total)}</span>
                                 </div>
+                                <button onClick={() => setSelectedOrder(null)} className="w-full mt-4 py-3 bg-gray-900 text-white rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-gray-900/10">Tutup Detail</button>
                             </div>
-
-                            <div className="p-8 bg-gray-50 border-t border-gray-100 flex justify-center">
-                                <button onClick={() => setSelectedOrder(null)} className="px-10 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-gray-900/20">Tutup Detail</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                        </>
+                    )}
+                </div>
             </div>
         );
     };

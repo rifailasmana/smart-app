@@ -6,38 +6,41 @@
     <title>Struk #{{ $order->code }}</title>
     <style>
         @media print {
-            @page { margin: 0; size: auto; }
-            body { margin: 0; padding: 10px; }
+            @page { margin: 0; size: 58mm auto; }
+            body { margin: 0; }
         }
         body {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 12px;
+            font-size: 10px; /* Smaller base font size for thermal printers */
             color: #000;
             width: 58mm; /* Standard thermal paper width */
-            margin: 0 auto;
+            padding: 5px;
+            box-sizing: border-box;
             background: #fff;
         }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .text-left { text-align: left; }
         .bold { font-weight: bold; }
-        .mb-1 { margin-bottom: 4px; }
-        .mb-2 { margin-bottom: 8px; }
-        .divider { border-top: 1px dashed #000; margin: 8px 0; }
+        .mb-1 { margin-bottom: 2px; }
+        .mb-2 { margin-bottom: 4px; }
+        .divider { border-top: 1px dashed #000; margin: 5px 0; }
         .logo { 
-            max-width: 80%; 
-            max-height: 60px; 
+            max-width: 60%; 
+            max-height: 40px; 
             object-fit: contain;
             margin-bottom: 5px;
             display: block;
             margin-left: auto;
             margin-right: auto;
         }
-        table { width: 100%; border-collapse: collapse; }
-        td { vertical-align: top; }
-        .qty { width: 15%; }
-        .item { width: 55%; }
-        .price { width: 30%; text-align: right; }
+        table { width: 100%; border-collapse: collapse; line-height: 1.2; }
+        td { vertical-align: top; padding: 1px 0; }
+        .item-col {
+            white-space: normal; /* Allow item names to wrap */
+            word-break: break-word;
+        }
+        .price-col { white-space: nowrap; }
     </style>
 </head>
 <body onload="window.print()">
@@ -90,30 +93,56 @@
     <table>
         @foreach($order->items as $item)
             <tr>
-                <td class="qty">{{ $item->qty }}x</td>
-                <td class="item">{{ $item->menu_name }}</td>
-                <td class="price">{{ number_format($item->price * $item->qty, 0, ',', '.') }}</td>
+                <td colspan="3">{{ $item->menu_name }}</td>
+            </tr>
+            <tr>
+                <td>{{ $item->qty }}x</td>
+                <td class="text-right">@ {{ number_format($item->price, 0, ',', '.') }}</td>
+                <td class="price-col text-right">{{ number_format($item->price * $item->qty, 0, ',', '.') }}</td>
             </tr>
         @endforeach
     </table>
 
     <div class="divider"></div>
 
+    <div class="divider"></div>
+
     <table>
         <tr>
             <td>Subtotal</td>
-            <td class="text-right">{{ number_format($order->subtotal, 0, ',', '.') }}</td>
+            <td class="price-col text-right">{{ number_format($order->subtotal, 0, ',', '.') }}</td>
         </tr>
         @if($order->admin_fee > 0)
         <tr>
             <td>Biaya Layanan</td>
-            <td class="text-right">{{ number_format($order->admin_fee, 0, ',', '.') }}</td>
+            <td class="price-col text-right">{{ number_format($order->admin_fee, 0, ',', '.') }}</td>
         </tr>
         @endif
-        <tr class="bold" style="font-size: 14px;">
-            <td>Total</td>
-            <td class="text-right">Rp {{ number_format($order->total, 0, ',', '.') }}</td>
+        @if($order->diskon_manual > 0)
+        <tr>
+            <td>Diskon</td>
+            <td class="price-col text-right">-{{ number_format($order->diskon_manual, 0, ',', '.') }}</td>
         </tr>
+        @endif
+        <tr class="bold" style="font-size: 12px;">
+            <td>Total</td>
+            <td class="price-col text-right">Rp {{ number_format($order->total, 0, ',', '.') }}</td>
+        </tr>
+    </table>
+
+    <div class="divider"></div>
+
+    <table>
+        @if($order->amount_paid && $order->amount_paid >= $order->total)
+        <tr>
+            <td>Bayar</td>
+            <td class="price-col text-right">{{ number_format($order->amount_paid, 0, ',', '.') }}</td>
+        </tr>
+        <tr>
+            <td>Kembali</td>
+            <td class="price-col text-right">{{ number_format($order->amount_paid - $order->total, 0, ',', '.') }}</td>
+        </tr>
+        @endif
     </table>
 
     <div class="divider"></div>

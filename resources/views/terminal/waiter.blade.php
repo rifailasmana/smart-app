@@ -26,6 +26,36 @@
 @endsection
 
 @section('extra_js')
+    <style>
+        .fluid-text-h1 {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+        }
+        .fluid-text-h2 {
+            font-size: clamp(1.25rem, 3vw, 2rem);
+        }
+        .fluid-text-body {
+            font-size: clamp(0.875rem, 2vw, 1rem);
+        }
+        .fluid-icon {
+            font-size: clamp(1.25rem, 3vw, 2rem);
+        }
+        .fluid-card-padding {
+            padding: clamp(0.75rem, 1.5vw, 1rem);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #e2e8f0;
+            border-radius: 10px;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
     <script type="text/babel" data-presets="env,react" data-plugins="proposal-optional-chaining,proposal-nullish-coalescing-operator">
     const { useState, useEffect, useMemo, useCallback } = React;
 
@@ -68,28 +98,28 @@
     const SidebarIcon = ({ icon, label, active = false, onClick }) => (
         <div
             onClick={onClick}
-            className={`relative flex flex-col items-center justify-center w-full py-5 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
+            className={`relative flex flex-col items-center justify-center w-full py-4 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
         >
-            {active && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-orange-500 rounded-r-full shadow-[2px_0_10px_rgba(249,115,22,0.4)]"></div>}
-            <div className={`p-2 rounded-xl transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-gray-800'}`}>
-                <i className={`bi ${icon} text-2xl`}></i>
+            {active && <div className="absolute left-0 top-1 bottom-1 w-1 bg-orange-500 rounded-r-full shadow-[1px_0_6px_rgba(249,115,22,0.4)]"></div>}
+            <div className={`p-2 rounded-lg transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-gray-800'}`}>
+                <i className={`bi ${icon} text-xl`}></i>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-tighter mt-1">{label}</span>
+            <span className="text-[9px] font-black uppercase tracking-tighter mt-1">{label}</span>
         </div>
     );
 
     const OrderTypeCard = ({ icon, title, subtitle, onClick, color = "orange" }) => (
         <div
             onClick={onClick}
-            className="w-full max-w-[340px] aspect-square bg-white rounded-[2.5rem] p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 transform hover:-translate-y-3 hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] group border-2 border-transparent hover:border-orange-100"
+            className="w-full max-w-[280px] aspect-[4/3] md:aspect-square bg-white rounded-2xl md:rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all duration-300 transform hover:-translate-y-2 hover:shadow-lg group border-2 border-transparent hover:border-orange-100 mx-auto p-6 md:p-8"
         >
-            <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform group-hover:scale-110 ${color === 'orange' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-500'}`}>
-                <i className={`bi ${icon} text-5xl`}></i>
+            <div className={`w-14 h-14 md:w-20 md:h-20 rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-6 transition-transform group-hover:scale-110 ${color === 'orange' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-500'}`}>
+                <i className={`bi ${icon} text-3xl md:text-4xl`}></i>
             </div>
-            <h2 className="text-3xl font-black text-gray-900 tracking-tight">{title}</h2>
-            <p className="text-gray-400 font-medium mt-2">{subtitle}</p>
-            <div className={`mt-10 flex items-center gap-2 font-bold text-sm ${color === 'orange' ? 'text-orange-500' : 'text-green-500'}`}>
-                {title === 'Dine In' ? 'Pilih Meja' : 'Langsung Pesan'} <i className="bi bi-arrow-right"></i>
+            <h2 className="font-black text-gray-900 tracking-tight text-center text-xl md:text-2xl">{title}</h2>
+            <p className="text-gray-400 font-medium mt-1 text-[10px] md:text-xs">{subtitle}</p>
+            <div className={`mt-4 md:mt-6 flex items-center gap-1.5 font-bold text-[10px] md:text-xs ${color === 'orange' ? 'text-orange-500' : 'text-green-500'}`}>
+                {title === 'Dine In' ? 'Pilih Meja' : 'Langsung Pesan'} <i className="bi bi-arrow-right text-[10px]"></i>
             </div>
         </div>
     );
@@ -144,9 +174,9 @@
 
     const OrderTypeView = ({ onSelect }) => (
         <div className="w-full h-full flex flex-col items-center justify-center bg-[#daaa64] animate-in fade-in zoom-in duration-500">
-            <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-2">Selamat Datang!</h1>
-            <p className="text-xl text-gray-400 font-medium mb-16 tracking-tight">Pilih jenis pesanan Anda untuk memulai</p>
-            <div className="flex gap-10 w-full max-w-4xl px-6">
+            <h1 className="font-black text-gray-900 tracking-tighter mb-2 text-center px-4 fluid-text-h1">Selamat Datang!</h1>
+            <p className="text-gray-800 font-medium mb-10 md:mb-16 tracking-tight text-center px-4 fluid-text-body">Pilih jenis pesanan Anda untuk memulai</p>
+            <div className="flex flex-col md:flex-row gap-6 md:gap-10 w-full max-w-4xl px-6">
                 <OrderTypeCard
                     icon="bi-shop"
                     title="Dine In"
@@ -168,34 +198,34 @@
     const TableSelectionView = ({ tables, guestCount, setGuestCount, selectedTable, onSelect, onBack, onContinue }) => (
         <div className="w-full h-full flex bg-[#daaa64] animate-in slide-in-from-right duration-500">
             {/* Left: Guest Control */}
-            <div className="w-[320px] bg-white border-r border-gray-100 p-8 flex flex-col">
-                <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm mb-10 transition-colors">
+            <div className="w-[280px] bg-white border-r border-gray-100 p-6 flex flex-col">
+                <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-xs mb-8 transition-colors">
                     <i className="bi bi-arrow-left"></i> Kembali
                 </button>
 
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs">2</div>
-                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pilih Meja</h2>
+                <div className="flex items-center gap-3 mb-1">
+                    <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-[10px]">2</div>
+                    <h2 className="text-xl font-black text-gray-900 tracking-tight">Pilih Meja</h2>
                 </div>
 
-                <div className="mt-8">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">Jumlah Tamu</label>
-                    <div className="flex items-center justify-between bg-gray-50 rounded-3xl p-4 border border-gray-100 mb-6">
-                        <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
-                            <i className="bi bi-dash-lg text-xl"></i>
+                <div className="mt-6">
+                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block">Jumlah Tamu</label>
+                    <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-3 border border-gray-100 mb-5">
+                        <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                            <i className="bi bi-dash-lg text-lg"></i>
                         </button>
-                        <span className="text-5xl font-black text-gray-900 w-20 text-center tracking-tighter">{guestCount}</span>
-                        <button onClick={() => setGuestCount(guestCount + 1)} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
-                            <i className="bi bi-plus-lg text-xl"></i>
+                        <span className="text-4xl font-black text-gray-900 w-16 text-center tracking-tighter">{guestCount}</span>
+                        <button onClick={() => setGuestCount(guestCount + 1)} className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                            <i className="bi bi-plus-lg text-lg"></i>
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-2 mb-10">
+                    <div className="grid grid-cols-4 gap-2 mb-8">
                         {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
                             <button
                                 key={n}
                                 onClick={() => setGuestCount(n)}
-                                className={`py-3 rounded-xl font-black transition-all ${guestCount === n ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                className={`py-2 rounded-lg font-black text-xs transition-all ${guestCount === n ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/10' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                             >
                                 {n}
                             </button>
@@ -203,29 +233,29 @@
                     </div>
                 </div>
 
-                <div className="mt-auto space-y-3 pt-6 border-t border-gray-50">
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        <div className="w-3 h-3 rounded-full bg-green-500"></div> Tersedia
+                <div className="mt-auto space-y-2.5 pt-4 border-t border-gray-50">
+                    <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div> Tersedia
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        <div className="w-3 h-3 rounded-full bg-gray-300"></div> Terisi
+                    <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div> Terisi
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        <div className="w-3 h-3 rounded-full bg-orange-500"></div> Reservasi
+                    <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                        <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div> Reservasi
                     </div>
                 </div>
             </div>
 
             {/* Right: Table Grid */}
-            <div className="flex-1 p-10 flex flex-col overflow-hidden">
-                <div className="flex justify-between items-center mb-8">
-                    <h3 className="text-xl font-black text-gray-900 tracking-tight">Meja tersedia untuk {guestCount}+ tamu</h3>
-                    <div className="bg-white px-4 py-2 rounded-full border border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+            <div className="flex-1 p-8 flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-black text-gray-900 tracking-tight">Meja tersedia untuk {guestCount}+ tamu</h3>
+                    <div className="bg-white px-3 py-1.5 rounded-full border border-gray-100 text-[9px] font-black text-gray-500 uppercase tracking-widest">
                         {tables.filter(t => t.status === 'available' && t.capacity >= guestCount).length} tersedia
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start custom-scrollbar">
                     {tables.map(table => (
                         <TableCard
                             key={table.id}
@@ -237,13 +267,13 @@
                     ))}
                 </div>
 
-                <div className="mt-8 flex justify-end">
+                <div className="mt-6 flex justify-end">
                     <button
                         disabled={!selectedTable}
                         onClick={onContinue}
-                        className="px-12 py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-orange-500/20 disabled:opacity-30 disabled:shadow-none transition-all active:scale-95"
+                        className="px-10 py-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-2xl font-black text-base shadow-xl shadow-orange-500/10 disabled:opacity-30 disabled:shadow-none transition-all active:scale-95"
                     >
-                        Lanjut ke Menu <i className="bi bi-arrow-right ml-2"></i>
+                        Lanjut ke Menu <i className="bi bi-arrow-right ml-2 text-sm"></i>
                     </button>
                 </div>
             </div>
@@ -258,6 +288,7 @@
         const [customerCategory, setCustomerCategory] = useState('Reguler');
         const [showConfirm, setShowConfirm] = useState(false);
         const [submitting, setSubmitting] = useState(false);
+        const [isCartOpen, setIsCartOpen] = useState(true);
 
         const filteredMenu = useMemo(() => {
             return menuItems.filter(item => {
@@ -273,6 +304,7 @@
                 if (existing) return prev.map(i => i.id === item.id ? {...i, qty: i.qty + 1} : i);
                 return [...prev, {...item, qty: 1}];
             });
+            setIsCartOpen(true);
         };
 
         const updateQty = (id, delta) => {
@@ -339,69 +371,74 @@
         };
 
         return (
-            <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
+            <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500 overflow-hidden">
                 {/* Main: Menu Area */}
-                <div className="flex-1 flex flex-col overflow-hidden p-8">
-                    <div className="flex items-center gap-6 mb-8">
-                        <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm transition-colors">
-                            <i className="bi bi-arrow-left"></i> Kembali
-                        </button>
-                        <div className="flex gap-2">
-                            <div className="bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                <i className="bi bi-check-circle-fill"></i> Tipe Order: {orderType === 'DINE_IN' ? 'Dine In' : 'Take Away'}
-                            </div>
-                            {selectedTable && (
-                                <div className="bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                    <i className="bi bi-check-circle-fill"></i> Meja: {selectedTable.name}
+                <div className="flex-1 flex flex-col overflow-hidden p-8 transition-all duration-500">
+                    <div className="flex items-center justify-between gap-6 mb-8">
+                        <div className="flex items-center gap-6">
+                            <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm transition-colors">
+                                <i className="bi bi-arrow-left"></i> Kembali
+                            </button>
+                            <div className="flex gap-2">
+                                <div className="bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <i className="bi bi-check-circle-fill"></i> Tipe Order: {orderType === 'DINE_IN' ? 'Dine In' : 'Take Away'}
                                 </div>
-                            )}
-                            <div className="bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                <i className="bi bi-people-fill"></i> {guestCount} Tamu
+                                {selectedTable && (
+                                    <div className="bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                        <i className="bi bi-check-circle-fill"></i> Meja: {selectedTable.name}
+                                    </div>
+                                )}
+                                <div className="bg-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <i className="bi bi-people-fill"></i> {guestCount} Tamu
+                                </div>
                             </div>
                         </div>
+                        <button onClick={() => setIsCartOpen(!isCartOpen)} className="w-14 h-14 flex items-center justify-center bg-white rounded-2xl shadow-sm text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                            <i className={`bi ${isCartOpen ? 'bi-chevron-right' : 'bi-chevron-left'} text-xl`}></i>
+                        </button>
                     </div>
 
-                    {/* Category Tabs & Search */}
-                    <div className="flex justify-between items-center mb-8 gap-4">
-                        <div className="flex gap-3 overflow-x-auto pb-2 custom-scrollbar no-scrollbar flex-1">
+                    {/* Category Tabs & Search - Vertical Space Optimized */}
+                    <div className="flex justify-between items-center mb-6 gap-4">
+                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar flex-1 snap-x">
                             {['Semua', ...categories].map(cat => (
                                 <button
                                     key={cat}
                                     onClick={() => setActiveCategory(cat)}
-                                    className={`px-8 py-3 rounded-2xl font-black text-sm transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white text-gray-400 hover:bg-gray-100'}`}
+                                    className={`px-6 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap snap-start ${activeCategory === cat ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
                                 >
                                     {cat}
                                 </button>
                             ))}
                         </div>
                         <div className="relative w-64">
-                            <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                            <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
                             <input
                                 type="text"
                                 placeholder="Cari menu..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-white border-none rounded-2xl py-3 pl-12 pr-4 text-sm font-bold shadow-sm focus:ring-2 focus:ring-orange-500 transition-all"
+                                className="w-full bg-white border-none rounded-xl py-2.5 pl-10 pr-4 text-sm font-medium shadow-sm focus:ring-2 focus:ring-orange-500/20 transition-all"
                             />
                         </div>
                     </div>
 
-                    {/* Menu Grid */}
-                    <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                    {/* Dynamic Menu Grid */}
+                    <div className={`flex-1 overflow-y-auto pr-2 grid gap-4 content-start custom-scrollbar transition-all duration-500 ${isCartOpen ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'}`}>
                         {filteredMenu.map(item => (
                             <div
                                 key={item.id}
                                 onClick={() => addToCart(item)}
-                                className="bg-white rounded-[2rem] p-5 flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group"
+                                className="bg-white rounded-xl flex flex-col cursor-pointer transition-all duration-300 active:scale-95 group border border-transparent hover:border-orange-200 fluid-card-padding shadow-sm"
                             >
-                                <div className="aspect-square rounded-2xl overflow-hidden mb-4 bg-gray-50">
+                                <div className="aspect-square rounded-lg overflow-hidden mb-2 bg-gray-50">
                                     <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&h=200&auto=format&fit=crop'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                 </div>
-                                <h4 className="text-lg font-black text-gray-900 leading-tight mb-2">{item.name}</h4>
+                                <h4 className="font-bold text-gray-800 leading-tight mb-1 min-h-[2rem] text-[13px]">{item.name}</h4>
                                 <div className="mt-auto flex justify-between items-center">
-                                    <span className="text-orange-500 font-black text-xl">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
-                                    <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-all">
-                                        <i className="bi bi-plus-lg"></i>
+                                    <span className="text-orange-500 font-black text-sm">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</span>
+                                    <div className="w-7 h-7 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-all">
+                                        <i className="bi bi-plus text-lg"></i>
                                     </div>
                                 </div>
                             </div>
@@ -409,31 +446,33 @@
                     </div>
                 </div>
 
-                {/* Right: Cart Area */}
-                <div className="w-[420px] bg-white border-l border-gray-100 flex flex-col p-8 shadow-[-10px_0_30px_rgba(0,0,0,0.02)]">
-                    <div className="flex items-center gap-3 mb-8">
-                        <i className="bi bi-cart-fill text-2xl text-orange-500"></i>
-                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pesanan</h2>
+                {/* Right: Compact Cart Area */}
+                <div className={`bg-white border-l border-gray-100 flex flex-col shadow-[-4px_0_20px_rgba(0,0,0,0.02)] transition-all duration-500 ease-in-out ${isCartOpen ? 'w-[320px] p-5' : 'w-0 p-0'} overflow-hidden`}>
+                    <div className="flex items-center justify-between mb-5 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                            <i className="bi bi-cart-fill text-lg text-orange-500"></i>
+                            <h2 className="text-lg font-black text-gray-900 tracking-tight whitespace-nowrap">Pesanan</h2>
+                        </div>
                     </div>
 
-                    {/* Customer Info Section */}
-                    <div className="space-y-6 mb-8">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Nama Pelanggan</label>
+                    {/* Compact Horizontal Customer Info Section */}
+                    <div className="flex gap-2.5 mb-5 flex-shrink-0">
+                        <div className="flex-1">
+                            <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Nama</label>
                             <input
                                 type="text"
-                                placeholder="Input nama..."
+                                placeholder="..."
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
-                                className="w-full bg-gray-50 border-none rounded-2xl p-4 font-bold text-gray-900 focus:ring-2 focus:ring-orange-500 transition-all"
+                                className="w-full bg-gray-50 border-none rounded-lg py-1.5 px-2.5 text-[11px] font-bold text-gray-900 focus:ring-1 focus:ring-orange-500 transition-all"
                             />
                         </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Kategori Pelanggan</label>
+                        <div className="w-28">
+                            <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Kategori</label>
                             <select
                                 value={customerCategory}
                                 onChange={(e) => setCustomerCategory(e.target.value)}
-                                className="w-full bg-gray-50 border-none rounded-2xl p-4 font-bold text-gray-900 focus:ring-2 focus:ring-orange-500 transition-all appearance-none cursor-pointer"
+                                className="w-full bg-gray-50 border-none rounded-lg py-1.5 px-2.5 text-[11px] font-bold text-gray-900 focus:ring-1 focus:ring-orange-500 transition-all appearance-none cursor-pointer"
                             >
                                 {['Reguler', 'Member', 'Staff', 'Majar Owner'].map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
@@ -442,27 +481,26 @@
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                    <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2.5 min-h-0">
                         {cart.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center opacity-30">
-                                <i className="bi bi-cart-x text-6xl mb-4"></i>
-                                <p className="font-bold text-sm uppercase tracking-widest">Belum ada produk</p>
-                                <p className="text-[10px] mt-1">Ketuk produk untuk menambahkan</p>
+                            <div className="h-full flex flex-col items-center justify-center opacity-20">
+                                <i className="bi bi-cart-x text-3xl mb-2"></i>
+                                <p className="font-bold text-[9px] uppercase tracking-widest">Kosong</p>
                             </div>
                         ) : (
                             cart.map(item => (
-                                <div key={item.id} className="bg-gray-50 rounded-2xl p-4 flex gap-4 animate-in slide-in-from-bottom duration-300">
-                                    <img src={item.image_url} className="w-16 h-16 rounded-xl object-cover" />
-                                    <div className="flex-1">
-                                        <h5 className="font-black text-gray-900 text-sm leading-tight">{item.name}</h5>
-                                        <p className="text-orange-500 font-bold text-xs mt-1">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
-                                        <div className="flex items-center gap-3 mt-3">
-                                            <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-red-50 hover:text-red-500 transition-all"><i className="bi bi-dash"></i></button>
-                                            <span className="font-black text-gray-900 w-6 text-center">{item.qty}</span>
-                                            <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-green-50 hover:text-green-500 transition-all"><i className="bi bi-plus"></i></button>
+                                <div key={item.id} className="bg-gray-50/50 rounded-lg p-2.5 flex gap-2.5 animate-in slide-in-from-bottom duration-300 border border-gray-100/50">
+                                    <img src={item.image_url} className="w-10 h-10 rounded-md object-cover flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <h5 className="font-bold text-gray-900 text-[10px] leading-tight truncate">{item.name}</h5>
+                                        <p className="text-orange-500 font-bold text-[9px] mt-0.5">Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
+                                        <div className="flex items-center gap-2 mt-1.5">
+                                            <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-red-50 hover:text-red-500 transition-all"><i className="bi bi-dash text-base"></i></button>
+                                            <span className="font-black text-gray-900 text-xs w-3 text-center">{item.qty}</span>
+                                            <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 rounded-md bg-white border border-gray-200 flex items-center justify-center text-gray-900 hover:bg-green-50 hover:text-green-500 transition-all"><i className="bi bi-plus text-base"></i></button>
                                         </div>
                                     </div>
-                                    <div className="text-right font-black text-gray-900">
+                                    <div className="text-right font-black text-gray-900 text-[10px] self-start pt-0.5">
                                         Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}
                                     </div>
                                 </div>
@@ -470,16 +508,37 @@
                         )}
                     </div>
 
-                    <div className="mt-8 pt-8 border-t-2 border-dashed border-gray-100 space-y-4">
-                        <div className="flex justify-between items-center text-gray-400 font-bold">
-                            <span className="text-[10px] uppercase tracking-widest">Subtotal</span>
+                    {/* Slim Sticky Footer */}
+                    <div className="mt-auto pt-4 border-t border-dashed border-gray-200 space-y-2.5 flex-shrink-0">
+                        <div className="flex justify-between items-center text-gray-400 font-bold text-[9px]">
+                            <span className="uppercase tracking-widest">Subtotal</span>
                             <span>Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span className="text-lg font-black text-gray-900 uppercase tracking-tighter">Total Bill</span>
-                            <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
+                            <span className="text-xs font-black text-gray-900 uppercase tracking-tighter">Total</span>
+                            <span className="text-xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span>
                         </div>
                         <button
+                            disabled={cart.length === 0 || submitting}
+                            onClick={() => setShowConfirm(true)}
+                            className="w-full py-3 bg-orange-500 text-white rounded-lg font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-500/10 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none"
+                        >
+                            {submitting ? 'Mengirim...' : 'Konfirmasi Pesanan'}
+                        </button>
+                    </div>
+
+                    {showConfirm && (
+                        <ConfirmModal
+                            title="Kirim ke Kasir?"
+                            message="Pesanan akan dikirim ke Kasir untuk mendapatkan persetujuan (Approval)."
+                            onConfirm={handleConfirmOrder}
+                            onClose={() => setShowConfirm(false)}
+                        />
+                    )}
+                </div>
+            </div>
+        );
+    };
                             disabled={cart.length === 0 || submitting}
                             onClick={() => setShowConfirm(true)}
                             className="w-full py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-orange-500/30 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none mt-4"
@@ -688,39 +747,39 @@
         };
 
         return (
-            <div className="w-full h-full flex flex-col p-8 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
-                <div className="flex items-center justify-between mb-8">
+            <div className="w-full h-full flex flex-col p-6 bg-gray-50 animate-in fade-in duration-500 overflow-hidden">
+                <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
-                        <button onClick={onBack} className="text-gray-400 hover:text-gray-900"><i className="bi bi-arrow-left text-2xl"></i></button>
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Monitoring Meja</h1>
+                        <button onClick={onBack} className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-gray-400 hover:text-gray-900 transition-all active:scale-95"><i className="bi bi-arrow-left text-xl"></i></button>
+                        <h1 className="text-2xl font-black text-gray-900 tracking-tighter">Monitoring Meja</h1>
                     </div>
                     <div className="flex gap-2">
-                        <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Cooking</span>
-                        <span className="bg-green-100 text-green-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Ready</span>
-                        <span className="bg-purple-100 text-purple-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Served</span>
+                        <span className="bg-blue-100 text-blue-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Cooking</span>
+                        <span className="bg-green-100 text-green-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Ready</span>
+                        <span className="bg-purple-100 text-purple-600 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Served</span>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar pr-2">
+                <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start custom-scrollbar pr-2">
                     {orders.length === 0 && !loading && (
                         <div className="col-span-full h-64 flex flex-col items-center justify-center opacity-20">
-                            <i className="bi bi-inbox text-6xl"></i>
-                            <p className="font-bold uppercase tracking-widest mt-4">Tidak ada pesanan aktif</p>
+                            <i className="bi bi-inbox text-5xl"></i>
+                            <p className="text-xs font-bold uppercase tracking-widest mt-4">Tidak ada pesanan aktif</p>
                         </div>
                     )}
                     {orders.map(order => (
-                        <div key={order.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex flex-col h-fit">
-                            <div className="flex justify-between items-start mb-4">
+                        <div key={order.id} className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-gray-100 flex flex-col h-fit">
+                            <div className="flex justify-between items-start mb-3">
                                 <div>
-                                    <h4 className="font-black text-gray-900 text-xl">Meja {order.table?.name || 'TA'}</h4>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{order.customer_name}</p>
+                                    <h4 className="font-black text-gray-900 text-lg">Meja {order.table?.name || 'TA'}</h4>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{order.customer_name}</p>
                                 </div>
-                                <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${order.stage === 'READY' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
+                                <span className={`px-2 py-0.5 rounded-lg text-[7px] font-black uppercase tracking-widest ${order.stage === 'READY' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
                                     {order.stage}
                                 </span>
                             </div>
 
-                            <div className="space-y-3 mb-4">
+                            <div className="space-y-2 mb-2">
                                 {order.items.map((item, idx) => {
                                     const statusColors = {
                                         'cooking': 'bg-blue-100 text-blue-600',
@@ -729,19 +788,19 @@
                                         'void': 'bg-red-100 text-red-600'
                                     };
                                     return (
-                                        <div key={idx} className="p-3 rounded-2xl bg-gray-50 flex flex-col gap-2">
+                                        <div key={idx} className="p-2.5 rounded-xl bg-gray-50 flex flex-col gap-1.5">
                                             <div className="flex justify-between items-center group">
-                                                <span className="text-xs font-bold text-gray-900">{item.qty}x {item.menu_name}</span>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${statusColors[item.status] || 'bg-gray-200 text-gray-400'}`}>
+                                                <span className="text-[11px] font-bold text-gray-900 leading-tight">{item.qty}x {item.menu_name}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded ${statusColors[item.status] || 'bg-gray-200 text-gray-400'}`}>
                                                         {item.status}
                                                     </span>
                                                     {(item.status === 'pending' || item.status === 'cooking') && (
                                                         <button 
                                                             onClick={() => handleVoidItem(order.id, item.id, item.menu_name)}
-                                                            className="w-6 h-6 rounded-full bg-red-50 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                                                            className="w-5 h-5 rounded-full bg-red-50 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
                                                         >
-                                                            <i className="bi bi-trash"></i>
+                                                            <i className="bi bi-trash text-[10px]"></i>
                                                         </button>
                                                     )}
                                                 </div>
@@ -749,7 +808,7 @@
                                             {item.status === 'ready' && (
                                                 <button 
                                                     onClick={() => setConfirmItem({ orderId: order.id, itemId: item.id, menuName: item.menu_name })}
-                                                    className="w-full py-2 bg-green-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-md shadow-green-500/20"
+                                                    className="w-full py-2 bg-green-500 text-white rounded-lg font-black text-[8px] uppercase tracking-widest active:scale-95 transition-all shadow-md shadow-green-500/10"
                                                 >
                                                     Mark as Served
                                                 </button>
