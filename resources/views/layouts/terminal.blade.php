@@ -169,35 +169,42 @@
 </head>
 
 <body>
-    <div class="terminal-container bg-[#063024] text-white">
-        <header class="terminal-header bg-[#063024] border-b border-[#063024]">
-            <div class="flex items-center gap-4">
-                <div
-                    class="w-10 h-10 bg-gradient-to-br from-orange-500 to-yellow-400 rounded-lg flex items-center justify-center">
-                    <i class="bi bi-person-circle text-2xl text-white"></i>
-                </div>
-                <div>
-                    <h1 class="text-lg font-black tracking-tight text-white leading-none">@yield('terminal_role', 'Terminal')</h1>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{{ auth()->user()->name }}</p>
-                </div>
-            </div>
+    <div class="terminal-container">
+        <header class="terminal-header">
             <div class="flex items-center gap-6">
-                <div id="online-indicator" class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/5">
-                    <div class="status-dot w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                    <span class="text-[9px] font-black uppercase tracking-widest text-gray-400">System: Online</span>
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-terminal-accent flex items-center justify-center shadow-lg shadow-terminal-accent/20">
+                        <span class="font-black text-white text-sm">M</span>
+                    </div>
+                    <span class="text-white font-black text-xs uppercase tracking-widest hidden md:block">Majar POS</span>
                 </div>
-                <div class="flex flex-col items-end border-l border-white/10 pl-6">
-                    <span id="terminal-clock" class="text-xl font-black text-orange-500 leading-none">00:00:00</span>
-                    <span id="terminal-date" class="text-[9px] uppercase tracking-[0.2em] text-gray-400 mt-1">{{ now()->format('l, j F Y') }}</span>
+                <div class="h-4 w-px bg-white/10 hidden md:block"></div>
+                <div id="online-indicator" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5">
+                    <div class="status-dot w-1.5 h-1.5 rounded-full bg-terminal-accent animate-pulse"></div>
+                    <span class="text-[9px] font-black text-white uppercase tracking-widest">System: Online</span>
                 </div>
-                @yield('header_extra')
-                <div class="flex items-center gap-2 text-white">
-                    <i class="bi bi-wifi text-lg text-green-500"></i>
-                    <span class="text-xs font-bold uppercase tracking-widest">{{ $warung->name ?? 'Majar Signature' }}</span>
+                <button onclick="toggleFullScreen()" class="w-8 h-8 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center text-white hover:bg-white/10 transition-all active:scale-90">
+                    <i class="bi bi-fullscreen text-sm"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <div class="hidden lg:flex flex-col items-end">
+                    <div id="terminal-clock" class="text-white font-black text-xs tracking-tight">--:--:-- WIB</div>
+                    <div id="terminal-date" class="text-white/40 font-bold text-[8px] uppercase tracking-widest mt-0.5">---, -- --- ----</div>
                 </div>
-                <a class="text-gray-400 hover:text-white transition-colors" href="{{ route('logout') }}"
-                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                    <i class="bi bi-box-arrow-right text-xl"></i>
+                <div class="h-4 w-px bg-white/10 hidden lg:block"></div>
+                <div class="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
+                    <div class="w-6 h-6 rounded-lg bg-terminal-accent/20 flex items-center justify-center text-terminal-accent">
+                        <i class="bi bi-person-circle text-sm"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-white font-black text-[10px] tracking-tight leading-none truncate max-w-[100px]">{{ Auth::user()->name ?? 'Staff' }}</span>
+                        <span class="text-terminal-accent font-bold text-[7px] uppercase tracking-widest mt-0.5">@yield('terminal_role', 'User')</span>
+                    </div>
+                </div>
+                <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-90">
+                    <i class="bi bi-power text-sm"></i>
                 </a>
                 <form id="logout-form" style="display: none;" action="{{ route('logout') }}" method="POST">
                     @csrf
@@ -212,7 +219,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // --- Fullscreen API Management ---
-        const triggerFullscreen = () => {
+        const toggleFullScreen = () => {
             if (!document.fullscreenElement) {
                 const elem = document.documentElement;
                 if (elem.requestFullscreen) {
@@ -222,15 +229,39 @@
                 } else if (elem.msRequestFullscreen) { /* IE11 */
                     elem.msRequestFullscreen();
                 }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE11 */
+                    document.msExitFullscreen();
+                }
             }
         };
 
         // Auto-Fullscreen on first click anywhere
         document.addEventListener('click', function initialInteraction() {
-            triggerFullscreen();
+            if (!document.fullscreenElement) {
+                toggleFullScreen();
+            }
             // Remove the listener after first interaction to not spam the API
             document.removeEventListener('click', initialInteraction);
         }, { once: true });
+
+        // --- Fullscreen Guard Logic ---
+        // Ensure application stays fullscreen after input focus/blur (keyboard dismissal)
+        document.addEventListener('focusout', (e) => {
+            if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+                setTimeout(() => {
+                    if (!document.fullscreenElement) {
+                        const elem = document.documentElement;
+                        if (elem.requestFullscreen) elem.requestFullscreen();
+                        else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                    }
+                }, 300); // Small delay to allow OS UI to settle
+            }
+        });
 
         // Service Worker...
         if ('serviceWorker' in navigator) {
@@ -280,17 +311,6 @@
             indicator.querySelector('.status-dot').className = 'status-dot w-2 h-2 rounded-full bg-terminal-danger';
             indicator.querySelector('span').textContent = 'Offline';
         });
-
-        // Full-screen support
-        function toggleFullScreen() {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen();
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
-            }
-        }
     </script>
     @yield('extra_js')
 </body>

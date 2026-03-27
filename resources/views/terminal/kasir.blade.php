@@ -446,21 +446,20 @@
         );
     };
 
-    const SidebarIcon = ({ icon, label, active = false, onClick, count = 0, collapsed = false }) => (
+    const SidebarIcon = ({ icon, label, active = false, onClick, count = 0 }) => (
         <div
             onClick={onClick}
-            className={`relative flex items-center justify-center w-full py-5 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
+            className={`relative flex flex-col items-center justify-center w-full py-4 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
         >
-            {active && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-orange-500 rounded-r-full shadow-[2px_0_10px_rgba(249,115,22,0.4)]"></div>}
-            <div className={`p-3 rounded-xl transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-gray-800'}`}>
-                <i className={`bi ${icon} text-2xl`}></i>
+            {active && <div className="absolute left-0 top-1 bottom-1 w-1 bg-orange-500 rounded-r-full shadow-[1px_0_6px_rgba(249,115,22,0.4)]"></div>}
+            <div className={`p-2.5 rounded-xl transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-white/5'}`}>
+                <i className={`bi ${icon} text-xl`}></i>
                 {count > 0 && (
-                    <span className="absolute top-3 right-3 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-pulse border-2 border-[#063024]">
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse border-2 border-[#063024]">
                         {count}
                     </span>
                 )}
             </div>
-            {!collapsed && <span className="text-[10px] font-black uppercase tracking-widest mt-1 ml-3 flex-1 animate-in fade-in duration-300">{label}</span>}
         </div>
     );
 
@@ -1372,43 +1371,13 @@
 
         return (
             <div className="w-full h-full flex overflow-hidden bg-gray-50">
-                {/* Collapsible Sidebar */}
-                <div className={`${sidebarCollapsed ? 'w-24' : 'w-72'} bg-[#063024] flex flex-col border-r border-[#063024] shadow-2xl z-50 transition-all duration-300`}>
-                    <div className={`p-6 border-b border-white/5 flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
-                        {!sidebarCollapsed && (
-                            <div className="flex items-center gap-3 animate-in fade-in duration-300">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-orange-500/30">
-                                    <span className="font-black text-lg text-white">M</span>
-                                </div>
-                                <div>
-                                    <h1 className="text-white font-black text-sm tracking-tight">MAJAR POS</h1>
-                                    <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest">Signature</p>
-                                </div>
-                            </div>
-                        )}
-                        <button 
-                            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                            className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white active:bg-white/10 transition-all ${sidebarCollapsed ? 'w-14 h-14' : ''}`}
-                        >
-                            <i className={`bi ${sidebarCollapsed ? 'bi-list' : 'bi-layout-sidebar-inset'} text-xl`}></i>
-                        </button>
-                    </div>
-
-                    <div className="flex-1 flex flex-col overflow-hidden">
-                        {/* Navigation - Stacked Vertically for Tablet Friendliness */}
-                        <div className="flex-1 flex flex-col py-6 overflow-y-auto custom-scrollbar no-scrollbar">
-                            <SidebarIcon icon="bi-plus-circle" label="Pesan" active={view === 'ORDER_TYPE' || view === 'TABLE_SELECT' || view === 'MENU'} onClick={() => setView('ORDER_TYPE')} collapsed={sidebarCollapsed} />
-                            <SidebarIcon icon="bi-shield-lock" label="Approval" active={view === 'PENDING_APPROVAL'} onClick={() => setView('PENDING_APPROVAL')} count={activeOrders.filter(o => o.stage === 'WAITING_CASHIER').length} collapsed={sidebarCollapsed} />
-                            <SidebarIcon icon="bi-monitor" label="Monitor" active={view === 'MONITORING_PAGE'} onClick={() => setView('MONITORING_PAGE')} collapsed={sidebarCollapsed} />
-                            <SidebarIcon icon="bi-clock-history" label="History" active={view === 'ORDER_HISTORY'} onClick={() => setView('ORDER_HISTORY')} collapsed={sidebarCollapsed} />
-                        </div>
-                    </div>
-                    
-                    <div className="p-6 border-t border-white/5">
-                        <a href="/logout" className={`flex items-center gap-3 text-white/40 active:text-white transition-all ${sidebarCollapsed ? 'justify-center' : ''}`}>
-                            <i className="bi bi-box-arrow-right text-xl"></i>
-                            {!sidebarCollapsed && <span className="text-[10px] font-black uppercase tracking-widest">Logout</span>}
-                        </a>
+                {/* Ultra-Minimalist Icon-only Sidebar */}
+                <div className="w-16 bg-[#063024] flex flex-col border-r border-white/5 shadow-2xl z-50 transition-all duration-300">
+                    <div className="flex-1 flex flex-col py-6 overflow-y-auto no-scrollbar gap-2">
+                        <SidebarIcon icon="bi-plus-circle" label="Pesan" active={view === 'ORDER_TYPE' || view === 'TABLE_SELECT' || view === 'MENU'} onClick={() => setView('ORDER_TYPE')} />
+                        <SidebarIcon icon="bi-shield-lock" label="Approval" active={view === 'PENDING_APPROVAL'} onClick={() => setView('PENDING_APPROVAL')} count={activeOrders.filter(o => o.stage === 'WAITING_CASHIER').length} />
+                        <SidebarIcon icon="bi-monitor" label="Monitor" active={view === 'MONITORING_PAGE'} onClick={() => setView('MONITORING_PAGE')} />
+                        <SidebarIcon icon="bi-clock-history" label="History" active={view === 'ORDER_HISTORY'} onClick={() => setView('ORDER_HISTORY')} />
                     </div>
                 </div>
 

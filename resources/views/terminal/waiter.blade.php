@@ -101,10 +101,9 @@
             className={`relative flex flex-col items-center justify-center w-full py-4 cursor-pointer transition-all duration-200 group ${active ? 'text-orange-500' : 'text-gray-500 hover:text-orange-400'}`}
         >
             {active && <div className="absolute left-0 top-1 bottom-1 w-1 bg-orange-500 rounded-r-full shadow-[1px_0_6px_rgba(249,115,22,0.4)]"></div>}
-            <div className={`p-2 rounded-lg transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-gray-800'}`}>
+            <div className={`p-2.5 rounded-xl transition-all ${active ? 'bg-orange-500/10' : 'group-hover:bg-white/5'}`}>
                 <i className={`bi ${icon} text-xl`}></i>
             </div>
-            <span className="text-[9px] font-black uppercase tracking-tighter mt-1">{label}</span>
         </div>
     );
 
@@ -653,20 +652,12 @@
 
         return (
             <div className="w-full h-full flex overflow-hidden">
-                {/* Fixed Sidebar */}
-                <div className="w-24 bg-[#063024] flex flex-col border-r border-[#063024]">
-                    <div className="p-6 border-b border-[#063024]">
-                        <div className="w-full aspect-square rounded-2xl bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-orange-500/30">
-                            <span className="font-black text-2xl text-white">S</span>
-                        </div>
-                    </div>
-                    <div className="flex-1 py-4">
+                {/* Ultra-Minimalist Icon-only Sidebar */}
+                <div className="w-16 bg-[#063024] flex flex-col border-r border-white/5 shadow-2xl z-50">
+                    <div className="flex-1 flex flex-col py-6 overflow-y-auto no-scrollbar gap-2">
                         <SidebarIcon icon="bi-plus-circle" label="Pesan" active={view === 'ORDER_TYPE' || view === 'TABLE_SELECT' || view === 'MENU'} onClick={() => setView('ORDER_TYPE')} />
                         <SidebarIcon icon="bi-list-check" label="Status" active={view === 'ORDER_STATUS'} onClick={() => setView('ORDER_STATUS')} />
                         <SidebarIcon icon="bi-clock-history" label="History" active={view === 'ORDER_HISTORY'} onClick={() => setView('ORDER_HISTORY')} />
-                    </div>
-                    <div className="py-4 border-t border-[#063024]">
-                        <SidebarIcon icon="bi-person-badge-fill" label="Profil" />
                     </div>
                 </div>
 
