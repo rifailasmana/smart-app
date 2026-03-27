@@ -117,8 +117,8 @@ class ManagerController extends Controller
         // 📦 6. INVENTORY CONTROL (LIGHT)
         $ingredients = Ingredient::where('warung_id', $warungId)->get();
 
-        // 🎟️ 7. COUPON / DISCOUNT CONTROL
-        $coupons = Voucher::where('warung_id', $warungId)->get();
+        // 🎟️ 7. DISCOUNT / VOUCHER CONTROL
+        $vouchers = Voucher::where('warung_id', $warungId)->get();
 
         // 🔄 8. ORDER MONITORING
         $allActiveOrders = Order::with(['items', 'table'])
@@ -149,7 +149,7 @@ class ManagerController extends Controller
             'voids',
             'staffOnShift',
             'ingredients',
-            'coupons',
+            'vouchers',
             'allActiveOrders',
             'outstandingInvoices'
         ));
@@ -238,21 +238,26 @@ class ManagerController extends Controller
     public function createCoupon(Request $request)
     {
         $request->validate([
-            'code' => 'required|string|unique:vouchers,code',
-            'value' => 'required|numeric|min:0',
-            'category_restriction' => 'required|string',
+            'value' => 'required|numeric|min:1|max:100',
         ]);
 
-        Voucher::create([
+        $code = 'MAJAR-' . $request->value . '-' . strtoupper(\Illuminate\Support\Str::random(4));
+
+        // Ensure uniqueness
+        while (\App\Models\Voucher::where('code', $code)->exists()) {
+            $code = 'MAJAR-' . $request->value . '-' . strtoupper(\Illuminate\Support\Str::random(4));
+        }
+
+        \App\Models\Voucher::create([
             'warung_id' => auth()->user()->warung_id,
-            'code' => $request->code,
-            'type' => 'percentage', // default
+            'code' => $code,
+            'type' => 'percentage',
             'value' => $request->value,
-            'category_restriction' => $request->category_restriction,
-            'is_used' => false
+            'is_used' => 0,
+            'expires_at' => now()->addHour()
         ]);
 
-        return back()->with('success', 'Kupon promo berhasil dibuat');
+        return back()->with('success', 'Voucher Instan Berhasil Dibuat: ' . $code);
     }
 
     // Approval CRUD handlers

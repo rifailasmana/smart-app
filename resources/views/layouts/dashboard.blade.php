@@ -359,7 +359,7 @@
                     </a>
                     <a class="nav-item {{ request()->get('tab') === 'coupon' ? 'active' : '' }}"
                         href="{{ route('dashboard.owner') }}?tab=coupon">
-                        <i class="fas fa-ticket-alt"></i> <span>Coupon</span>
+                        <i class="fas fa-ticket-alt"></i> <span>Discount</span>
                     </a>
                     <a class="nav-item {{ request()->get('tab') === 'settings' ? 'active' : '' }}"
                         href="{{ route('dashboard.owner') }}?tab=settings">
@@ -417,7 +417,7 @@
                     </a>
                     <a class="nav-item {{ request()->get('tab') === 'coupon' ? 'active' : '' }}"
                         href="{{ route('dashboard.manager') }}?tab=coupon">
-                        <i class="fas fa-ticket-alt"></i> <span>Coupon Control</span>
+                        <i class="fas fa-ticket-alt"></i> <span>Discount Control</span>
                     </a>
                     <a class="nav-item {{ request()->get('tab') === 'orders' ? 'active' : '' }}"
                         href="{{ route('dashboard.manager') }}?tab=orders">

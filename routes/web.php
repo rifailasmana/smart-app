@@ -326,9 +326,9 @@ Route::middleware('auth')->group(function () {
         // Map roles to dashboard views (di subdomain)
         return match ($user->role) {
             'owner' => redirect()->route('dashboard.owner'),
-            'kasir' => redirect()->route('dashboard.kasir'),
-            'waiter' => redirect()->route('dashboard.waiter'),
-            'dapur', 'kitchen' => redirect()->route('dashboard.kitchen'),
+            'kasir' => redirect()->route('/terminal/kasir'),
+            'waiter' => redirect()->route('/terminal/waiter'),
+            'dapur', 'kitchen' => redirect()->route('/terminal/kitchen'),
             'hrd' => redirect()->route('dashboard.hrd'),
             'manager' => redirect()->route('dashboard.manager'),
             'inventory' => redirect()->route('dashboard.inventory'),
@@ -404,7 +404,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:manager,owner,admin')->group(function () {
         Route::get('/dashboard/manager', [ManagerController::class, 'index'])->name('dashboard.manager');
         Route::post('/dashboard/manager/void/{order}', [ManagerController::class, 'voidOrder'])->name('dashboard.manager.void');
-        Route::post('/dashboard/manager/coupon', [ManagerController::class, 'createCoupon'])->name('dashboard.manager.coupon');
+        Route::post('/dashboard/manager/coupon', [\App\Http\Controllers\VoucherController::class, 'store'])->name('manager.coupon.store');
     });
 
     // HRD Dashboard
@@ -619,6 +619,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/orders/{order}/items/{item}/void', [App\Http\Controllers\TerminalController::class, 'voidItem'])->name('terminal.order.void');
         Route::get('/tables', [App\Http\Controllers\TerminalController::class, 'getTables']);
         Route::get('/tables/{table}/draft', [App\Http\Controllers\TerminalController::class, 'getTableDraft']);
+        Route::get('/discounts/active', [App\Http\Controllers\TerminalController::class, 'getActiveDiscounts']);
         Route::post('/orders', [App\Http\Controllers\TerminalController::class, 'storeOrder']);
         Route::post('/orders/{order}/submit-to-cashier', [App\Http\Controllers\TerminalController::class, 'submitToCashier']);
         Route::post('/orders/{order}/split', [App\Http\Controllers\TerminalController::class, 'splitOrder']);

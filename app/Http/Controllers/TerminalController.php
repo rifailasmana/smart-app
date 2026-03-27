@@ -113,6 +113,27 @@ class TerminalController extends Controller
     }
 
     /**
+     * Check voucher validity
+     */
+    public function checkVoucher(Request $request)
+    {
+        $user = auth()->user();
+        $code = strtoupper($request->code);
+
+        $voucher = Voucher::where('warung_id', $user->warung_id)
+            ->where('code', $code)
+            ->where('is_used', 0)
+            ->where('expired_at', '>', now())
+            ->first();
+
+        if (!$voucher) {
+            return response()->json(['error' => 'Voucher tidak valid atau sudah kadaluarsa'], 404);
+        }
+
+        return response()->json($voucher);
+    }
+
+    /**
      * Get tables for terminal
      */
     public function getTables()
@@ -369,7 +390,8 @@ class TerminalController extends Controller
             // Accept frontend values but normalize below to DB enum (kasir,qris,gateway)
             'payment_method' => 'required|in:cash,qris,card,other,tunai,edc,invoice,gateway,kasir',
             'amount_paid' => 'required|numeric',
-            'discount_amount' => 'nullable|numeric|min:0'
+            'discount_amount' => 'nullable|numeric|min:0',
+            'discount_id' => 'nullable'
         ]);
 
         // Ensure relationships are loaded
@@ -379,6 +401,7 @@ class TerminalController extends Controller
             return DB::transaction(function () use ($user, $order, $validated) {
                 $isInvoice = (strtolower($validated['payment_method']) === 'invoice');
                 $discount = $validated['discount_amount'] ?? 0;
+                $discountId = $validated['discount_id'] ?? null;
                 $subtotal = (float) $order->subtotal;
                 $adminFee = (float) ($order->admin_fee ?? 0);
                 $finalTotal = max(0, $subtotal + $adminFee - $discount);
@@ -411,7 +434,15 @@ class TerminalController extends Controller
                     'revenue_recognized_at' => $order->created_at ?? now(), // Accrual
                 ]);
 
-                // 2. If Invoice, create AccountReceivable record
+                // 2. Burn voucher if used
+                if ($discountId) {
+                    $voucher = \App\Models\Voucher::find($discountId);
+                    if ($voucher) {
+                        $voucher->update(['is_used' => 1]);
+                    }
+                }
+
+                // 3. If Invoice, create AccountReceivable record
                 if ($isInvoice) {
                     AccountReceivable::create([
                         'warung_id' => $order->warung_id,
@@ -1050,47 +1081,55 @@ class TerminalController extends Controller
         ]);
     }
 
-    /**
-     * Check and apply voucher
-     */
     public function checkVoucher(Request $request)
     {
         $request->validate([
             'code' => 'required|string',
-            'cart_categories' => 'required|array'
         ]);
 
         $voucher = \App\Models\Voucher::where('code', $request->code)
             ->where('warung_id', auth()->user()->warung_id)
+            ->where('is_used', 0)
+            ->where(function($q) {
+                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
             ->first();
 
         if (!$voucher) {
-            return response()->json(['error' => 'Voucher tidak ditemukan'], 404);
-        }
-
-        if ($voucher->is_used) {
-            return response()->json(['error' => 'Voucher Sudah Kadaluwarsa'], 400);
-        }
-
-        if ($voucher->category_restriction) {
-            $restrictedCats = array_map('trim', explode(',', $voucher->category_restriction));
-            $found = false;
-            foreach ($request->cart_categories as $cartCat) {
-                if (in_array($cartCat, $restrictedCats)) {
-                    $found = true;
-                    break;
-                }
-            }
-            if (!$found) {
-                return response()->json(['error' => 'Voucher tidak sesuai kategori item (Butuh: ' . $voucher->category_restriction . ')'], 400);
-            }
+            return response()->json(['error' => 'Voucher tidak valid atau sudah digunakan'], 404);
         }
 
         return response()->json([
+            'id' => $voucher->id,
             'code' => $voucher->code,
             'type' => $voucher->type,
             'value' => $voucher->value
         ]);
+    }
+
+    public function getActiveDiscounts(Request $request)
+    {
+        $user = auth()->user();
+        
+        // Fetch all coupons for this warung (if applicable) that are not used/expired
+        $query = \App\Models\Coupon::query();
+        
+        if (\Schema::hasColumn('coupons', 'warung_id')) {
+            $query->where('warung_id', $user->warung_id);
+        }
+
+        $coupons = $query->where('is_used', false)->get();
+
+        return response()->json($coupons->map(function($c) {
+            return [
+                'id' => $c->id,
+                'kode_diskon' => $c->code,
+                'tipe' => 'Persen', // Based on manager UI showing %
+                'nilai' => $c->value ?? $c->discount_percent ?? 0,
+                'is_used' => (bool)$c->is_used,
+                'category_restriction' => $c->category_restriction ?? 'Semua'
+            ];
+        }));
     }
 
     /**

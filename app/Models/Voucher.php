@@ -17,12 +17,14 @@ class Voucher extends Model
         'is_used',
         'category_restriction',
         'used_at',
+        'expired_at',
     ];
 
     protected $casts = [
-        'is_used' => 'boolean',
+        'is_used' => 'integer',
         'value' => 'decimal:2',
         'used_at' => 'datetime',
+        'expired_at' => 'datetime',
     ];
 
     public function warung()

@@ -1,8 +1,8 @@
 @extends('layouts.dashboard')
 
 @section('title', 'Majar Signature | Manager Dashboard')
-@section('header_title', 'Manager Operating System')
-@section('header_subtitle', 'Monitoring operasional, approval, dan kontrol tim')
+@section('header_title', $tab === 'coupon' ? 'Discount & Voucher Management' : 'Manager Operating System')
+@section('header_subtitle', $tab === 'coupon' ? 'Kelola program promo dan voucher instan' : 'Monitoring operasional, approval, dan kontrol tim')
 
 @section('content')
     <div class="container-fluid py-4">
@@ -403,74 +403,134 @@
                 </div>
             </div>
         @elseif($tab === 'coupon')
-            <!-- 🎟️ 7. COUPON / DISCOUNT CONTROL -->
-            <div class="row g-4">
+            <!-- 🎟️ 7. INSTANT DISCOUNT GENERATOR -->
+            <div class="row g-4" id="voucher-section">
                 <div class="col-12 col-xl-4">
                     <div class="card border-0 shadow-sm rounded-4 p-4">
-                        <h5 class="fw-bold mb-4">Buat Kupon Promo</h5>
-                        <form action="{{ route('manager.coupon.store') }}" method="POST">
+                        <h5 class="fw-bold mb-4">Instant Discount Generator</h5>
+                        
+                        @if(session('error'))
+                            <div class="alert alert-danger rounded-3 mb-4 small fw-bold">
+                                <i class="fas fa-exclamation-circle me-2"></i> {{ session('error') }}
+                            </div>
+                        @endif
+
+                        <form id="generateVoucherForm" action="{{ route('manager.coupon.store') }}" method="POST">
                             @csrf
                             <div class="mb-3">
-                                <label class="form-label small fw-bold">Kode Kupon</label>
-                                <input class="form-control rounded-3" name="code" type="text"
-                                    placeholder="Contoh: MAJAR20" required>
+                                <label class="form-label small fw-bold">Jumlah Voucher</label>
+                                <input class="form-control rounded-3 py-2" name="count" type="number" value="1" min="1" max="50" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label small fw-bold">Besaran Diskon (%)</label>
-                                <input class="form-control rounded-3" name="value" type="number"
-                                    placeholder="Contoh: 10" required>
-                            </div>
-                            <div class="mb-4">
-                                <label class="form-label small fw-bold">Kategori Member</label>
-                                <select class="form-select rounded-3" name="category_restriction">
-                                    <option value="Regular">Regular</option>
-                                    <option value="Reservation">Reservation</option>
-                                    <option value="Majar Priority">Majar Priority</option>
-                                    <option value="Majar Signature">Majar Signature</option>
+                                <label class="form-label small fw-bold">Tipe Diskon</label>
+                                <select class="form-select rounded-3 py-2" name="type" required>
+                                    <option value="percentage">Persentase (%)</option>
+                                    <option value="fixed">Nominal (Rp)</option>
                                 </select>
                             </div>
-                            <button class="btn btn-dark w-100 py-3 rounded-3 fw-bold" type="submit">BUAT KUPON
-                                SEKARANG</button>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Nilai Diskon</label>
+                                <input class="form-control rounded-3 py-2" name="value" type="number" placeholder="Contoh: 50 atau 10000" min="1" required>
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label small fw-bold">Masa Berlaku (Jam)</label>
+                                <input class="form-control rounded-3 py-2" name="duration_hours" type="number" value="1" min="1" required>
+                                <small class="text-muted mt-2 d-block">Voucher akan aktif selama durasi yang ditentukan.</small>
+                            </div>
+                            <button class="btn btn-dark w-100 py-3 rounded-3 fw-bold shadow-lg" type="submit" id="btnGenerate">
+                                <i class="fas fa-magic me-2"></i> GENERATE VOUCHER
+                            </button>
                         </form>
                     </div>
                 </div>
                 <div class="col-12 col-xl-8">
                     <div class="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
-                        <div class="card-header bg-white py-3 border-0">
-                            <h6 class="mb-0 fw-bold">Daftar Kupon Aktif</h6>
+                        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-bold">Voucher Instan Aktif</h6>
+                            <div class="d-flex gap-2 align-items-center">
+                                <button class="btn btn-sm btn-light rounded-pill px-3" onclick="refreshVoucherTable()">
+                                    <i class="fas fa-sync-alt me-1"></i> Refresh
+                                </button>
+                                @if(session('success'))
+                                    <span class="badge bg-success-soft text-success rounded-pill px-3 animate-bounce">Baru Dibuat!</span>
+                                @endif
+                            </div>
                         </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
+                        <div class="table-responsive" id="voucherTableContainer">
+                            <table class="table table-hover align-middle mb-0 text-center">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="ps-4">Kode</th>
+                                        <th class="ps-4 text-start">Kode Voucher (Berikan ke Kasir)</th>
                                         <th>Diskon</th>
-                                        <th>Kategori</th>
+                                        <th>Berakhir</th>
                                         <th class="text-end pe-4">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($coupons as $c)
+                                    @php
+                                        $activeVouchers = $vouchers->where('is_used', 0)->where('expired_at', '>', now());
+                                    @endphp
+                                    @foreach ($activeVouchers as $v)
                                         <tr>
-                                            <td class="ps-4 fw-bold text-dark">{{ $c->code }}</td>
-                                            <td class="fw-bold text-orange">{{ number_format($c->value, 0) }}%</td>
-                                            <td><span
-                                                    class="badge bg-light text-dark border">{{ $c->category_restriction }}</span>
+                                            <td class="ps-4 text-start">
+                                                <div class="d-flex align-items-center">
+                                                    <span class="fw-black fs-5 text-dark border-bottom border-2 border-orange">{{ $v->code }}</span>
+                                                    <button class="btn btn-sm btn-link text-muted ms-2" onclick="navigator.clipboard.writeText('{{ $v->code }}'); alert('Kode dicopy!')">
+                                                        <i class="far fa-copy"></i>
+                                                    </button>
+                                                </div>
                                             </td>
+                                            <td class="fw-bold text-orange fs-5">
+                                                {{ $v->type === 'percentage' ? number_format($v->value, 0).'%' : 'Rp '.number_format($v->value, 0, ',', '.') }}
+                                            </td>
+                                            <td class="small">{{ $v->expired_at ? $v->expired_at->format('H:i') : '-' }} WIB</td>
                                             <td class="text-end pe-4">
-                                                <span
-                                                    class="badge {{ $c->is_used ? 'bg-danger-soft text-danger' : 'bg-success-soft text-success' }} rounded-pill px-3">
-                                                    {{ $c->is_used ? 'EXPIRED/USED' : 'ACTIVE' }}
-                                                </span>
+                                                <span class="badge bg-success-soft text-success rounded-pill px-3">READY</span>
                                             </td>
                                         </tr>
                                     @endforeach
+                                    @if($activeVouchers->isEmpty())
+                                        <tr>
+                                            <td colspan="4" class="py-5 text-muted italic">Belum ada voucher aktif.</td>
+                                        </tr>
+                                    @endif
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <script>
+                function refreshVoucherTable() {
+                    const container = document.getElementById('voucherTableContainer');
+                    container.style.opacity = '0.5';
+                    
+                    // Simple re-fetch by reloading the section
+                    fetch(window.location.href)
+                        .then(response => response.text())
+                        .then(html => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            const newTable = doc.getElementById('voucherTableContainer').innerHTML;
+                            container.innerHTML = newTable;
+                            container.style.opacity = '1';
+                        })
+                        .catch(err => {
+                            console.error('Failed to refresh:', err);
+                            container.style.opacity = '1';
+                        });
+                }
+
+                // Handle form submission with AJAX for instant feel
+                document.getElementById('generateVoucherForm').addEventListener('submit', function(e) {
+                    // We let the form submit normally to show the success message, 
+                    // but we could also use AJAX here. 
+                    // For now, normal submit is fine as the user asked for re-fetch.
+                    document.getElementById('btnGenerate').disabled = true;
+                    document.getElementById('btnGenerate').innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> GENERATING...';
+                });
+            </script>
         @elseif($tab === 'orders')
             <!-- 🔄 8. ORDER MONITORING -->
             <div class="card border-0 shadow-sm rounded-4 overflow-hidden">

@@ -103,13 +103,13 @@
         };
 
         return (
-            <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-3 gap-3">
+            <div className="flex flex-col gap-3">
+                <div className="grid grid-cols-3 gap-2">
                     {keys.map(key => (
                         <button
                             key={key}
                             onClick={() => handleClick(key)}
-                            className={'h-20 rounded-2xl font-black text-2xl transition-all active:scale-95 active:bg-orange-500 active:text-white ' + (key === 'C' ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-900')}
+                            className={'h-14 rounded-xl font-black text-xl transition-all active:scale-95 active:bg-orange-500 active:text-white ' + (key === 'C' ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-900')}
                         >
                             {key}
                         </button>
@@ -117,7 +117,7 @@
                 </div>
                 <button
                     onClick={onConfirm}
-                    className="w-full py-6 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-2xl shadow-xl shadow-orange-500/30 active:scale-95 transition-all"
+                    className="w-full py-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-2xl font-black text-lg shadow-xl shadow-orange-500/30 active:scale-95 transition-all"
                 >
                     {label}
                 </button>
@@ -141,21 +141,128 @@
         );
     };
 
-    const PaymentModal = ({ order, onConfirm, onClose }) => {
+    const ReceiptPreviewModal = ({ order, onPrint, onClose, onShare }) => {
+        const subtotal = order.items.reduce((acc, item) => acc + (item.price * item.qty), 0);
+        const discount = order.discount_amount || 0;
+        const total = order.total || (subtotal - discount);
+
+        return (
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
+                        <h3 className="text-base font-black text-gray-900 tracking-tight">Preview Struk</h3>
+                        <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-400 active:scale-95 transition-all"><i className="bi bi-x-lg text-lg"></i></button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-50/30">
+                        {/* Compact Thermal Receipt Design */}
+                        <div className="bg-white p-4 shadow-sm border border-gray-100 mx-auto w-full font-mono text-[9px] text-gray-800 leading-tight receipt-content">
+                            <div className="text-center mb-3">
+                                <h4 className="font-black text-[11px] uppercase tracking-tighter mb-0.5">{{ $warung->name ?? 'MAJAR POS' }}</h4>
+                                <p className="text-[7px] text-gray-400">{{ $warung->address ?? 'Alamat Warung Majar' }}</p>
+                                <p className="text-[7px] text-gray-400">Telp: {{ $warung->phone ?? '-' }}</p>
+                                <div className="border-b border-dashed border-gray-200 my-2"></div>
+                            </div>
+
+                            <div className="space-y-0.5 mb-2">
+                                <div className="flex justify-between"><span>TGL: {new Date().toLocaleDateString('id-ID')}</span> <span>JAM: {new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</span></div>
+                                <div className="flex justify-between"><span>KASIR: {{ Auth::user()->name }}</span> <span>#{order.code || order.id}</span></div>
+                                <div className="flex justify-between"><span>MEJA: {order.table?.name || 'TA'}</span> <span>CUST: {order.customer_name || 'Guest'}</span></div>
+                            </div>
+
+                            <div className="border-b border-dashed border-gray-200 mb-2"></div>
+
+                            <div className="space-y-1.5 mb-3">
+                                {order.items.map((item, idx) => (
+                                    <div key={idx}>
+                                        <div className="flex justify-between">
+                                            <span className="font-bold truncate pr-2">{item.menu_name}</span>
+                                            <span className="flex-shrink-0">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
+                                        </div>
+                                        <div className="text-[7px] text-gray-400 pl-2">{item.qty} x {new Intl.NumberFormat('id-ID').format(item.price)}</div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="border-b border-dashed border-gray-200 mb-2"></div>
+
+                            <div className="space-y-0.5 text-right mb-3">
+                                <div className="flex justify-between"><span>SUBTOTAL</span> <span>Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span></div>
+                                {discount > 0 && <div className="flex justify-between text-red-500"><span>DISKON</span> <span>- Rp {new Intl.NumberFormat('id-ID').format(discount)}</span></div>}
+                                <div className="flex justify-between font-black text-[10px] pt-1 border-t border-dashed border-gray-100 mt-1">
+                                    <span>TOTAL</span> <span>Rp {new Intl.NumberFormat('id-ID').format(total)}</span>
+                                </div>
+                            </div>
+
+                            <div className="text-center mt-4">
+                                <p className="text-[7px] font-bold italic mb-0.5">Terima Kasih Atas Kunjungan Anda</p>
+                                <p className="text-[6px] text-gray-400 uppercase tracking-widest">Powered by Majar POS</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-2 flex-shrink-0">
+                        <button 
+                            onClick={onShare}
+                            className="flex items-center justify-center gap-2 py-2.5 bg-blue-50 text-blue-600 rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all"
+                        >
+                            <i className="bi bi-whatsapp"></i> Digital
+                        </button>
+                        <button 
+                            onClick={onPrint}
+                            className="flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
+                        >
+                            <i className="bi bi-printer"></i> Cetak
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const PaymentModal = ({ order, onConfirm, onClose, onShowToast }) => {
         const [method, setPaymentMethod] = useState('Tunai');
-        const [discountType, setDiscountType] = useState('nominal'); // nominal or percent
-        const [discountValue, setDiscountValue] = useState(0);
-        const [couponCode, setCouponCode] = useState('');
+        const [voucherCode, setVoucherCode] = useState('');
+        const [activeVoucher, setActiveVoucher] = useState(null);
+        const [checkingVoucher, setCheckingVoucher] = useState(false);
         const [amountPaid, setAmountPaid] = useState(order.total);
         const [processing, setProcessing] = useState(false);
         const [showQR, setShowQR] = useState(false);
 
-        const canUseCoupon = order.guest_category === 'Majar Owner' || order.guest_category === 'Member';
+        const handleCheckVoucher = async () => {
+            if (!voucherCode) return;
+            setCheckingVoucher(true);
+            try {
+                const res = await fetch('/terminal/check-voucher', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ code: voucherCode })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    setActiveVoucher(data);
+                    onShowToast('Voucher Berhasil Dipasang!', 'success');
+                } else {
+                    onShowToast(data.error || 'Voucher tidak valid', 'error');
+                    setActiveVoucher(null);
+                }
+            } catch (e) {
+                onShowToast('Gagal mengecek voucher', 'error');
+            } finally {
+                setCheckingVoucher(false);
+            }
+        };
 
         const discountAmount = useMemo(() => {
-            if (discountType === 'percent') return (order.total * (discountValue / 100));
-            return discountValue;
-        }, [order.total, discountType, discountValue]);
+            if (!activeVoucher) return 0;
+            if (activeVoucher.type === 'percentage') {
+                return (order.total * (activeVoucher.value / 100));
+            }
+            return activeVoucher.value;
+        }, [order.total, activeVoucher]);
 
         const finalTotal = Math.max(0, order.total - discountAmount);
 
@@ -169,7 +276,7 @@
                 return;
             }
             setProcessing(true);
-            await onConfirm(method, amountPaid, discountAmount, couponCode);
+            await onConfirm(method, amountPaid, discountAmount, activeVoucher?.code || '', activeVoucher?.id || null);
             setProcessing(false);
         };
 
@@ -225,58 +332,58 @@
         }
 
         return (
-            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                <div className="bg-white w-full max-w-5xl h-full lg:h-fit lg:max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col lg:flex-row">
+            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-5xl h-full lg:h-fit lg:max-h-[92vh] rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col lg:flex-row">
                     {/* Left: Summary */}
-                    <div className="w-full lg:w-[400px] bg-gray-50 p-10 border-r border-gray-100 flex flex-col">
-                        <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Tagihan</h2>
-                            <button onClick={onClose} className="lg:hidden text-gray-400 p-4 active:scale-95"><i className="bi bi-x-lg text-2xl"></i></button>
+                    <div className="w-full lg:w-[360px] bg-gray-50 p-6 border-r border-gray-100 flex flex-col">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-black text-gray-900 tracking-tight">Tagihan</h2>
+                            <button onClick={onClose} className="lg:hidden text-gray-400 p-2 active:scale-95"><i className="bi bi-x-lg text-xl"></i></button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 mb-8 space-y-4">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-6 space-y-3">
                             {order.items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                                    <div className="flex-1 pr-4">
-                                        <h5 className="font-black text-gray-900 text-sm leading-tight">{item.qty}x {item.menu_name}</h5>
-                                        <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase">@ Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
+                                <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
+                                    <div className="flex-1 pr-3">
+                                        <h5 className="font-black text-gray-900 text-xs leading-tight">{item.qty}x {item.menu_name}</h5>
+                                        <p className="text-[9px] font-bold text-gray-400 mt-0.5 uppercase">@ Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
                                     </div>
-                                    <span className="font-black text-gray-900 text-sm">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
+                                    <span className="font-black text-gray-900 text-xs">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="pt-8 border-t-2 border-dashed border-gray-200 space-y-4">
-                            <div className="flex justify-between text-sm text-gray-500 font-bold uppercase tracking-widest">
+                        <div className="pt-6 border-t-2 border-dashed border-gray-200 space-y-3">
+                            <div className="flex justify-between text-[11px] text-gray-500 font-bold uppercase tracking-widest">
                                 <span>Subtotal</span>
                                 <span>Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
                             </div>
                             {discountAmount > 0 && (
-                                <div className="flex justify-between text-sm text-red-500 font-bold uppercase tracking-widest">
+                                <div className="flex justify-between text-[11px] text-red-500 font-bold uppercase tracking-widest">
                                     <span>Diskon</span>
                                     <span>- Rp {new Intl.NumberFormat('id-ID').format(discountAmount)}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between items-center pt-4">
-                                <span className="text-gray-900 font-black uppercase tracking-[0.2em] text-xs">Total</span>
-                                <span className="text-4xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(finalTotal)}</span>
+                            <div className="flex justify-between items-center pt-3">
+                                <span className="text-gray-900 font-black uppercase tracking-[0.2em] text-[10px]">Total</span>
+                                <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(finalTotal)}</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Right: Payment Controls */}
-                    <div className="flex-1 p-10 bg-white flex flex-col overflow-y-auto custom-scrollbar">
-                        <div className="hidden lg:flex justify-end mb-6">
-                            <button onClick={onClose} className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center active:scale-95 active:bg-gray-100 transition-colors">
-                                <i className="bi bi-x-lg text-xl"></i>
+                    <div className="flex-1 p-5 bg-white flex flex-col overflow-y-auto custom-scrollbar">
+                        <div className="hidden lg:flex justify-end mb-3">
+                            <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center active:scale-95 active:bg-gray-100 transition-colors">
+                                <i className="bi bi-x-lg text-base"></i>
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                             <div>
-                                {/* Method Selector */}
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Metode Pembayaran</label>
-                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                {/* Method Selector (Slim) */}
+                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block">Metode Pembayaran</label>
+                                <div className="grid grid-cols-2 gap-2 mb-5">
                                     {[
                                         { id: 'Tunai', icon: 'bi-cash-stack' },
                                         { id: 'QRIS', icon: 'bi-qr-code-scan' },
@@ -286,75 +393,116 @@
                                         <button
                                             key={m.id}
                                             onClick={() => setPaymentMethod(m.id)}
-                                            className={'h-24 rounded-3xl font-black transition-all flex flex-col items-center justify-center gap-2 border-4 ' + (method === m.id ? 'border-orange-500 bg-orange-50 text-orange-500 shadow-xl shadow-orange-500/10' : 'border-gray-50 bg-white text-gray-400 active:border-gray-200')}
+                                            className={'h-14 rounded-xl font-black transition-all flex flex-col items-center justify-center gap-0.5 border-2 ' + (method === m.id ? 'border-orange-500 bg-orange-50 text-orange-500 shadow-md shadow-orange-500/10' : 'border-gray-50 bg-white text-gray-400 active:border-gray-200')}
                                         >
-                                            <i className={'bi ' + m.icon + ' text-3xl'}></i>
-                                            <span className="text-[10px] uppercase tracking-[0.2em]">{m.id}</span>
+                                            <i className={'bi ' + m.icon + ' text-lg'}></i>
+                                            <span className="text-[8px] uppercase tracking-[0.2em]">{m.id}</span>
                                         </button>
                                     ))}
                                 </div>
 
-                                {/* Discount Section */}
-                                <div className="p-8 bg-gray-50 rounded-[2.5rem] mb-8">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 block">Diskon & Kupon</label>
-                                    <div className="flex gap-2 mb-6">
-                                        <button onClick={() => setDiscountType('nominal')} className={'flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ' + (discountType === 'nominal' ? 'bg-orange-500 text-white shadow-lg' : 'bg-white text-gray-400 active:bg-gray-100')}>Nominal</button>
-                                        <button onClick={() => setDiscountType('percent')} className={'flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ' + (discountType === 'percent' ? 'bg-orange-500 text-white shadow-lg' : 'bg-white text-gray-400 active:bg-gray-100')}>Persen</button>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <input
-                                            type="number"
-                                            value={discountValue}
-                                            onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
-                                            placeholder="Input Diskon..."
-                                            className="w-full bg-white border-none rounded-2xl p-6 font-black text-2xl focus:ring-4 focus:ring-orange-500/20 transition-all shadow-sm"
-                                        />
-                                        <input
-                                            type="text"
-                                            disabled={!canUseCoupon}
-                                            value={couponCode}
-                                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                            placeholder="Kode Kupon..."
-                                            className="w-full bg-white border-none rounded-2xl p-6 font-black text-2xl focus:ring-4 focus:ring-orange-500/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                                        />
+                                {/* Voucher Redemption Section (Slim) */}
+                                <div className="p-4 bg-gray-50 rounded-2xl mb-4">
+                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block">
+                                        Gunakan Kode Voucher
+                                    </label>
+
+                                    <div className="space-y-3">
+                                        {/* Input & Button stacked vertically */}
+                                        <div className="flex flex-col gap-3">
+                                            <input
+                                                type="text"
+                                                value={voucherCode}
+                                                onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                                                placeholder="KODE-XXXX"
+                                                className="w-full bg-white border-none rounded-xl p-3 font-black text-base focus:ring-2 focus:ring-orange-500/20 transition-all shadow-sm text-center"
+                                            />
+
+                                            <button
+                                                onClick={handleCheckVoucher}
+                                                disabled={checkingVoucher || !voucherCode}
+                                                className="w-full py-3 bg-orange-500 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-50"
+                                            >
+                                                {checkingVoucher ? 'Mengecek...' : 'Pakai Voucher'}
+                                            </button>
+                                        </div>
+
+                                        {/* Active voucher info */}
+                                        {activeVoucher && (
+                                            <div className="p-3 bg-orange-100/50 rounded-xl border border-orange-200 animate-in fade-in zoom-in duration-300 flex justify-between items-center">
+                                                <div className="flex items-center gap-3">
+                                                    <i className="bi bi-ticket-perforated-fill text-orange-500 text-lg"></i>
+                                                    <div>
+                                                        <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest leading-none">Voucher Terpasang</p>
+                                                        <p className="text-[12px] font-black text-gray-900 mt-1">
+                                                            -{activeVoucher.type === 'percentage' ? activeVoucher.value + '%' : 'Rp ' + new Intl.NumberFormat('id-ID').format(activeVoucher.value)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => { setActiveVoucher(null); setVoucherCode(''); }}
+                                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <i className="bi bi-x-circle-fill text-lg"></i>
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Numpad Section */}
+                            {/* Numpad Section (Slim) */}
                             <div className="flex flex-col">
                                 {method === 'Tunai' ? (
                                     <>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Input Nominal Bayar (Tunai)</label>
-                                        <div className="bg-gray-900 rounded-[2.5rem] p-8 mb-6">
-                                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-2">Total Dibayar</p>
-                                            <p className="text-4xl font-black text-white tracking-tight">Rp {new Intl.NumberFormat('id-ID').format(amountPaid)}</p>
+                                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block">Nominal Bayar (Tunai)</label>
+                                        <div className="bg-gray-900 rounded-2xl p-4 mb-4 shadow-lg">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <p className="text-[8px] font-black text-orange-500 uppercase tracking-[0.2em]">Total Dibayar</p>
+                                                <button onClick={() => setAmountPaid(finalTotal)} className="text-[7px] font-black text-white bg-white/10 px-1.5 py-0.5 rounded uppercase tracking-widest hover:bg-white/20">Pas</button>
+                                            </div>
+                                            <p className="text-2xl font-black text-white tracking-tight leading-none">Rp {new Intl.NumberFormat('id-ID').format(amountPaid)}</p>
                                             {amountPaid > finalTotal && (
-                                                <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center text-green-400 font-black">
-                                                    <span className="text-xs uppercase tracking-widest">Kembalian</span>
-                                                    <span className="text-xl">Rp {new Intl.NumberFormat('id-ID').format(amountPaid - finalTotal)}</span>
+                                                <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center text-green-400 font-black">
+                                                    <span className="text-[8px] uppercase tracking-widest">Kembalian</span>
+                                                    <span className="text-base">Rp {new Intl.NumberFormat('id-ID').format(amountPaid - finalTotal)}</span>
                                                 </div>
                                             )}
                                         </div>
-                                        <Numpad
-                                            value={amountPaid}
-                                            onChange={setAmountPaid}
-                                            onConfirm={handleFinalize}
-                                            label={processing ? 'Memproses...' : 'Selesaikan Pembayaran'}
-                                        />
-                                        <button onClick={() => setAmountPaid(finalTotal)} className="mt-4 py-4 bg-blue-50 text-blue-600 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95">Bayar Uang Pas</button>
+                                        <div className="grid grid-cols-3 gap-1.5 flex-1 min-h-0">
+                                            {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map(key => (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => {
+                                                        if (key === 'C') setAmountPaid(0);
+                                                        else if (key === '⌫') setAmountPaid(Math.floor(amountPaid / 10));
+                                                        else setAmountPaid(parseInt(amountPaid.toString() + key) || 0);
+                                                    }}
+                                                    className={'h-11 rounded-xl font-bold text-base transition-all active:scale-95 active:bg-orange-500 active:text-white ' + (key === 'C' ? 'bg-red-50 text-red-500' : 'bg-white shadow-sm border border-gray-100 text-gray-900')}
+                                                >
+                                                    {key}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <button
+                                            disabled={processing || amountPaid < finalTotal}
+                                            onClick={handleFinalize}
+                                            className="w-full mt-3 py-3.5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-xl font-black text-base shadow-xl shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-30"
+                                        >
+                                            {processing ? 'Memproses...' : 'Selesaikan Pembayaran'}
+                                        </button>
                                     </>
                                 ) : (
-                                    <div className="flex-1 flex flex-col justify-center items-center text-center p-10 bg-orange-50 rounded-[3rem] border-2 border-orange-100">
-                                        <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center text-orange-500 mb-6 shadow-xl">
-                                            <i className={'bi ' + (method === 'QRIS' ? 'bi-qr-code-scan' : method === 'EDC' ? 'bi-credit-card-2-front' : 'bi-file-earmark-text') + ' text-5xl'}></i>
+                                    <div className="flex-1 flex flex-col justify-center items-center text-center p-5 bg-orange-50 rounded-[2rem] border-2 border-orange-100 border-dashed">
+                                        <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-orange-500 mb-3 shadow-lg">
+                                            <i className={'bi ' + (method === 'QRIS' ? 'bi-qr-code-scan' : method === 'EDC' ? 'bi-credit-card-2-front' : 'bi-file-earmark-text') + ' text-2xl'}></i>
                                         </div>
-                                        <h3 className="text-2xl font-black text-gray-900 tracking-tight mb-2">Konfirmasi {method}</h3>
-                                        <p className="text-gray-500 font-medium mb-10 max-w-xs">Pastikan customer sudah melakukan transaksi melalui {method}.</p>
+                                        <h3 className="text-base font-black text-gray-900 tracking-tight mb-1">Konfirmasi {method}</h3>
+                                        <p className="text-gray-500 text-[9px] font-medium mb-5 max-w-xs leading-relaxed">Pastikan customer sudah melakukan transaksi melalui {method}.</p>
                                         <button
                                             disabled={processing}
                                             onClick={handleFinalize}
-                                            className={'w-full py-6 text-white rounded-[2rem] font-black text-2xl shadow-xl transition-all active:scale-95 disabled:opacity-30 ' + (method === 'QRIS' ? 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/30' : method === 'INVOICE' ? 'bg-gradient-to-r from-purple-600 to-indigo-700 shadow-purple-500/30' : 'bg-gradient-to-r from-orange-500 to-yellow-400 shadow-orange-500/30')}
+                                            className={'w-full py-3.5 text-white rounded-xl font-black text-base shadow-lg transition-all active:scale-95 disabled:opacity-30 ' + (method === 'QRIS' ? 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/30' : method === 'INVOICE' ? 'bg-gradient-to-r from-purple-600 to-indigo-700 shadow-purple-500/30' : 'bg-gradient-to-r from-orange-500 to-yellow-400 shadow-orange-500/30')}
                                         >
                                             {processing ? 'Memproses...' : method === 'QRIS' ? 'Generate QRIS' : method === 'INVOICE' ? 'Settle to Invoice' : 'Konfirmasi Bayar'}
                                         </button>
@@ -381,25 +529,25 @@
         };
 
         return (
-            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-                    <div className="p-8">
-                        <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-2">Void Pesanan</h2>
-                        <p className="text-gray-400 font-medium text-sm leading-relaxed mb-6">Masukkan alasan void dan PIN manager untuk melanjutkan.</p>
+            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                    <div className="p-6">
+                        <h2 className="text-xl font-black text-gray-900 tracking-tight mb-1">Void Pesanan</h2>
+                        <p className="text-gray-400 font-medium text-xs leading-relaxed mb-5">Masukkan alasan void dan PIN manager.</p>
 
                         <div className="mb-4">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Alasan</label>
-                            <input value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4" placeholder="Alasan void..." />
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Alasan</label>
+                            <input value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-gray-50 rounded-xl p-3 text-sm" placeholder="Alasan void..." />
                         </div>
 
                         <div className="mb-6">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">PIN Manager</label>
-                            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4" placeholder="PIN..." />
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2 block">PIN Manager</label>
+                            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} className="w-full bg-gray-50 rounded-xl p-3 text-sm" placeholder="PIN..." />
                         </div>
 
-                        <div className="flex gap-3">
-                            <button onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-2xl font-black">Batal</button>
-                            <button disabled={processing} onClick={handleSubmit} className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-black">{processing ? 'Memproses...' : 'Void Pesanan'}</button>
+                        <div className="flex gap-2">
+                            <button onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-black text-xs">Batal</button>
+                            <button disabled={processing} onClick={handleSubmit} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black text-xs">{processing ? '...' : 'Void Pesanan'}</button>
                         </div>
                     </div>
                 </div>
@@ -420,25 +568,25 @@
         };
 
         return (
-            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                <div className="bg-white w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 text-black">
-                    <div className="p-8">
-                        <h2 className="text-2xl font-black tracking-tight mb-2">Void Item: {target?.item?.menu_name}</h2>
-                        <p className="text-black-600 font-medium text-sm leading-relaxed mb-6">Pilih jumlah item yang akan di-VOID (maks {target?.item?.qty}).</p>
+            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 text-black">
+                    <div className="p-6">
+                        <h2 className="text-xl font-black tracking-tight mb-1">Void Item</h2>
+                        <p className="text-gray-500 font-medium text-xs mb-5">Item: {target?.item?.menu_name} (maks {target?.item?.qty})</p>
 
                         <div className="mb-4">
-                            <label className="text-[10px] font-black text-black uppercase tracking-widest mb-2 block">Jumlah yang di-void</label>
-                            <input type="number" min="1" max={target?.item?.qty} value={qty} onChange={(e)=> setQty(Math.max(1, Math.min(target?.item?.qty || 1, parseInt(e.target.value || 0))))} className="w-full bg-gray-50 rounded-2xl p-4 text-black placeholder-gray-400" />
+                            <label className="text-[9px] font-black text-black uppercase tracking-widest mb-2 block">Jumlah</label>
+                            <input type="number" min="1" max={target?.item?.qty} value={qty} onChange={(e)=> setQty(Math.max(1, Math.min(target?.item?.qty || 1, parseInt(e.target.value || 0))))} className="w-full bg-gray-50 rounded-xl p-3 text-sm text-black" />
                         </div>
 
                         <div className="mb-6">
-                            <label className="text-[10px] font-black text-black uppercase tracking-widest mb-2 block">Alasan (opsional)</label>
-                            <input value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-gray-50 rounded-2xl p-4 text-black placeholder-gray-400" placeholder="Alasan..." />
+                            <label className="text-[9px] font-black text-black uppercase tracking-widest mb-2 block">Alasan</label>
+                            <input value={reason} onChange={(e) => setReason(e.target.value)} className="w-full bg-gray-50 rounded-xl p-3 text-sm text-black" placeholder="Alasan..." />
                         </div>
 
-                        <div className="flex gap-3">
-                            <button onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-2xl font-black">Batal</button>
-                            <button disabled={processing} onClick={handle} className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-black">{processing ? 'Memproses...' : 'Void Item'}</button>
+                        <div className="flex gap-2">
+                            <button onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-black text-xs">Batal</button>
+                            <button disabled={processing} onClick={handle} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black text-xs">{processing ? '...' : 'Void Item'}</button>
                         </div>
                     </div>
                 </div>
@@ -596,34 +744,34 @@
         return (
             <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
                 {/* Left: Guest Control */}
-                <div className="w-[320px] bg-white border-r border-gray-100 p-8 flex flex-col">
-                    <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm mb-10 transition-colors">
+                <div className="w-[280px] bg-white border-r border-gray-100 p-6 flex flex-col">
+                    <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-xs mb-8 transition-colors">
                         <i className="bi bi-arrow-left"></i> Kembali
                     </button>
 
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs">2</div>
-                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Pilih Meja</h2>
+                        <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-[10px]">2</div>
+                        <h2 className="text-xl font-black text-gray-900 tracking-tight">Pilih Meja</h2>
                     </div>
 
-                    <div className="mt-8">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 block">Jumlah Tamu</label>
-                        <div className="flex items-center justify-between bg-gray-50 rounded-3xl p-4 border border-gray-100 mb-6">
-                            <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
-                                <i className="bi bi-dash-lg text-xl"></i>
+                    <div className="mt-6">
+                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block">Jumlah Tamu</label>
+                        <div className="flex items-center justify-between bg-gray-50 rounded-2xl p-3 border border-gray-100 mb-5">
+                            <button onClick={() => setGuestCount(Math.max(1, guestCount - 1))} className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                                <i className="bi bi-dash-lg text-lg"></i>
                             </button>
-                            <span className="text-5xl font-black text-gray-900 w-20 text-center tracking-tighter">{guestCount}</span>
-                            <button onClick={() => setGuestCount(guestCount + 1)} className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
-                                <i className="bi bi-plus-lg text-xl"></i>
+                            <span className="text-4xl font-black text-gray-900 w-16 text-center tracking-tighter">{guestCount}</span>
+                            <button onClick={() => setGuestCount(guestCount + 1)} className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-gray-900 hover:bg-orange-500 hover:text-white transition-all active:scale-90">
+                                <i className="bi bi-plus-lg text-lg"></i>
                             </button>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-2 mb-10">
+                        <div className="grid grid-cols-4 gap-1.5 mb-8">
                             {[1, 2, 3, 4, 5, 6, 8, 10].map(n => (
                                 <button
                                     key={n}
                                     onClick={() => setGuestCount(n)}
-                                    className={`py-3 rounded-xl font-black transition-all ${guestCount === n ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                    className={`py-2.5 rounded-xl font-black text-xs transition-all ${guestCount === n ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                                 >
                                     {n}
                                 </button>
@@ -631,48 +779,48 @@
                         </div>
                     </div>
 
-                    <div className="mt-auto space-y-3 pt-6 border-t border-gray-50">
+                    <div className="mt-auto space-y-2.5 pt-5 border-t border-gray-50">
                         <button 
                             onClick={onOpenManagement}
-                            className="w-full py-4 mb-6 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-gray-900/20 flex items-center justify-center gap-3"
+                            className="w-full py-3.5 mb-4 bg-gray-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-gray-900/20 flex items-center justify-center gap-2"
                         >
-                            <i className="bi bi-gear-fill"></i> Manajemen Meja
+                            <i className="bi bi-gear-fill"></i> Meja Settings
                         </button>
-                        <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div> Tersedia
+                        <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                            <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div> Tersedia
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            <div className="w-3 h-3 rounded-full bg-gray-300"></div> Terisi
+                        <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                            <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div> Terisi
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                            <div className="w-3 h-3 rounded-full bg-orange-500"></div> Reservasi
+                        <div className="flex items-center gap-2 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                            <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div> Reservasi
                         </div>
                     </div>
                 </div>
 
                 {/* Right: Table Grid */}
-                <div className="flex-1 p-10 flex flex-col overflow-hidden relative">
+                <div className="flex-1 p-6 flex flex-col overflow-hidden relative">
                     {managementAction && (
-                        <div className="absolute top-0 inset-x-0 bg-gray-900 text-white p-6 z-10 flex justify-between items-center animate-in slide-in-from-top duration-300">
-                            <div className="flex items-center gap-6">
-                                <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center">
-                                    <i className="bi bi-gear-wide-connected text-xl"></i>
+                        <div className="absolute top-0 inset-x-0 bg-gray-900 text-white p-4 z-10 flex justify-between items-center animate-in slide-in-from-top duration-300">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center">
+                                    <i className="bi bi-gear-wide-connected text-lg"></i>
                                 </div>
                                 <div>
-                                    <h4 className="text-lg font-black tracking-tight">Mode: {actionLabels[managementAction]}</h4>
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    <h4 className="text-base font-black tracking-tight">Mode: {actionLabels[managementAction]}</h4>
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
                                         {managementAction === 'move' || managementAction === 'merge' 
                                             ? (!sourceTable ? 'Pilih meja sumber' : !targetTable ? 'Pilih meja tujuan' : 'Siap dikonfirmasi')
                                             : 'Pilih meja target'}
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex gap-3">
-                                <button onClick={onCancelManagement} className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-black text-xs uppercase tracking-widest transition-all">Batal</button>
+                            <div className="flex gap-2">
+                                <button onClick={onCancelManagement} className="px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">Batal</button>
                                 <button 
                                     onClick={onConfirmManagement} 
                                     disabled={!sourceTable || ((managementAction === 'move' || managementAction === 'merge') && !targetTable)}
-                                    className="px-8 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-30 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-500/20"
+                                    className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-30 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-orange-500/20"
                                 >
                                     Konfirmasi
                                 </button>
@@ -680,21 +828,21 @@
                         </div>
                     )}
 
-                    <div className="flex justify-between items-center mb-8">
+                    <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h3 className="text-xl font-black text-gray-900 tracking-tight">Meja tersedia untuk {guestCount}+ tamu</h3>
+                            <h3 className="text-lg font-black text-gray-900 tracking-tight">Meja tersedia untuk {guestCount}+ tamu</h3>
                             {selectedTables.length > 0 && (
-                                <p className="text-xs font-bold text-orange-500 uppercase tracking-widest mt-1">
-                                    Total Kapasitas Terpilih: {totalSelectedCapacity} tamu ({selectedTables.length} meja)
+                                <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mt-0.5">
+                                    Kapasitas: {totalSelectedCapacity} ({selectedTables.length} meja)
                                 </p>
                             )}
                         </div>
-                        <div className="bg-white px-4 py-2 rounded-full border border-gray-100 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                        <div className="bg-white px-3 py-1.5 rounded-full border border-gray-100 text-[9px] font-black text-gray-500 uppercase tracking-widest">
                             {tables.filter(t => t.status === 'available').length} tersedia
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto pr-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 content-start custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 content-start custom-scrollbar">
                         {tables.map(table => (
                             <TableCard
                                 key={table.id}
@@ -709,13 +857,13 @@
                         ))}
                     </div>
 
-                    <div className="mt-8 flex justify-end">
+                    <div className="mt-6 flex justify-end">
                         <button
                             disabled={!canContinue || !!managementAction}
                             onClick={onContinue}
-                            className="px-12 py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-lg shadow-xl shadow-orange-500/20 disabled:opacity-30 disabled:shadow-none transition-all active:scale-95"
+                            className="px-10 py-4 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-base shadow-xl shadow-orange-500/20 disabled:opacity-30 disabled:shadow-none transition-all active:scale-95"
                         >
-                            Lanjut ke Menu <i className="bi bi-arrow-right ml-2"></i>
+                            Lanjut ke Menu <i className="bi bi-arrow-right ml-1.5"></i>
                         </button>
                     </div>
                 </div>
@@ -818,43 +966,43 @@
         return (
             <div className="w-full h-full flex bg-gray-50 animate-in slide-in-from-right duration-500">
                 {/* Main: Menu Area */}
-                <div className="flex-1 flex flex-col overflow-hidden p-8 transition-all duration-500">
-                    <div className="flex items-center justify-between gap-6 mb-8">
-                        <div className="flex items-center gap-6">
-                            <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-sm transition-colors">
+                <div className="flex-1 flex flex-col overflow-hidden p-6 transition-all duration-500">
+                    <div className="flex items-center justify-between gap-4 mb-6">
+                        <div className="flex items-center gap-4">
+                            <button onClick={onBack} className="flex items-center gap-2 text-gray-400 hover:text-gray-900 font-bold text-xs transition-colors">
                                 <i className="bi bi-arrow-left"></i> Kembali
                             </button>
                             <div className="flex gap-2">
-                                <div className="bg-green-100 text-green-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                                    <i className="bi bi-check-circle-fill"></i> Tipe Order: {orderType === 'DINE_IN' ? 'Dine In' : 'Take Away'}
+                                <div className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <i className="bi bi-check-circle-fill"></i> Order: {orderType === 'DINE_IN' ? 'Dine In' : 'Take Away'}
                                 </div>
                                 {selectedTables.length > 0 && (
-                                    <div className="bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <div className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
                                         <i className="bi bi-check-circle-fill"></i> Meja: {selectedTables.map(t => t.name).join(', ')}
                                     </div>
                                 )}
                             </div>
                         </div>
-                        <button onClick={() => setIsCartOpen(!isCartOpen)} className="w-14 h-14 flex items-center justify-center bg-white rounded-2xl shadow-sm text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
-                            <i className={`bi ${isCartOpen ? 'bi-chevron-right' : 'bi-chevron-left'} text-xl`}></i>
+                        <button onClick={() => setIsCartOpen(!isCartOpen)} className="w-12 h-12 flex items-center justify-center bg-white rounded-xl shadow-sm text-gray-400 hover:bg-orange-500 hover:text-white transition-all">
+                            <i className={`bi ${isCartOpen ? 'bi-chevron-right' : 'bi-chevron-left'} text-lg`}></i>
                         </button>
                     </div>
 
                     {/* Category Tabs & Search - Vertical Space Optimized */}
-                    <div className="flex justify-between items-center mb-6 gap-4">
-                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar flex-1 snap-x">
+                    <div className="flex justify-between items-center mb-5 gap-3">
+                        <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar flex-1 snap-x">
                             {mainCategories.map(cat => (
                                 <button
                                     key={cat}
                                     onClick={() => setActiveCategory(cat)}
-                                    className={`px-6 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap snap-start ${activeCategory === cat ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                                    className={`px-5 py-2 rounded-xl font-bold text-[10px] transition-all whitespace-nowrap snap-start ${activeCategory === cat ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
                                 >
                                     {cat}
                                 </button>
                             ))}
                         </div>
-                        <div className="relative w-64">
-                            <i className="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <div className="relative w-56">
+                            <i className="bi bi-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                             <input
                                 type="text"
                                 placeholder="Cari menu..."
@@ -923,7 +1071,7 @@
                                 onChange={(e) => setCustomerCategory(e.target.value)}
                                 className="w-full bg-gray-50 border-none rounded-xl py-2 px-3 text-xs font-bold text-gray-900 focus:ring-1 focus:ring-orange-500 transition-all appearance-none cursor-pointer"
                             >
-                                {['Reguler', 'Member', 'Staff', 'Majar Owner'].map(cat => (
+                                {['Regular', 'Reservation', 'Majar Priority', 'Majar Signature'].map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
                             </select>
@@ -1063,7 +1211,10 @@
             });
         };
 
-        const handleFinalizePayment = async (method, amount, discount = 0) => {
+        const [showReceiptPreview, setShowReceiptPreview] = useState(false);
+        const [paidOrderData, setPaidOrderData] = useState(null);
+
+        const handleFinalizePayment = async (method, amount, discount = 0, discountCode = '', discountId = '') => {
             try {
                 const res = await fetch(`/terminal/orders/${selectedOrder.id}/finalize-payment`, {
                     method: 'POST',
@@ -1074,7 +1225,8 @@
                     body: JSON.stringify({
                         payment_method: method.toLowerCase(),
                         amount_paid: amount,
-                        discount_amount: discount
+                        discount_amount: discount,
+                        discount_id: discountId
                     })
                 });
 
@@ -1082,32 +1234,39 @@
                 if (data.success) {
                     onShowToast(method === 'INVOICE' ? 'Pesanan dipindahkan ke Invoice!' : 'Pembayaran Berhasil! Meja tersedia.');
                     setShowPaymentModal(false);
-                    // Keep order data for receipt display
-                    const paidOrder = data.order || (data.order_id ? { code: data.order_id } : null);
-                    setSelectedOrder(null);
+                    
+                    const paidOrder = data.order || selectedOrder;
+                    
+                    if (method.toLowerCase() !== 'invoice') {
+                        setPaidOrderData({
+                            ...paidOrder,
+                            discount_amount: discount,
+                            total: selectedOrder.total - discount
+                        });
+                        setShowReceiptPreview(true);
+                    } else {
+                        setSelectedOrder(null);
+                    }
+
                     fetchActiveOrders();
                     fetchTables();
-
-                    // If this was a normal payment (not invoice), open printable receipt
-                    try {
-                        const code = paidOrder?.code || data.code || data.order_code;
-                        if (code && (!method || method.toLowerCase() !== 'invoice')) {
-                            // Open printable receipt view in a new window/tab
-                            // Attach warung (subdomain/slug) if available so the receipt route can resolve the correct warung
-                            const warungParam = paidOrder?.warung?.slug || paidOrder?.warung?.code || paidOrder?.warung_code || '';
-                            let url = `/order-receipt-print?code=${encodeURIComponent(code)}`;
-                            if (warungParam) url += `&warung=${encodeURIComponent(warungParam)}`;
-                            window.open(url, '_blank');
-                        }
-                    } catch (e) {
-                        console.error('Failed to open receipt window', e);
-                    }
                 } else {
                     onShowToast(data.error || 'Gagal memproses pembayaran', 'error');
                 }
             } catch (e) {
                 onShowToast('Terjadi kesalahan sistem.', 'error');
             }
+        };
+
+        const handlePrintReceipt = () => {
+            if (!paidOrderData) return;
+            const code = paidOrderData.code || paidOrderData.id;
+            const url = `/order-receipt-print?code=${encodeURIComponent(code)}`;
+            window.open(url, '_blank');
+        };
+
+        const handleShareReceipt = () => {
+            onShowToast('Fitur WhatsApp Receipt segera hadir!', 'info');
         };
 
         const handleVoidOrder = async (orderId, reason, pin) => {
@@ -1542,6 +1701,18 @@
                     <ConfirmModal
                         {...confirmAction}
                         onClose={() => setConfirmAction(null)}
+                    />
+                )}
+                {showReceiptPreview && paidOrderData && (
+                    <ReceiptPreviewModal
+                        order={paidOrderData}
+                        onPrint={handlePrintReceipt}
+                        onShare={handleShareReceipt}
+                        onClose={() => {
+                            setShowReceiptPreview(false);
+                            setPaidOrderData(null);
+                            setSelectedOrder(null);
+                        }}
                     />
                 )}
                 {toast && <Toast {...toast} onClose={() => setToast(null)} />}

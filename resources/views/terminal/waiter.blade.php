@@ -473,7 +473,7 @@
                                 onChange={(e) => setCustomerCategory(e.target.value)}
                                 className="w-full bg-gray-50 border-none rounded-lg py-1.5 px-2.5 text-[11px] font-bold text-gray-900 focus:ring-1 focus:ring-orange-500 transition-all appearance-none cursor-pointer"
                             >
-                                {['Reguler', 'Member', 'Staff', 'Majar Owner'].map(cat => (
+                                {['Regular', 'Reservation', 'Majar Priority', 'Majar Signature'].map(cat => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
                             </select>
@@ -538,27 +538,6 @@
             </div>
         );
     };
-                            disabled={cart.length === 0 || submitting}
-                            onClick={() => setShowConfirm(true)}
-                            className="w-full py-5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-[2rem] font-black text-xl shadow-xl shadow-orange-500/30 transition-all active:scale-95 disabled:opacity-30 disabled:shadow-none mt-4"
-                        >
-                            {submitting ? 'Mengirim...' : 'Kirim Pesanan'} <i className="bi bi-send-fill ml-2"></i>
-                        </button>
-                    </div>
-                </div>
-
-                {showConfirm && (
-                    <ConfirmModal
-                        title="Kirim Pesanan?"
-                        message={`Apakah Anda yakin ingin mengirim ${cart.length} item pesanan ini ke Kasir?`}
-                        onConfirm={handleConfirmOrder}
-                        onClose={() => setShowConfirm(false)}
-                        confirmText="Ya, Kirim"
-                    />
-                )}
-            </div>
-        );
-    }
 
     // --- Main Terminal App ---
 

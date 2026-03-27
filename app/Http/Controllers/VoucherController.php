@@ -22,31 +22,42 @@ class VoucherController extends Controller
             'type' => 'required|in:percentage,fixed',
             'value' => 'required|numeric|min:0',
             'category_restriction' => 'nullable|string',
-            'count' => 'required|integer|min:1|max:50', // Number of vouchers to generate
+            'count' => 'required|integer|min:1|max:50',
+            'duration_hours' => 'nullable|integer|min:1',
         ]);
 
         $warungId = auth()->user()->warung_id;
-        $vouchers = [];
-
-        for ($i = 0; $i < $validated['count']; $i++) {
-            $code = 'MAJAR-' . strtoupper(Str::random(6));
-            
-            // Ensure uniqueness
-            while (Voucher::where('code', $code)->exists()) {
-                $code = 'MAJAR-' . strtoupper(Str::random(6));
-            }
-
-            $vouchers[] = Voucher::create([
-                'warung_id' => $warungId,
-                'code' => $code,
-                'type' => $validated['type'],
-                'value' => $validated['value'],
-                'category_restriction' => $validated['category_restriction'],
-                'is_used' => false,
-            ]);
+        if (!$warungId) {
+            return redirect()->back()->with('error', 'Gagal simpan ke database: Warung ID tidak ditemukan.');
         }
 
-        return redirect()->back()->with('success', count($vouchers) . ' Voucher berhasil dibuat!');
+        $vouchersCreated = 0;
+        $duration = $validated['duration_hours'] ?? 1;
+
+        try {
+            for ($i = 0; $i < $validated['count']; $i++) {
+                $code = 'MAJAR-' . strtoupper(Str::random(6));
+                
+                while (Voucher::where('code', $code)->exists()) {
+                    $code = 'MAJAR-' . strtoupper(Str::random(6));
+                }
+
+                Voucher::create([
+                    'warung_id' => $warungId,
+                    'code' => $code,
+                    'type' => $validated['type'],
+                    'value' => $validated['value'],
+                    'category_restriction' => $validated['category_restriction'],
+                    'is_used' => 0,
+                    'expired_at' => now()->addHours($duration),
+                ]);
+                $vouchersCreated++;
+            }
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal simpan ke database: ' . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', $vouchersCreated . ' Voucher berhasil dibuat!');
     }
 
     public function destroy(Voucher $voucher)
