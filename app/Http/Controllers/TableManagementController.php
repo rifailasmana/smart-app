@@ -85,11 +85,12 @@ class TableManagementController extends Controller
                 'success' => true,
                 'message' => 'Meja berhasil digabungkan ke pesanan ' . $targetOrder->code
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal menggabungkan meja: ' . $e->getMessage()], 500);
         }
+    }
+
     /**
      * Force reset a table's status to available.
      */
@@ -98,11 +99,11 @@ class TableManagementController extends Controller
         $table->update(['status' => 'available']);
 
         // Check if there are any active orders for this table and void them or move them
-         Order::where('table_id', $table->id)
-             ->whereNotIn('stage', ['DONE', 'VOID'])
-             ->update(['table_id' => null]); // Move to null (Take Away) instead of voiding
- 
-         broadcast(new TableChanged($table))->toOthers();
+        Order::where('table_id', $table->id)
+            ->whereNotIn('stage', ['DONE', 'VOID'])
+            ->update(['table_id' => null]); // Move to null (Take Away) instead of voiding
+
+        broadcast(new TableChanged($table))->toOthers();
 
         return response()->json(['success' => true]);
     }

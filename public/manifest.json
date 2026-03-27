@@ -1,25 +1,28 @@
 {
-  "name": "Majar POS Signature",
-  "short_name": "MajarPOS",
-  "description": "Premium POS System for Majar Signature",
-  "start_url": "/terminal",
-  "display": "standalone",
-  "background_color": "#063024",
-  "theme_color": "#FF8C00",
-  "orientation": "landscape",
-  "icons": [
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/562/562678.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/562/562678.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["business", "food"]
+    "name": "Majar POS Signature",
+    "short_name": "MajarPOS",
+    "description": "Premium POS System for Majar Signature",
+    "start_url": "/login",
+    "display": "fullscreen",
+    "background_color": "#063024",
+    "theme_color": "#FF8C00",
+    "orientation": "landscape",
+    "icons": [
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/562/562678.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/562/562678.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "business",
+        "food"
+    ]
 }

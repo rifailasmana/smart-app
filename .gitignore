@@ -25,10 +25,3 @@ dist
 .nuxt-build
 .nuxt/node_modules
 
-# Nuxt in frontend folder
-/frontend/.nuxt
-/frontend/dist
-/frontend/.output
-/frontend/.nuxt-build
-/frontend/node_modules
-/frontend/.env
