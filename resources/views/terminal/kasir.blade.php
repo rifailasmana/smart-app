@@ -221,11 +221,23 @@
     };
 
     const PaymentModal = ({ order, onConfirm, onClose, onShowToast }) => {
+        // --- Defensive Check: Fallback UI ---
+        if (!order) {
+            return (
+                <div className="fixed inset-0 z-[9000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white p-8 rounded-[2rem] flex flex-col items-center gap-4 shadow-2xl">
+                        <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                        <p className="font-black text-gray-900 uppercase tracking-widest text-[10px]">Memuat Data Pesanan...</p>
+                    </div>
+                </div>
+            );
+        }
+
         const [method, setPaymentMethod] = useState('Tunai');
         const [voucherCode, setVoucherCode] = useState('');
         const [activeVoucher, setActiveVoucher] = useState(null);
         const [checkingVoucher, setCheckingVoucher] = useState(false);
-        const [amountPaid, setAmountPaid] = useState(order.total);
+        const [amountPaid, setAmountPaid] = useState(0); // Strict numeric init (0)
         const [processing, setProcessing] = useState(false);
         const [showQR, setShowQR] = useState(false);
 
@@ -268,6 +280,7 @@
 
         useEffect(() => {
             if (method !== 'Tunai') setAmountPaid(finalTotal);
+            else setAmountPaid(0); // Reset when switching to Tunai for keypad input
         }, [finalTotal, method]);
 
         const handleFinalize = async () => {
@@ -282,21 +295,16 @@
 
         if (showQR) {
             return (
-                <div className="fixed inset-0 z-[9000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-                        <div className="p-8 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Scan QRIS</h2>
-                            <button onClick={() => setShowQR(false)} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                                <i className="bi bi-arrow-left"></i>
-                            </button>
-                        </div>
-                        <div className="p-8 flex flex-col items-center">
-                            <div className="bg-gray-50 rounded-3xl p-6 mb-6 w-full text-center">
-                                <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mb-2">Total Tagihan</p>
-                                <p className="text-3xl font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(finalTotal)}</p>
+                <div className="fixed inset-0 z-[9000] flex items-center justify-center p-8 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-xl rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                        <div className="p-12 flex flex-col items-center text-center">
+                            <div className="w-20 h-20 bg-orange-100 text-orange-500 rounded-3xl flex items-center justify-center mb-6">
+                                <i className="bi bi-qr-code-scan text-4xl"></i>
                             </div>
-
-                            <div className="relative group mb-6">
+                            <h2 className="text-3xl font-black text-gray-900 mb-2 uppercase tracking-tight">Scan QRIS</h2>
+                            <p className="text-gray-400 font-medium mb-8">Silakan scan kode QR di bawah ini</p>
+                            
+                            <div className="relative group mb-8">
                                 <div className="absolute -inset-4 bg-gradient-to-tr from-orange-500 to-yellow-400 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
                                 <div className="relative bg-white p-6 rounded-[2rem] shadow-xl">
                                     <img
@@ -332,182 +340,193 @@
         }
 
         return (
-            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                <div className="bg-white w-full max-w-5xl h-full lg:h-fit lg:max-h-[92vh] rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col lg:flex-row">
-                    {/* Left: Summary */}
-                    <div className="w-full lg:w-[360px] bg-gray-50 p-6 border-r border-gray-100 flex flex-col">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-black text-gray-900 tracking-tight">Tagihan</h2>
-                            <button onClick={onClose} className="lg:hidden text-gray-400 p-2 active:scale-95"><i className="bi bi-x-lg text-xl"></i></button>
+            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-6xl h-[85vh] rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col border border-white/20">
+                    
+                    {/* Header Compact */}
+                    <div className="px-6 py-3 border-b border-gray-100 flex justify-between items-center bg-white">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">Majar Signature Terminal</h2>
+                            <div className="h-4 w-px bg-gray-200"></div>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">#{order.code}</span>
                         </div>
-
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-6 space-y-3">
-                            {order.items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-center p-3 bg-white rounded-xl border border-gray-100 shadow-sm">
-                                    <div className="flex-1 pr-3">
-                                        <h5 className="font-black text-gray-900 text-xs leading-tight">{item.qty}x {item.menu_name}</h5>
-                                        <p className="text-[9px] font-bold text-gray-400 mt-0.5 uppercase">@ Rp {new Intl.NumberFormat('id-ID').format(item.price)}</p>
-                                    </div>
-                                    <span className="font-black text-gray-900 text-xs">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="pt-6 border-t-2 border-dashed border-gray-200 space-y-3">
-                            <div className="flex justify-between text-[11px] text-gray-500 font-bold uppercase tracking-widest">
-                                <span>Subtotal</span>
-                                <span>Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
-                            </div>
-                            {discountAmount > 0 && (
-                                <div className="flex justify-between text-[11px] text-red-500 font-bold uppercase tracking-widest">
-                                    <span>Diskon</span>
-                                    <span>- Rp {new Intl.NumberFormat('id-ID').format(discountAmount)}</span>
-                                </div>
-                            )}
-                            <div className="flex justify-between items-center pt-3">
-                                <span className="text-gray-900 font-black uppercase tracking-[0.2em] text-[10px]">Total</span>
-                                <span className="text-3xl font-black text-orange-500 tracking-tighter">Rp {new Intl.NumberFormat('id-ID').format(finalTotal)}</span>
-                            </div>
-                        </div>
+                        <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all">
+                            <i className="bi bi-x-lg text-sm"></i>
+                        </button>
                     </div>
 
-                    {/* Right: Payment Controls */}
-                    <div className="flex-1 p-5 bg-white flex flex-col overflow-y-auto custom-scrollbar">
-                        <div className="hidden lg:flex justify-end mb-3">
-                            <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center active:scale-95 active:bg-gray-100 transition-colors">
-                                <i className="bi bi-x-lg text-base"></i>
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                            <div>
-                                {/* Method Selector (Slim) */}
-                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block">Metode Pembayaran</label>
-                                <div className="grid grid-cols-2 gap-2 mb-5">
-                                    {[
-                                        { id: 'Tunai', icon: 'bi-cash-stack' },
-                                        { id: 'QRIS', icon: 'bi-qr-code-scan' },
-                                        { id: 'EDC', icon: 'bi-credit-card-2-front' },
-                                        { id: 'INVOICE', icon: 'bi-file-earmark-text' }
-                                    ].map(m => (
-                                        <button
-                                            key={m.id}
-                                            onClick={() => setPaymentMethod(m.id)}
-                                            className={'h-14 rounded-xl font-black transition-all flex flex-col items-center justify-center gap-0.5 border-2 ' + (method === m.id ? 'border-orange-500 bg-orange-50 text-orange-500 shadow-md shadow-orange-500/10' : 'border-gray-50 bg-white text-gray-400 active:border-gray-200')}
-                                        >
-                                            <i className={'bi ' + m.icon + ' text-lg'}></i>
-                                            <span className="text-[8px] uppercase tracking-[0.2em]">{m.id}</span>
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Voucher Redemption Section (Slim) */}
-                                <div className="p-4 bg-gray-50 rounded-2xl mb-4">
-                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block">
-                                        Gunakan Kode Voucher
-                                    </label>
-
-                                    <div className="space-y-3">
-                                        {/* Input & Button stacked vertically */}
-                                        <div className="flex flex-col gap-3">
-                                            <input
-                                                type="text"
-                                                value={voucherCode}
-                                                onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                                                placeholder="KODE-XXXX"
-                                                className="w-full bg-white border-none rounded-xl p-3 font-black text-base focus:ring-2 focus:ring-orange-500/20 transition-all shadow-sm text-center"
-                                            />
-
-                                            <button
-                                                onClick={handleCheckVoucher}
-                                                disabled={checkingVoucher || !voucherCode}
-                                                className="w-full py-3 bg-orange-500 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-50"
-                                            >
-                                                {checkingVoucher ? 'Mengecek...' : 'Pakai Voucher'}
-                                            </button>
+                    <div className="flex-1 flex flex-row overflow-hidden bg-white">
+                        
+                        {/* 1. Left Section: Billing (30%) - Compact, No Menu List */}
+                        <div className="w-[30%] p-6 flex flex-col border-r border-gray-100 bg-gray-50/30">
+                            <div className="space-y-4">
+                                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Rincian Tagihan</p>
+                                    <div className="space-y-2 mb-4">
+                                        <div className="flex justify-between text-[11px] font-bold text-gray-500 uppercase">
+                                            <span>Subtotal</span>
+                                            <span>Rp {new Intl.NumberFormat('id-ID').format(order.total)}</span>
                                         </div>
-
-                                        {/* Active voucher info */}
-                                        {activeVoucher && (
-                                            <div className="p-3 bg-orange-100/50 rounded-xl border border-orange-200 animate-in fade-in zoom-in duration-300 flex justify-between items-center">
-                                                <div className="flex items-center gap-3">
-                                                    <i className="bi bi-ticket-perforated-fill text-orange-500 text-lg"></i>
-                                                    <div>
-                                                        <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest leading-none">Voucher Terpasang</p>
-                                                        <p className="text-[12px] font-black text-gray-900 mt-1">
-                                                            -{activeVoucher.type === 'percentage' ? activeVoucher.value + '%' : 'Rp ' + new Intl.NumberFormat('id-ID').format(activeVoucher.value)}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    onClick={() => { setActiveVoucher(null); setVoucherCode(''); }}
-                                                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                                >
-                                                    <i className="bi bi-x-circle-fill text-lg"></i>
-                                                </button>
+                                        {discountAmount > 0 && (
+                                            <div className="flex justify-between text-[11px] font-bold text-green-600 uppercase">
+                                                <span>Diskon</span>
+                                                <span>- Rp {new Intl.NumberFormat('id-ID').format(discountAmount)}</span>
                                             </div>
                                         )}
                                     </div>
+                                    <div className="border-t-2 border-dashed border-gray-100 pt-4">
+                                        <p className="text-[9px] font-black text-orange-500 uppercase tracking-[0.2em] mb-1">Total Bayar</p>
+                                        <h1 className="text-4xl font-black text-orange-500 tracking-tighter leading-none">
+                                            Rp {new Intl.NumberFormat('id-ID').format(finalTotal)}
+                                        </h1>
+                                    </div>
+                                </div>
+
+                                {/* Voucher Center - Slimmed Down */}
+                                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Input Kupon/Voucher</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={voucherCode}
+                                            onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                                            placeholder="KODE..."
+                                            className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-2 font-black text-sm focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all uppercase placeholder:text-gray-200"
+                                        />
+                                        <button
+                                            onClick={handleCheckVoucher}
+                                            disabled={checkingVoucher || !voucherCode}
+                                            className="px-4 py-2 bg-gray-900 text-white rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all"
+                                        >
+                                            {checkingVoucher ? '...' : 'Apply'}
+                                        </button>
+                                    </div>
+                                    {activeVoucher && (
+                                        <div className="mt-3 p-3 bg-green-50 rounded-xl border border-green-100 flex justify-between items-center animate-in slide-in-from-top-2">
+                                            <div className="flex items-center gap-2">
+                                                <i className="bi bi-patch-check-fill text-green-500 text-lg"></i>
+                                                <span className="text-[10px] font-black text-green-700 uppercase">Voucher Terpasang</span>
+                                            </div>
+                                            <button onClick={() => { setActiveVoucher(null); setVoucherCode(''); }} className="text-gray-400 hover:text-red-500">
+                                                <i className="bi bi-x-circle-fill"></i>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Numpad Section (Slim) */}
-                            <div className="flex flex-col">
-                                {method === 'Tunai' ? (
-                                    <>
-                                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2.5 block">Nominal Bayar (Tunai)</label>
-                                        <div className="bg-gray-900 rounded-2xl p-4 mb-4 shadow-lg">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <p className="text-[8px] font-black text-orange-500 uppercase tracking-[0.2em]">Total Dibayar</p>
-                                                <button onClick={() => setAmountPaid(finalTotal)} className="text-[7px] font-black text-white bg-white/10 px-1.5 py-0.5 rounded uppercase tracking-widest hover:bg-white/20">Pas</button>
-                                            </div>
-                                            <p className="text-2xl font-black text-white tracking-tight leading-none">Rp {new Intl.NumberFormat('id-ID').format(amountPaid)}</p>
-                                            {amountPaid > finalTotal && (
-                                                <div className="mt-2 pt-2 border-t border-white/10 flex justify-between items-center text-green-400 font-black">
-                                                    <span className="text-[8px] uppercase tracking-widest">Kembalian</span>
-                                                    <span className="text-base">Rp {new Intl.NumberFormat('id-ID').format(amountPaid - finalTotal)}</span>
-                                                </div>
-                                            )}
+                            <div className="mt-auto bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                                <div className="flex items-start gap-2">
+                                    <i className="bi bi-info-circle-fill text-blue-500 text-xs"></i>
+                                    <p className="text-[8px] font-bold text-blue-600 uppercase leading-relaxed tracking-wider">Hapus daftar menu untuk hemat memori & fokus pada pembayaran.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. Middle Section: Method (25%) - Large Buttons */}
+                        <div className="w-[25%] p-6 border-r border-gray-100 flex flex-col bg-white">
+                            <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-5 text-center">Pilih Metode</h3>
+                            <div className="grid grid-cols-1 gap-3">
+                                {[
+                                    { id: 'Tunai', label: 'CASH', icon: 'bi-cash-stack' },
+                                    { id: 'QRIS', label: 'QRIS', icon: 'bi-qr-code-scan' },
+                                    { id: 'EDC', label: 'CARD', icon: 'bi-credit-card-2-front' },
+                                    { id: 'INVOICE', label: 'INVOICE', icon: 'bi-file-earmark-text' }
+                                ].map(m => (
+                                    <button
+                                        key={m.id}
+                                        onClick={() => setPaymentMethod(m.id)}
+                                        className={'flex items-center gap-4 px-5 py-4 rounded-[1.5rem] border-2 transition-all active:scale-95 ' + (method === m.id ? 'border-orange-500 bg-orange-50 text-orange-600 shadow-xl shadow-orange-500/10' : 'border-gray-50 bg-gray-50/50 text-gray-400 hover:border-gray-200')}
+                                    >
+                                        <div className={'w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ' + (method === m.id ? 'bg-orange-500 text-white' : 'bg-white text-gray-300')}>
+                                            <i className={'bi ' + m.icon + ' text-2xl'}></i>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-1.5 flex-1 min-h-0">
+                                        <span className="text-sm font-black tracking-[0.1em]">{m.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 3. Right Section: Interaction (45%) - Compact Keypad & Horizontal Display */}
+                        <div className="w-[45%] p-6 flex flex-col bg-white overflow-y-auto no-scrollbar">
+                            <div className="flex-1 flex flex-col">
+                                {method === 'Tunai' ? (
+                                    <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
+                                        {/* Horizontal Display Box - Black */}
+                                        <div className="bg-gray-900 rounded-[2rem] p-5 shadow-2xl mb-5">
+                                            <div className="flex justify-between items-center gap-8">
+                                                <div className="flex-1">
+                                                    <p className="text-[8px] font-black text-orange-500 uppercase tracking-widest mb-1">Uang Diterima</p>
+                                                    <div className="text-3xl font-black text-white tracking-tighter">
+                                                        Rp {new Intl.NumberFormat('id-ID').format(amountPaid)}
+                                                    </div>
+                                                </div>
+                                                <div className="h-10 w-px bg-gray-800"></div>
+                                                <div className="flex-1 text-right">
+                                                    <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-1">Kembalian</p>
+                                                    <div className={`text-3xl font-black ${amountPaid >= finalTotal ? 'text-green-400' : 'text-red-400/20'}`}>
+                                                        Rp {new Intl.NumberFormat('id-ID').format(Math.max(0, amountPaid - finalTotal))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Keypad Padat & Skala Kecil */}
+                                        <div className="grid grid-cols-3 gap-2 mb-4 max-w-[320px] mx-auto w-full">
                                             {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map(key => (
                                                 <button
                                                     key={key}
                                                     onClick={() => {
                                                         if (key === 'C') setAmountPaid(0);
                                                         else if (key === '⌫') setAmountPaid(Math.floor(amountPaid / 10));
-                                                        else setAmountPaid(parseInt(amountPaid.toString() + key) || 0);
+                                                        else {
+                                                            const newVal = parseInt(amountPaid.toString() + key);
+                                                            if (newVal <= 999999999) setAmountPaid(newVal || 0);
+                                                        }
                                                     }}
-                                                    className={'h-11 rounded-xl font-bold text-base transition-all active:scale-95 active:bg-orange-500 active:text-white ' + (key === 'C' ? 'bg-red-50 text-red-500' : 'bg-white shadow-sm border border-gray-100 text-gray-900')}
+                                                    className={'h-12 rounded-2xl font-black text-xl transition-all active:scale-90 ' + (key === 'C' ? 'bg-red-50 text-red-500' : key === '⌫' ? 'bg-gray-100 text-gray-600' : 'bg-white border-2 border-gray-100 hover:border-orange-500 hover:text-orange-500 text-gray-900 shadow-sm')}
                                                 >
                                                     {key}
                                                 </button>
                                             ))}
+                                            <button
+                                                onClick={() => setAmountPaid(finalTotal)}
+                                                className="col-span-3 h-12 bg-orange-100 text-orange-600 rounded-2xl font-black text-xs tracking-widest hover:bg-orange-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <i className="bi bi-lightning-fill"></i> UANG PAS (Rp {new Intl.NumberFormat('id-ID').format(finalTotal)})
+                                            </button>
                                         </div>
-                                        <button
-                                            disabled={processing || amountPaid < finalTotal}
-                                            onClick={handleFinalize}
-                                            className="w-full mt-3 py-3.5 bg-gradient-to-r from-orange-500 to-yellow-400 text-white rounded-xl font-black text-base shadow-xl shadow-orange-500/20 active:scale-95 transition-all disabled:opacity-30"
-                                        >
-                                            {processing ? 'Memproses...' : 'Selesaikan Pembayaran'}
-                                        </button>
-                                    </>
+                                    </div>
                                 ) : (
-                                    <div className="flex-1 flex flex-col justify-center items-center text-center p-5 bg-orange-50 rounded-[2rem] border-2 border-orange-100 border-dashed">
-                                        <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-orange-500 mb-3 shadow-lg">
-                                            <i className={'bi ' + (method === 'QRIS' ? 'bi-qr-code-scan' : method === 'EDC' ? 'bi-credit-card-2-front' : 'bi-file-earmark-text') + ' text-2xl'}></i>
+                                    <div className="flex-1 flex flex-col justify-center items-center text-center p-6 animate-in zoom-in duration-300">
+                                        <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mb-4 shadow-xl border-4 ${
+                                            method === 'QRIS' ? 'bg-orange-50 text-orange-500 border-orange-100' :
+                                            method === 'INVOICE' ? 'bg-blue-50 text-blue-500 border-blue-100' :
+                                            'bg-purple-50 text-purple-500 border-purple-100'
+                                        }`}>
+                                            <i className={`bi ${
+                                                method === 'QRIS' ? 'bi-qr-code-scan' :
+                                                method === 'INVOICE' ? 'bi-file-earmark-text' :
+                                                'bi-credit-card-2-front'
+                                            } text-4xl`}></i>
                                         </div>
-                                        <h3 className="text-base font-black text-gray-900 tracking-tight mb-1">Konfirmasi {method}</h3>
-                                        <p className="text-gray-500 text-[9px] font-medium mb-5 max-w-xs leading-relaxed">Pastikan customer sudah melakukan transaksi melalui {method}.</p>
-                                        <button
-                                            disabled={processing}
-                                            onClick={handleFinalize}
-                                            className={'w-full py-3.5 text-white rounded-xl font-black text-base shadow-lg transition-all active:scale-95 disabled:opacity-30 ' + (method === 'QRIS' ? 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/30' : method === 'INVOICE' ? 'bg-gradient-to-r from-purple-600 to-indigo-700 shadow-purple-500/30' : 'bg-gradient-to-r from-orange-500 to-yellow-400 shadow-orange-500/30')}
-                                        >
-                                            {processing ? 'Memproses...' : method === 'QRIS' ? 'Generate QRIS' : method === 'INVOICE' ? 'Settle to Invoice' : 'Konfirmasi Bayar'}
-                                        </button>
+                                        <h3 className="text-xl font-black text-gray-900 tracking-tight mb-2 uppercase">{method}</h3>
+                                        <p className="text-gray-400 font-medium text-[10px] mb-8 max-w-[240px] leading-relaxed uppercase tracking-widest">
+                                            {method === 'QRIS' ? 'Klik Selesaikan untuk generate QR Code.' :
+                                             method === 'INVOICE' ? 'Tagihan akan diproses sebagai Invoice Piutang.' :
+                                             'Siapkan mesin EDC untuk transaksi kartu.'}
+                                        </p>
                                     </div>
                                 )}
+
+                                {/* Action Button: Hijau & Paling Bawah */}
+                                <button
+                                    disabled={processing || (method === 'Tunai' && amountPaid < finalTotal)}
+                                    onClick={handleFinalize}
+                                    className="w-full py-5 bg-green-600 hover:bg-green-700 text-white rounded-[2rem] font-black text-xl shadow-2xl shadow-green-600/30 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale uppercase tracking-[0.2em] mt-auto border-b-8 border-green-800"
+                                >
+                                    {processing ? 'Memproses...' : 'Selesaikan Pesanan'}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1610,6 +1629,7 @@
                         order={selectedOrder}
                         onConfirm={handleFinalizePayment}
                         onClose={() => setShowPaymentModal(false)}
+                        onShowToast={onShowToast}
                     />
                 )}
                 {showOrderModal && selectedOrder && (

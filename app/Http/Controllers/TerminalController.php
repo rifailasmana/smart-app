@@ -117,17 +117,23 @@ class TerminalController extends Controller
      */
     public function checkVoucher(Request $request)
     {
+        $request->validate([
+            'code' => 'required|string',
+        ]);
+
         $user = auth()->user();
         $code = strtoupper($request->code);
 
         $voucher = Voucher::where('warung_id', $user->warung_id)
             ->where('code', $code)
             ->where('is_used', 0)
-            ->where('expired_at', '>', now())
+            ->where(function($q) {
+                $q->whereNull('expired_at')->orWhere('expired_at', '>', now());
+            })
             ->first();
 
         if (!$voucher) {
-            return response()->json(['error' => 'Voucher tidak valid atau sudah kadaluarsa'], 404);
+            return response()->json(['error' => 'Voucher tidak valid atau sudah digunakan/kadaluarsa'], 404);
         }
 
         return response()->json($voucher);
@@ -1081,31 +1087,7 @@ class TerminalController extends Controller
         ]);
     }
 
-    public function checkVoucher(Request $request)
-    {
-        $request->validate([
-            'code' => 'required|string',
-        ]);
 
-        $voucher = \App\Models\Voucher::where('code', $request->code)
-            ->where('warung_id', auth()->user()->warung_id)
-            ->where('is_used', 0)
-            ->where(function($q) {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->first();
-
-        if (!$voucher) {
-            return response()->json(['error' => 'Voucher tidak valid atau sudah digunakan'], 404);
-        }
-
-        return response()->json([
-            'id' => $voucher->id,
-            'code' => $voucher->code,
-            'type' => $voucher->type,
-            'value' => $voucher->value
-        ]);
-    }
 
     public function getActiveDiscounts(Request $request)
     {
