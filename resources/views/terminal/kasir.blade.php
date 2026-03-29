@@ -44,6 +44,16 @@
     </style>
     <script type="text/babel">
     const { useState, useEffect, useMemo, useCallback } = React;
+    // Fix for deployments where Laravel is served under a URL prefix (e.g. /smart-app/public).
+    // Compute prefix from current path (/terminal/kasir) to ensure we call:
+    //   <prefix>/terminal/...
+    const API_BASE = (() => {
+        const origin = window.location.origin;
+        const path = window.location.pathname;
+        const prefix = path.replace(/\/terminal\/kasir\/?$/, '');
+        return prefix ? origin + prefix : origin;
+    })();
+    const api = (path) => `${API_BASE}${path}`;
 
     // --- Components ---
 
@@ -147,20 +157,20 @@
         const total = order.total || (subtotal - discount);
 
         return (
-            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                <div className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
-                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
-                        <h3 className="text-base font-black text-gray-900 tracking-tight">Preview Struk</h3>
-                        <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-400 active:scale-95 transition-all"><i className="bi bi-x-lg text-lg"></i></button>
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-[95vw] sm:max-w-md lg:max-w-lg rounded-3xl sm:rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[96vh] sm:max-h-[90vh]">
+                    <div className="p-3 sm:p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
+                        <h3 className="text-sm sm:text-base font-black text-gray-900 tracking-tight">Preview Struk</h3>
+                        <button onClick={onClose} className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white shadow-sm flex items-center justify-center text-gray-400 active:scale-95 transition-all"><i className="bi bi-x-lg text-base sm:text-lg"></i></button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-50/30">
+                    <div className="flex-1 overflow-y-auto p-3 sm:p-4 custom-scrollbar bg-gray-50/30">
                         {/* Compact Thermal Receipt Design */}
-                        <div className="bg-white p-4 shadow-sm border border-gray-100 mx-auto w-full font-mono text-[9px] text-gray-800 leading-tight receipt-content">
+                        <div className="bg-white p-3 sm:p-4 shadow-sm border border-gray-100 mx-auto w-full max-w-[26rem] font-mono text-[10px] sm:text-[11px] text-gray-800 leading-tight receipt-content">
                             <div className="text-center mb-3">
-                                <h4 className="font-black text-[11px] uppercase tracking-tighter mb-0.5">{{ $warung->name ?? 'MAJAR POS' }}</h4>
-                                <p className="text-[7px] text-gray-400">{{ $warung->address ?? 'Alamat Warung Majar' }}</p>
-                                <p className="text-[7px] text-gray-400">Telp: {{ $warung->phone ?? '-' }}</p>
+                                <h4 className="font-black text-[11px] sm:text-xs uppercase tracking-tighter mb-0.5">{{ $warung->name ?? 'MAJAR POS' }}</h4>
+                                <p className="text-[8px] sm:text-[9px] text-gray-400">{{ $warung->address ?? 'Alamat Warung Majar' }}</p>
+                                <p className="text-[8px] sm:text-[9px] text-gray-400">Telp: {{ $warung->phone ?? '-' }}</p>
                                 <div className="border-b border-dashed border-gray-200 my-2"></div>
                             </div>
 
@@ -179,7 +189,7 @@
                                             <span className="font-bold truncate pr-2">{item.menu_name}</span>
                                             <span className="flex-shrink-0">Rp {new Intl.NumberFormat('id-ID').format(item.price * item.qty)}</span>
                                         </div>
-                                        <div className="text-[7px] text-gray-400 pl-2">{item.qty} x {new Intl.NumberFormat('id-ID').format(item.price)}</div>
+                                        <div className="text-[8px] sm:text-[9px] text-gray-400 pl-2">{item.qty} x {new Intl.NumberFormat('id-ID').format(item.price)}</div>
                                     </div>
                                 ))}
                             </div>
@@ -189,28 +199,28 @@
                             <div className="space-y-0.5 text-right mb-3">
                                 <div className="flex justify-between"><span>SUBTOTAL</span> <span>Rp {new Intl.NumberFormat('id-ID').format(subtotal)}</span></div>
                                 {discount > 0 && <div className="flex justify-between text-red-500"><span>DISKON</span> <span>- Rp {new Intl.NumberFormat('id-ID').format(discount)}</span></div>}
-                                <div className="flex justify-between font-black text-[10px] pt-1 border-t border-dashed border-gray-100 mt-1">
+                                <div className="flex justify-between font-black text-[11px] sm:text-xs pt-1 border-t border-dashed border-gray-100 mt-1">
                                     <span>TOTAL</span> <span>Rp {new Intl.NumberFormat('id-ID').format(total)}</span>
                                 </div>
                             </div>
 
                             <div className="text-center mt-4">
-                                <p className="text-[7px] font-bold italic mb-0.5">Terima Kasih Atas Kunjungan Anda</p>
-                                <p className="text-[6px] text-gray-400 uppercase tracking-widest">Powered by Majar POS</p>
+                                <p className="text-[8px] sm:text-[9px] font-bold italic mb-0.5">Terima Kasih Atas Kunjungan Anda</p>
+                                <p className="text-[7px] sm:text-[8px] text-gray-400 uppercase tracking-widest">Powered by Majar POS</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-2 flex-shrink-0">
+                    <div className="p-3 sm:p-4 border-t border-gray-100 bg-white grid grid-cols-2 gap-2 flex-shrink-0">
                         <button 
                             onClick={onShare}
-                            className="flex items-center justify-center gap-2 py-2.5 bg-blue-50 text-blue-600 rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all"
+                            className="flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-wider sm:tracking-widest active:scale-95 transition-all"
                         >
                             <i className="bi bi-whatsapp"></i> Digital
                         </button>
                         <button 
                             onClick={onPrint}
-                            className="flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
+                            className="flex items-center justify-center gap-1.5 sm:gap-2 py-2 sm:py-2.5 bg-orange-500 text-white rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-wider sm:tracking-widest shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
                         >
                             <i className="bi bi-printer"></i> Cetak
                         </button>
@@ -245,7 +255,7 @@
             if (!voucherCode) return;
             setCheckingVoucher(true);
             try {
-                const res = await fetch('/terminal/check-voucher', {
+                const res = await fetch(api('/terminal/check-voucher'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -340,15 +350,15 @@
         }
 
         return (
-            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-                <div className="bg-white w-full max-w-6xl h-[85vh] rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col border border-white/20">
+            <div className="fixed inset-0 z-[9000] flex items-center justify-center p-2 sm:p-4 lg:p-5 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-6xl h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] lg:h-[calc(100vh-2.5rem)] max-h-screen rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in duration-300 flex flex-col border border-white/20">
                     
                     {/* Header Compact */}
-                    <div className="px-6 py-3 border-b border-gray-100 flex justify-between items-center bg-white">
+                    <div className="px-4 sm:px-5 lg:px-6 py-2.5 sm:py-3 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
                         <div className="flex items-center gap-4">
-                            <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">Majar Signature Terminal</h2>
+                            <h2 className="text-sm sm:text-base lg:text-lg font-black text-gray-900 uppercase tracking-tight">Majar Signature Terminal</h2>
                             <div className="h-4 w-px bg-gray-200"></div>
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">#{order.code}</span>
+                            <span className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest">#{order.code}</span>
                         </div>
                         <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all">
                             <i className="bi bi-x-lg text-sm"></i>
@@ -358,9 +368,9 @@
                     <div className="flex-1 flex flex-row overflow-hidden bg-white">
                         
                         {/* 1. Left Section: Billing (30%) - Compact, No Menu List */}
-                        <div className="w-[30%] p-6 flex flex-col border-r border-gray-100 bg-gray-50/30">
-                            <div className="space-y-4">
-                                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                        <div className="w-[30%] min-w-0 p-3 sm:p-4 lg:p-5 flex flex-col border-r border-gray-100 bg-gray-50/30">
+                            <div className="space-y-3 sm:space-y-4">
+                                <div className="bg-white p-3 sm:p-4 lg:p-5 rounded-2xl lg:rounded-3xl border border-gray-100 shadow-sm">
                                     <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Rincian Tagihan</p>
                                     <div className="space-y-2 mb-4">
                                         <div className="flex justify-between text-[11px] font-bold text-gray-500 uppercase">
@@ -374,16 +384,16 @@
                                             </div>
                                         )}
                                     </div>
-                                    <div className="border-t-2 border-dashed border-gray-100 pt-4">
+                                    <div className="border-t-2 border-dashed border-gray-100 pt-3 sm:pt-4">
                                         <p className="text-[9px] font-black text-orange-500 uppercase tracking-[0.2em] mb-1">Total Bayar</p>
-                                        <h1 className="text-4xl font-black text-orange-500 tracking-tighter leading-none">
+                                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-orange-500 tracking-tighter leading-none">
                                             Rp {new Intl.NumberFormat('id-ID').format(finalTotal)}
                                         </h1>
                                     </div>
                                 </div>
 
                                 {/* Voucher Center - Slimmed Down */}
-                                <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                                <div className="bg-white p-3 sm:p-4 lg:p-5 rounded-2xl lg:rounded-3xl border border-gray-100 shadow-sm">
                                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Input Kupon/Voucher</label>
                                     <div className="flex gap-2">
                                         <input
@@ -391,12 +401,12 @@
                                             value={voucherCode}
                                             onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
                                             placeholder="KODE..."
-                                            className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-2 font-black text-sm focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all uppercase placeholder:text-gray-200"
+                                            className="flex-1 min-w-0 bg-gray-50 border-2 border-gray-100 rounded-xl px-3 sm:px-4 py-2 font-black text-xs sm:text-sm focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all uppercase placeholder:text-gray-200"
                                         />
                                         <button
                                             onClick={handleCheckVoucher}
                                             disabled={checkingVoucher || !voucherCode}
-                                            className="px-4 py-2 bg-gray-900 text-white rounded-xl font-black text-[9px] uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all"
+                                            className="px-3 sm:px-4 py-2 bg-gray-900 text-white rounded-xl font-black text-[9px] uppercase tracking-wider sm:tracking-widest active:scale-95 disabled:opacity-50 transition-all"
                                         >
                                             {checkingVoucher ? '...' : 'Apply'}
                                         </button>
@@ -415,7 +425,7 @@
                                 </div>
                             </div>
 
-                            <div className="mt-auto bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                            <div className="mt-auto bg-blue-50/50 p-3 sm:p-4 rounded-2xl border border-blue-100">
                                 <div className="flex items-start gap-2">
                                     <i className="bi bi-info-circle-fill text-blue-500 text-xs"></i>
                                     <p className="text-[8px] font-bold text-blue-600 uppercase leading-relaxed tracking-wider">Hapus daftar menu untuk hemat memori & fokus pada pembayaran.</p>
@@ -424,9 +434,9 @@
                         </div>
 
                         {/* 2. Middle Section: Method (25%) - Large Buttons */}
-                        <div className="w-[25%] p-6 border-r border-gray-100 flex flex-col bg-white">
-                            <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-5 text-center">Pilih Metode</h3>
-                            <div className="grid grid-cols-1 gap-3">
+                        <div className="w-[25%] min-w-0 p-3 sm:p-4 lg:p-5 border-r border-gray-100 flex flex-col bg-white">
+                            <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 sm:mb-4 lg:mb-5 text-center">Pilih Metode</h3>
+                            <div className="grid grid-cols-1 gap-2 sm:gap-3">
                                 {[
                                     { id: 'Tunai', label: 'CASH', icon: 'bi-cash-stack' },
                                     { id: 'QRIS', label: 'QRIS', icon: 'bi-qr-code-scan' },
@@ -436,35 +446,35 @@
                                     <button
                                         key={m.id}
                                         onClick={() => setPaymentMethod(m.id)}
-                                        className={'flex items-center gap-4 px-5 py-4 rounded-[1.5rem] border-2 transition-all active:scale-95 ' + (method === m.id ? 'border-orange-500 bg-orange-50 text-orange-600 shadow-xl shadow-orange-500/10' : 'border-gray-50 bg-gray-50/50 text-gray-400 hover:border-gray-200')}
+                                        className={'flex items-center gap-2 sm:gap-3 lg:gap-4 px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 lg:py-4 rounded-2xl lg:rounded-[1.5rem] border-2 transition-all active:scale-95 ' + (method === m.id ? 'border-orange-500 bg-orange-50 text-orange-600 shadow-xl shadow-orange-500/10' : 'border-gray-50 bg-gray-50/50 text-gray-400 hover:border-gray-200')}
                                     >
-                                        <div className={'w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ' + (method === m.id ? 'bg-orange-500 text-white' : 'bg-white text-gray-300')}>
-                                            <i className={'bi ' + m.icon + ' text-2xl'}></i>
+                                        <div className={'w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl lg:rounded-2xl flex items-center justify-center transition-colors flex-shrink-0 ' + (method === m.id ? 'bg-orange-500 text-white' : 'bg-white text-gray-300')}>
+                                            <i className={'bi ' + m.icon + ' text-lg sm:text-xl lg:text-2xl'}></i>
                                         </div>
-                                        <span className="text-sm font-black tracking-[0.1em]">{m.label}</span>
+                                        <span className="text-[11px] sm:text-xs lg:text-sm font-black tracking-[0.08em] lg:tracking-[0.1em] truncate">{m.label}</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
 
                         {/* 3. Right Section: Interaction (45%) - Compact Keypad & Horizontal Display */}
-                        <div className="w-[45%] p-6 flex flex-col bg-white overflow-y-auto no-scrollbar">
+                        <div className="w-[45%] min-w-0 p-3 sm:p-4 lg:p-5 flex flex-col bg-white overflow-hidden no-scrollbar">
                             <div className="flex-1 flex flex-col">
                                 {method === 'Tunai' ? (
                                     <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4 duration-300">
                                         {/* Horizontal Display Box - Black */}
-                                        <div className="bg-gray-900 rounded-[2rem] p-5 shadow-2xl mb-5">
-                                            <div className="flex justify-between items-center gap-8">
+                                        <div className="bg-gray-900 rounded-2xl lg:rounded-[2rem] p-3 sm:p-4 lg:p-5 shadow-2xl mb-3 sm:mb-4 lg:mb-5">
+                                            <div className="flex justify-between items-center gap-3 sm:gap-5 lg:gap-8">
                                                 <div className="flex-1">
                                                     <p className="text-[8px] font-black text-orange-500 uppercase tracking-widest mb-1">Uang Diterima</p>
-                                                    <div className="text-3xl font-black text-white tracking-tighter">
+                                                    <div className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tighter">
                                                         Rp {new Intl.NumberFormat('id-ID').format(amountPaid)}
                                                     </div>
                                                 </div>
                                                 <div className="h-10 w-px bg-gray-800"></div>
                                                 <div className="flex-1 text-right">
                                                     <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mb-1">Kembalian</p>
-                                                    <div className={`text-3xl font-black ${amountPaid >= finalTotal ? 'text-green-400' : 'text-red-400/20'}`}>
+                                                    <div className={`text-xl sm:text-2xl lg:text-3xl font-black ${amountPaid >= finalTotal ? 'text-green-400' : 'text-red-400/20'}`}>
                                                         Rp {new Intl.NumberFormat('id-ID').format(Math.max(0, amountPaid - finalTotal))}
                                                     </div>
                                                 </div>
@@ -472,7 +482,7 @@
                                         </div>
 
                                         {/* Keypad Padat & Skala Kecil */}
-                                        <div className="grid grid-cols-3 gap-2 mb-4 max-w-[320px] mx-auto w-full">
+                                        <div className="grid grid-cols-3 gap-2 mb-3 sm:mb-4 max-w-[300px] sm:max-w-[320px] mx-auto w-full">
                                             {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map(key => (
                                                 <button
                                                     key={key}
@@ -484,22 +494,22 @@
                                                             if (newVal <= 999999999) setAmountPaid(newVal || 0);
                                                         }
                                                     }}
-                                                    className={'h-12 rounded-2xl font-black text-xl transition-all active:scale-90 ' + (key === 'C' ? 'bg-red-50 text-red-500' : key === '⌫' ? 'bg-gray-100 text-gray-600' : 'bg-white border-2 border-gray-100 hover:border-orange-500 hover:text-orange-500 text-gray-900 shadow-sm')}
+                                                    className={'h-10 sm:h-11 lg:h-12 rounded-xl lg:rounded-2xl font-black text-base sm:text-lg lg:text-xl transition-all active:scale-90 ' + (key === 'C' ? 'bg-red-50 text-red-500' : key === '⌫' ? 'bg-gray-100 text-gray-600' : 'bg-white border-2 border-gray-100 hover:border-orange-500 hover:text-orange-500 text-gray-900 shadow-sm')}
                                                 >
                                                     {key}
                                                 </button>
                                             ))}
                                             <button
                                                 onClick={() => setAmountPaid(finalTotal)}
-                                                className="col-span-3 h-12 bg-orange-100 text-orange-600 rounded-2xl font-black text-xs tracking-widest hover:bg-orange-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                                className="col-span-3 h-10 sm:h-11 lg:h-12 bg-orange-100 text-orange-600 rounded-xl lg:rounded-2xl font-black text-[10px] sm:text-xs tracking-wider sm:tracking-widest hover:bg-orange-200 active:scale-95 transition-all flex items-center justify-center gap-2"
                                             >
                                                 <i className="bi bi-lightning-fill"></i> UANG PAS (Rp {new Intl.NumberFormat('id-ID').format(finalTotal)})
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex-1 flex flex-col justify-center items-center text-center p-6 animate-in zoom-in duration-300">
-                                        <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mb-4 shadow-xl border-4 ${
+                                    <div className="flex-1 flex flex-col justify-center items-center text-center p-3 sm:p-4 lg:p-6 animate-in zoom-in duration-300">
+                                        <div className={`w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-2xl lg:rounded-[2rem] flex items-center justify-center mb-3 sm:mb-4 shadow-xl border-4 ${
                                             method === 'QRIS' ? 'bg-orange-50 text-orange-500 border-orange-100' :
                                             method === 'INVOICE' ? 'bg-blue-50 text-blue-500 border-blue-100' :
                                             'bg-purple-50 text-purple-500 border-purple-100'
@@ -508,10 +518,10 @@
                                                 method === 'QRIS' ? 'bi-qr-code-scan' :
                                                 method === 'INVOICE' ? 'bi-file-earmark-text' :
                                                 'bi-credit-card-2-front'
-                                            } text-4xl`}></i>
+                                            } text-2xl sm:text-3xl lg:text-4xl`}></i>
                                         </div>
-                                        <h3 className="text-xl font-black text-gray-900 tracking-tight mb-2 uppercase">{method}</h3>
-                                        <p className="text-gray-400 font-medium text-[10px] mb-8 max-w-[240px] leading-relaxed uppercase tracking-widest">
+                                        <h3 className="text-base sm:text-lg lg:text-xl font-black text-gray-900 tracking-tight mb-2 uppercase">{method}</h3>
+                                        <p className="text-gray-400 font-medium text-[9px] sm:text-[10px] mb-4 sm:mb-6 lg:mb-8 max-w-[240px] leading-relaxed uppercase tracking-wider sm:tracking-widest">
                                             {method === 'QRIS' ? 'Klik Selesaikan untuk generate QR Code.' :
                                              method === 'INVOICE' ? 'Tagihan akan diproses sebagai Invoice Piutang.' :
                                              'Siapkan mesin EDC untuk transaksi kartu.'}
@@ -523,7 +533,7 @@
                                 <button
                                     disabled={processing || (method === 'Tunai' && amountPaid < finalTotal)}
                                     onClick={handleFinalize}
-                                    className="w-full py-5 bg-green-600 hover:bg-green-700 text-white rounded-[2rem] font-black text-xl shadow-2xl shadow-green-600/30 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale uppercase tracking-[0.2em] mt-auto border-b-8 border-green-800"
+                                    className="w-full py-3 sm:py-4 lg:py-5 bg-green-600 hover:bg-green-700 text-white rounded-2xl lg:rounded-[2rem] font-black text-sm sm:text-base lg:text-xl shadow-2xl shadow-green-600/30 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale uppercase tracking-[0.12em] sm:tracking-[0.16em] lg:tracking-[0.2em] mt-auto border-b-4 lg:border-b-8 border-green-800"
                                 >
                                     {processing ? 'Memproses...' : 'Selesaikan Pesanan'}
                                 </button>
@@ -947,7 +957,7 @@
                 const primaryTable = selectedTables[0];
                 const mergedTableIds = selectedTables.slice(1).map(t => t.id);
 
-                const res = await fetch('/terminal/orders', {
+                const res = await fetch(api('/terminal/orders'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1173,7 +1183,7 @@
 
         const fetchTables = useCallback(async () => {
             try {
-                const res = await fetch('/terminal/tables');
+                const res = await fetch(api('/terminal/tables'));
                 const data = await res.json();
                 setTables(data || []);
             } catch (e) { console.error(e); }
@@ -1181,7 +1191,7 @@
 
         const fetchActiveOrders = useCallback(async () => {
             try {
-                const res = await fetch('/terminal/orders?role=kasir');
+                const res = await fetch(api('/terminal/orders?role=kasir'));
                 const data = await res.json();
                 setActiveOrders(data || []);
 
@@ -1210,7 +1220,7 @@
                 type: 'danger',
                 onConfirm: async () => {
                     try {
-                        const res = await fetch(`/terminal/orders/${orderId}/items/${itemId}/void`, {
+                        const res = await fetch(api(`/terminal/orders/${orderId}/items/${itemId}/void`), {
                             method: 'POST',
                             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                         });
@@ -1235,7 +1245,7 @@
 
         const handleFinalizePayment = async (method, amount, discount = 0, discountCode = '', discountId = '') => {
             try {
-                const res = await fetch(`/terminal/orders/${selectedOrder.id}/finalize-payment`, {
+                const res = await fetch(api(`/terminal/orders/${selectedOrder.id}/finalize-payment`), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1280,7 +1290,7 @@
         const handlePrintReceipt = () => {
             if (!paidOrderData) return;
             const code = paidOrderData.code || paidOrderData.id;
-            const url = `/order-receipt-print?code=${encodeURIComponent(code)}`;
+            const url = api(`/order-receipt-print?code=${encodeURIComponent(code)}`);
             window.open(url, '_blank');
         };
 
@@ -1290,7 +1300,7 @@
 
         const handleVoidOrder = async (orderId, reason, pin) => {
             try {
-                const res = await fetch(`/terminal/orders/${orderId}/void`, {
+                const res = await fetch(api(`/terminal/orders/${orderId}/void`), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1317,7 +1327,7 @@
 
         const handleVoidItemSubmit = async (orderId, itemId, qty, reason) => {
             try {
-                const res = await fetch(`/terminal/orders/${orderId}/items/${itemId}/void`, {
+                const res = await fetch(api(`/terminal/orders/${orderId}/items/${itemId}/void`), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1336,7 +1346,7 @@
                     fetchTables();
                     if (selectedOrder && selectedOrder.id === orderId) {
                         // reload selected order from server list
-                        const updated = (await (await fetch(`/terminal/orders?role=kasir`)).json()).find(o => o.id === selectedOrder.id);
+                        const updated = (await (await fetch(api(`/terminal/orders?role=kasir`))).json()).find(o => o.id === selectedOrder.id);
                         if (updated) setSelectedOrder(updated);
                         else setSelectedOrder(null);
                     }
@@ -1403,7 +1413,7 @@
                 if (!sourceOrder) return onShowToast('Tidak ada pesanan di meja asal', 'error');
 
                 try {
-                    const res = await fetch('/terminal/tables/move', {
+                    const res = await fetch(api('/terminal/tables/move'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                         body: JSON.stringify({ order_id: sourceOrder.id, new_table_id: targetTable.id })
@@ -1424,7 +1434,7 @@
                 if (sourceOrder && targetOrder) {
                     // Both have orders, merge orders
                     try {
-                        const res = await fetch('/terminal/tables/merge', {
+                        const res = await fetch(api('/terminal/tables/merge'), {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                             body: JSON.stringify({ target_order_id: targetOrder.id, source_order_ids: [sourceOrder.id] })
@@ -1453,7 +1463,7 @@
                     message: `Apakah Anda yakin ingin me-reset status meja ${sourceTable.name}? Ini akan mengosongkan status meja secara paksa.`,
                     onConfirm: async () => {
                         try {
-                            const res = await fetch(`/terminal/tables/${sourceTable.id}/reset`, {
+                            const res = await fetch(api(`/terminal/tables/${sourceTable.id}/reset`), {
                                 method: 'POST',
                                 headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                             });
@@ -1476,7 +1486,7 @@
                     message: `Apakah Anda yakin ingin mengubah pesanan di meja ${sourceTable.name} menjadi Tanpa Meja (Take Away)? Meja akan tersedia kembali.`,
                     onConfirm: async () => {
                         try {
-                            const res = await fetch(`/terminal/orders/${order.id}/make-takeaway`, {
+                            const res = await fetch(api(`/terminal/orders/${order.id}/make-takeaway`), {
                                 method: 'POST',
                                 headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                             });
@@ -1758,7 +1768,7 @@
         const handleApprove = async (orderId) => {
             setProcessing(true);
             try {
-                const res = await fetch(`/terminal/orders/${orderId}/approve`, {
+                const res = await fetch(api(`/terminal/orders/${orderId}/approve`), {
                     method: 'POST',
                     headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                 });
@@ -1857,7 +1867,7 @@
 
         const fetchOrders = useCallback(async () => {
             try {
-                const res = await fetch(`/terminal/orders?role=${role}`);
+                const res = await fetch(api(`/terminal/orders?role=${role}`));
                 const data = await res.json();
                 setOrders(data);
             } catch (e) { console.error(e); }
@@ -1876,7 +1886,7 @@
                 message: 'Pesanan ini akan segera diproses oleh tim dapur.',
                 onConfirm: async () => {
                     try {
-                        const res = await fetch(`/terminal/orders/${id}/approve`, {
+                        const res = await fetch(api(`/terminal/orders/${id}/approve`), {
                             method: 'POST',
                             headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
                         });
@@ -2017,7 +2027,7 @@
         const [selectedOrder, setSelectedOrder] = useState(null);
 
         useEffect(() => {
-            fetch('/terminal/orders/history')
+            fetch(api('/terminal/orders/history'))
                 .then(res => res.json())
                 .then(data => {
                     setHistory(data);

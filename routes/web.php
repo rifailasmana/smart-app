@@ -326,7 +326,7 @@ Route::middleware('auth')->group(function () {
         // Map roles to dashboard views (di subdomain)
         return match ($user->role) {
             'owner' => redirect()->route('dashboard.owner'),
-            'kasir' => redirect()->route('/terminal/kasir'),
+            'kasir' => redirect()->route('terminal.kasir'),
             'waiter' => redirect()->route('/terminal/waiter'),
             'dapur', 'kitchen' => redirect()->route('/terminal/kitchen'),
             'hrd' => redirect()->route('dashboard.hrd'),
