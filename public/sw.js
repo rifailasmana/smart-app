@@ -1,4 +1,5 @@
-const CACHE_NAME = 'terminal-v4';
+// Bump cache name so updated /terminal pages (and embedded JS) are reloaded.
+const CACHE_NAME = 'terminal-v5';
 
 const STATIC_ASSETS = [
     '/manifest.json'

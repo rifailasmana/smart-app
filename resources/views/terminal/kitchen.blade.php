@@ -82,7 +82,7 @@
         );
     };
 
-    const OrderTicket = ({ order, onUpdateStatus, onUpdateItemStatus }) => {
+    const OrderTicket = ({ order, onUpdateStatus, onOpenReadyQty }) => {
         const stageConfig = {
             'COOKING': { border: 'border-blue-500', bg: 'bg-blue-50/50', label: 'Proses Dapur' },
             'READY': { border: 'border-green-500', bg: 'bg-green-50/50', label: 'Siap Saji' },
@@ -92,7 +92,7 @@
 
         return (
             <div className={`bg-white rounded-2xl border-l-8 shadow-sm flex flex-col h-full transition-all hover:shadow-md overflow-hidden ${config.border}`}>
-                <div className="p-4 border-b border-gray-100 flex justify-between items-start bg-white">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-white">
                     <div className="min-w-0 flex-1">
                         <h3 className="text-xl font-black text-gray-900 tracking-tighter truncate">Meja {order.table?.name || 'TA'}</h3>
                         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5 truncate">{order.customer_name}</p>
@@ -103,47 +103,78 @@
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-gray-50/30">
-                    {order.items.map((item, idx) => {
-                        const itemStatusColors = {
-                            'cooking': 'bg-blue-100 text-blue-600',
-                            'ready': 'bg-green-100 text-green-600',
-                            'served': 'bg-purple-100 text-purple-600',
-                            'void': 'bg-red-100 text-red-600'
-                        };
-                        return (
-                            <div key={idx} className="p-3 rounded-xl bg-white border border-gray-100 shadow-sm flex flex-col gap-2 group transition-all hover:border-orange-200">
-                                <div className="flex gap-3 items-start">
-                                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center font-black text-base text-orange-500 border border-gray-100 group-hover:bg-orange-500 group-hover:text-white transition-all flex-shrink-0">
-                                        {item.qty}
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-gray-50/30">
+                    {(() => {
+                        const seen = new Set();
+                        const elements = [];
+                        const aggregates = {};
+
+                        order.items.forEach(it => {
+                            const key = `${it.menu_item_id}::${it.note || ''}`;
+                            if (!aggregates[key]) aggregates[key] = { total: 0, ready: 0, served: 0, cooking: 0, void: 0, menu_name: it.menu_name };
+                            aggregates[key].total += it.qty || 0;
+                            if (it.status === 'ready') aggregates[key].ready += it.qty || 0;
+                            if (it.status === 'served') aggregates[key].served += it.qty || 0;
+                            if (it.status === 'cooking') aggregates[key].cooking += it.qty || 0;
+                            if (it.status === 'void') aggregates[key].void += it.qty || 0;
+                        });
+
+                        order.items.forEach((item) => {
+                            const key = `${item.menu_item_id}::${item.note || ''}`;
+                            if (!seen.has(key)) {
+                                const agg = aggregates[key];
+                                elements.push(
+                                    <div key={`agg-${key}`} className="p-3 rounded-lg bg-gray-50 border border-gray-100 mb-2 text-base font-bold flex items-center justify-between">
+                                            <div className="truncate">{agg.menu_name}</div>
+                                            <div className="text-sm font-black text-gray-500">{agg.ready}/{agg.total} ready</div>
+                                        </div>
+                                );
+                                seen.add(key);
+                            }
+
+                            const itemStatusColors = {
+                                'cooking': 'bg-blue-100 text-blue-600',
+                                'ready': 'bg-green-100 text-green-600',
+                                'served': 'bg-purple-100 text-purple-600',
+                                'void': 'bg-red-100 text-red-600'
+                            };
+
+                            elements.push(
+                                <div key={item.id} className="p-4 rounded-xl bg-white border border-gray-100 shadow-sm flex flex-col gap-3 group transition-all hover:border-orange-200">
+                                    <div className="flex gap-4 items-start">
+                                        <div className="w-12 h-12 rounded-lg bg-gray-50 flex items-center justify-center font-black text-lg text-orange-500 border border-gray-100 group-hover:bg-orange-500 group-hover:text-white transition-all flex-shrink-0">
+                                            {item.qty}
+                                        </div>
+                                        <div className="flex-1 min-w-0 pt-0.5">
+                                            <div className="font-bold text-lg md:text-xl text-gray-900 leading-tight uppercase tracking-tight truncate">{item.menu_name}</div>
+                                            {item.note && <div className="text-sm text-red-500 font-bold italic mt-1 leading-tight">Note: {item.note}</div>}
+                                            <span className={`inline-block mt-2 text-[10px] md:text-sm font-black uppercase px-2 py-1 rounded ${itemStatusColors[item.status] || 'bg-gray-100'}`}>
+                                                {item.status}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0 pt-0.5">
-                                        <div className="font-bold text-[13px] text-gray-900 leading-tight uppercase tracking-tight truncate">{item.menu_name}</div>
-                                        {item.note && <div className="text-[10px] text-red-500 font-bold italic mt-0.5 leading-tight">Note: {item.note}</div>}
-                                        <span className={`inline-block mt-1 text-[7px] font-black uppercase px-1 py-0.5 rounded ${itemStatusColors[item.status] || 'bg-gray-100'}`}>
-                                            {item.status}
-                                        </span>
-                                    </div>
+                                    {order.stage === 'READY_FOR_KITCHEN' && (
+                                        <button 
+                                            onClick={() => onUpdateStatus(order.id, 'COOKING')}
+                                            className="w-full py-3 md:py-4 bg-blue-500 text-white rounded-lg font-black text-sm md:text-base uppercase tracking-widest shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+                                        >
+                                            Masak
+                                        </button>
+                                    )}
+                                    {item.status === 'cooking' && (
+                                        <button 
+                                            onClick={() => onOpenReadyQty && onOpenReadyQty(order.id, item.id, item.menu_name, item.qty)}
+                                            className="w-full py-3 md:py-4 bg-green-500 text-white rounded-lg font-black text-sm md:text-base uppercase tracking-widest shadow-md shadow-green-500/20 active:scale-95 transition-all"
+                                        >
+                                            Ready to Serve
+                                        </button>
+                                    )}
                                 </div>
-                                {order.stage === 'READY_FOR_KITCHEN' && (
-                                    <button 
-                                        onClick={() => onUpdateStatus(order.id, 'COOKING')}
-                                        className="w-full py-2 bg-blue-500 text-white rounded-lg font-black text-[9px] uppercase tracking-widest shadow-md shadow-blue-500/20 active:scale-95 transition-all"
-                                    >
-                                        Masak
-                                    </button>
-                                )}
-                                {item.status === 'cooking' && (
-                                    <button 
-                                        onClick={() => onUpdateItemStatus(order.id, item.id, 'ready', item.menu_name)}
-                                        className="w-full py-2 bg-green-500 text-white rounded-lg font-black text-[9px] uppercase tracking-widest shadow-md shadow-green-500/20 active:scale-95 transition-all"
-                                    >
-                                        Ready to Serve
-                                    </button>
-                                )}
-                            </div>
-                        );
-                    })}
+                            );
+                        });
+
+                        return elements;
+                    })()}
                 </div>
             </div>
         );
@@ -155,6 +186,7 @@
         const [isLoading, setIsLoading] = useState(false);
         const [toast, setToast] = useState(null);
         const [confirmAction, setConfirmAction] = useState(null); // { orderId, newStatus, label }
+        const [readyModal, setReadyModal] = useState(null); // { orderId, itemId, menuName, maxQty, qty }
 
         const onShowToast = (message, type = 'success') => {
             setToast({ message, type });
@@ -208,8 +240,11 @@
             }
         };
 
-        const handleUpdateItemStatus = async (orderId, itemId, newStatus, menuName) => {
+        const handleUpdateItemStatus = async (orderId, itemId, newStatus, menuName, qty = null) => {
             try {
+                const body = { status: newStatus };
+                if (qty !== null) body.qty = qty;
+
                 const response = await fetch(`/terminal/orders/${orderId}/items/${itemId}/status`, {
                     method: 'POST',
                     headers: {
@@ -217,7 +252,7 @@
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify({ status: newStatus })
+                    body: JSON.stringify(body)
                 });
                 if (response.ok) {
                     onShowToast(`${menuName} siap disajikan!`);
@@ -228,6 +263,19 @@
             } catch (e) {
                 onShowToast('Terjadi kesalahan sistem', 'error');
             }
+        };
+
+        const openReadyQtyModal = (orderId, itemId, menuName, maxQty = 1) => {
+            setReadyModal({ orderId, itemId, menuName, maxQty, qty: Math.min(1, maxQty) });
+        };
+
+        const closeReadyModal = () => setReadyModal(null);
+
+        const confirmReadyQty = async () => {
+            if (!readyModal) return;
+            const { orderId, itemId, menuName, qty } = readyModal;
+            await handleUpdateItemStatus(orderId, itemId, 'ready', menuName, qty);
+            closeReadyModal();
         };
 
         const columns = [
@@ -273,7 +321,7 @@
                                                 };
                                                 setConfirmAction({ orderId: id, newStatus: status, label: labels[status] });
                                             }}
-                                            onUpdateItemStatus={handleUpdateItemStatus}
+                                                onOpenReadyQty={openReadyQtyModal}
                                         />
                                     ))
                                 )}
@@ -316,6 +364,27 @@
                         onClose={() => setConfirmAction(null)}
                         confirmText="Ya, Update"
                     />
+                )}
+
+                {readyModal && (
+                    <div className="fixed inset-0 z-[9200] flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm">
+                        <div className="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+                            <h3 className="text-lg font-black mb-2">Siapkan: {readyModal.menuName}</h3>
+                            <p className="text-sm text-gray-500 mb-4">Pilih berapa porsi dari pesanan ini yang sudah siap disajikan.</p>
+
+                            <div className="flex items-center justify-center gap-4 mb-4">
+                                <button onClick={() => setReadyModal(r => ({ ...r, qty: Math.max(1, r.qty - 1) }))} className="w-14 h-14 rounded-lg bg-gray-100 font-black text-2xl">-</button>
+                                <div className="px-8 py-4 bg-gray-50 rounded-lg font-black text-2xl">{readyModal.qty}</div>
+                                <button onClick={() => setReadyModal(r => ({ ...r, qty: Math.min(r.maxQty, r.qty + 1) }))} className="w-14 h-14 rounded-lg bg-gray-100 font-black text-2xl">+</button>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button onClick={() => setReadyModal(r => ({ ...r, qty: r.maxQty }))} className="flex-1 py-4 bg-white border rounded-lg font-black text-base">All</button>
+                                <button onClick={closeReadyModal} className="flex-1 py-4 bg-gray-100 rounded-lg font-black text-base">Cancel</button>
+                                <button onClick={confirmReadyQty} className="flex-1 py-4 bg-green-500 text-white rounded-lg font-black text-base">Confirm</button>
+                            </div>
+                        </div>
+                    </div>
                 )}
                 {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             </div>
@@ -437,18 +506,23 @@
         .fluid-text-h1 {
             font-size: clamp(1.25rem, 3vw, 2rem);
         }
+
         .fluid-text-h2 {
             font-size: clamp(1rem, 2.5vw, 1.5rem);
         }
+
         .fluid-text-body {
             font-size: clamp(0.75rem, 2vw, 0.875rem);
         }
+
         .custom-scrollbar::-webkit-scrollbar {
             width: 4px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-track {
             background: transparent;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #4a5568;
             border-radius: 10px;

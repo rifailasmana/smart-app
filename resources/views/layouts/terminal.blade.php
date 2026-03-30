@@ -203,6 +203,7 @@
                         <span class="text-terminal-accent font-bold text-[7px] uppercase tracking-widest mt-0.5">@yield('terminal_role', 'User')</span>
                     </div>
                 </div>
+                @yield('header_extra')
                 <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-90">
                     <i class="bi bi-power text-sm"></i>
                 </a>

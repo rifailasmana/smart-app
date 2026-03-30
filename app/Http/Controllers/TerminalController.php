@@ -127,7 +127,7 @@ class TerminalController extends Controller
         $voucher = Voucher::where('warung_id', $user->warung_id)
             ->where('code', $code)
             ->where('is_used', 0)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->whereNull('expired_at')->orWhere('expired_at', '>', now());
             })
             ->first();
@@ -155,110 +155,188 @@ class TerminalController extends Controller
     }
 
     /**
+     * Backward-compatible alias for creating/updating draft orders.
+     *
+     * Some routes (e.g. `POST /terminal/orders`) reference `createOrUpdateDraft`,
+     * but the implementation lives in `storeOrder`.
+     */
+    public function createOrUpdateDraft(Request $request)
+    {
+        try {
+            return $this->storeOrder($request);
+        } catch (\Throwable $e) {
+            $user = auth()->user();
+
+            $payload = $request->only([
+                'order_id',
+                'table_id',
+                'guest_category',
+                'customer_name',
+                'order_type',
+                'merged_table_ids',
+                'items',
+                'reservation_name',
+                'reservation_code',
+            ]);
+
+            // Avoid dumping huge/PII-heavy payloads into logs.
+            if (isset($payload['items']) && is_array($payload['items'])) {
+                $payload['items'] = array_map(function ($i) {
+                    return [
+                        'menu_item_id' => $i['menu_item_id'] ?? null,
+                        'qty' => $i['qty'] ?? null,
+                    ];
+                }, $payload['items']);
+            }
+
+            Log::error('Terminal createOrUpdateDraft failed', [
+                'userId' => $user?->id,
+                'warungId' => $user?->warung_id,
+                'payload' => $payload,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'error' => 'Gagal memproses pesanan (create draft).',
+                // Debug-friendly details (safe-ish for terminal dev; remove later if needed)
+                'details' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Create or update draft order (waiter)
      */
     public function storeOrder(Request $request)
     {
-        return DB::transaction(function () use ($request) {
-            $user = auth()->user();
+        try {
+            return DB::transaction(function () use ($request) {
+                $user = auth()->user();
 
-            $validated = $request->validate([
-                'order_id' => 'nullable|exists:orders,id',
-                'table_id' => 'required|exists:restaurant_tables,id',
-                'customer_name' => 'nullable|string',
-                'guest_category' => 'nullable|string',
-                'order_type' => 'nullable|string',
-                'reservation_name' => 'nullable|required_if:guest_category,RESERVED|string',
-                'reservation_code' => 'nullable|required_if:guest_category,RESERVED|string',
-                'merged_table_ids' => 'nullable|string',
-                'items' => 'required|array',
-                'items.*.menu_item_id' => 'required|exists:menu_items,id',
-                'items.*.qty' => 'required|integer|min:1',
-                'items.*.note' => 'nullable|string',
-            ], [
-                'reservation_name.required_if' => 'Nama reservasi wajib diisi untuk kategori Reserved.',
-                'reservation_code.required_if' => 'Kode reservasi wajib diisi untuk kategori Reserved.',
-            ]);
+                // Temporary debug log: capture headers and a short preview of the request body
+                Log::error('Terminal storeOrder hit (debug)', [
+                    'userId' => $user?->id,
+                    'role' => $user?->role,
+                    'contentType' => $request->header('Content-Type'),
+                    'contentLength' => (int) $request->header('Content-Length', 0),
+                    'headers' => $request->headers->all(),
+                    'rawPreview' => mb_substr((string) $request->getContent(), 0, 1000),
+                ]);
 
-            if (isset($validated['order_id'])) {
-                $order = Order::findOrFail($validated['order_id']);
-                if ($order->stage !== 'DRAFT') {
-                    return response()->json(['error' => 'Hanya draft yang dapat diperbarui'], 400);
+                $validated = $request->validate([
+                    'order_id' => 'nullable|exists:orders,id',
+                    'table_id' => 'required|exists:restaurant_tables,id',
+                    'customer_name' => 'nullable|string',
+                    'guest_category' => 'nullable|string',
+                    'order_type' => 'nullable|string',
+                    'reservation_name' => 'nullable|required_if:guest_category,RESERVED|string',
+                    'reservation_code' => 'nullable|required_if:guest_category,RESERVED|string',
+                    'merged_table_ids' => 'nullable|string',
+                    'items' => 'required|array',
+                    'items.*.menu_item_id' => 'required|exists:menu_items,id',
+                    'items.*.qty' => 'required|integer|min:1',
+                    'items.*.note' => 'nullable|string',
+                ], [
+                    'reservation_name.required_if' => 'Nama reservasi wajib diisi untuk kategori Reserved.',
+                    'reservation_code.required_if' => 'Kode reservasi wajib diisi untuk kategori Reserved.',
+                ]);
+
+                if (isset($validated['order_id'])) {
+                    $order = Order::findOrFail($validated['order_id']);
+                    if ($order->stage !== 'DRAFT') {
+                        return response()->json(['error' => 'Hanya draft yang dapat diperbarui'], 400);
+                    }
+                    // Clear old items
+                    $order->items()->delete();
+                } else {
+                    // Check if table is already occupied by non-draft order
+                    $tableIdsToCheck = [$validated['table_id']];
+                    $mergedTableIdsRaw = $validated['merged_table_ids'] ?? null;
+                    if (!empty($mergedTableIdsRaw)) {
+                        $mergedIds = json_decode($mergedTableIdsRaw, true);
+                        if (is_array($mergedIds)) $tableIdsToCheck = array_merge($tableIdsToCheck, $mergedIds);
+                    }
+
+                    $existingActive = Order::whereIn('table_id', $tableIdsToCheck)
+                        ->where('warung_id', $user->warung_id)
+                        ->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY', 'SERVED'])
+                        ->first();
+
+                    if ($existingActive) {
+                        return response()->json(['error' => 'Salah satu meja sedang digunakan oleh pesanan lain'], 400);
+                    }
+
+                    $order = Order::create([
+                        'warung_id' => $user->warung_id,
+                        'waiter_id' => $user->role === 'waiter' ? $user->id : null,
+                        'kasir_id' => $user->role === 'kasir' ? $user->id : null,
+                        'customer_name' => $validated['reservation_name'] ?? $validated['customer_name'] ?? 'Guest',
+                        'code' => 'T' . strtoupper(uniqid()),
+                        'table_id' => $validated['table_id'],
+                        'stage' => $user->role === 'kasir' ? 'COOKING' : 'DRAFT',
+                        'status' => 'pending',
+                        'subtotal' => 0,
+                        'total' => 0,
+                        'guest_category' => $validated['guest_category'] ?? 'REGULER',
+                        'order_type' => $validated['order_type'] ?? 'DINE_IN',
+                        'reservation_name' => $validated['reservation_name'] ?? null,
+                        'reservation_code' => $validated['reservation_code'] ?? null,
+                        'merged_table_ids' => $validated['merged_table_ids'] ?? null,
+                        'sent_to_kitchen_at' => $user->role === 'kasir' ? now() : null,
+                    ]);
                 }
-                // Clear old items
-                $order->items()->delete();
-            } else {
-                // Check if table is already occupied by non-draft order
-                $tableIdsToCheck = [$validated['table_id']];
-                if ($validated['merged_table_ids']) {
-                    $mergedIds = json_decode($validated['merged_table_ids'], true);
-                    if (is_array($mergedIds)) $tableIdsToCheck = array_merge($tableIdsToCheck, $mergedIds);
+
+                $total = 0;
+                foreach ($validated['items'] as $itemData) {
+                    $menuItem = MenuItem::find($itemData['menu_item_id']);
+                    $subtotal = $menuItem->price * $itemData['qty'];
+
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'menu_item_id' => $menuItem->id,
+                        'menu_name' => $menuItem->name,
+                        'qty' => $itemData['qty'],
+                        'price' => $menuItem->price,
+                        'note' => $itemData['note'] ?? null,
+                        'status' => $user->role === 'kasir' ? 'cooking' : 'pending',
+                        'cooking_at' => $user->role === 'kasir' ? now() : null,
+                    ]);
+                    $total += $subtotal;
                 }
 
-                $existingActive = Order::whereIn('table_id', $tableIdsToCheck)
-                    ->where('warung_id', $user->warung_id)
-                    ->whereIn('stage', ['WAITING_CASHIER', 'READY_FOR_KITCHEN', 'COOKING', 'READY', 'SERVED'])
-                    ->first();
-
-                if ($existingActive) {
-                    return response()->json(['error' => 'Salah satu meja sedang digunakan oleh pesanan lain'], 400);
-                }
-
-                $order = Order::create([
-                    'warung_id' => $user->warung_id,
-                    'waiter_id' => $user->role === 'waiter' ? $user->id : null,
-                    'kasir_id' => $user->role === 'kasir' ? $user->id : null,
-                    'customer_name' => $validated['reservation_name'] ?? $validated['customer_name'] ?? 'Guest',
-                    'code' => 'T' . strtoupper(uniqid()),
+                $order->update([
                     'table_id' => $validated['table_id'],
-                    'stage' => $user->role === 'kasir' ? 'COOKING' : 'DRAFT',
-                    'status' => 'pending',
-                    'subtotal' => 0,
-                    'total' => 0,
-                    'guest_category' => $validated['guest_category'] ?? 'REGULER',
-                    'order_type' => $validated['order_type'] ?? 'DINE_IN',
-                    'reservation_name' => $validated['reservation_name'] ?? null,
-                    'reservation_code' => $validated['reservation_code'] ?? null,
-                    'merged_table_ids' => $validated['merged_table_ids'] ?? null,
-                    'sent_to_kitchen_at' => $user->role === 'kasir' ? now() : null,
+                    'customer_name' => $validated['reservation_name'] ?? $validated['customer_name'] ?? $order->customer_name ?? 'Guest',
+                    'subtotal' => $total,
+                    'total' => $total,
+                    'guest_category' => $validated['guest_category'] ?? $order->guest_category,
+                    'order_type' => $validated['order_type'] ?? $order->order_type,
+                    'reservation_name' => $validated['reservation_name'] ?? $order->reservation_name,
+                    'reservation_code' => $validated['reservation_code'] ?? $order->reservation_code,
+                    'merged_table_ids' => $validated['merged_table_ids'] ?? $order->merged_table_ids,
                 ]);
-            }
 
-            $total = 0;
-            foreach ($validated['items'] as $itemData) {
-                $menuItem = MenuItem::find($itemData['menu_item_id']);
-                $subtotal = $menuItem->price * $itemData['qty'];
+                // Sync table status
+                $this->syncTableStatuses($order);
 
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'menu_item_id' => $menuItem->id,
-                    'menu_name' => $menuItem->name,
-                    'qty' => $itemData['qty'],
-                    'price' => $menuItem->price,
-                    'note' => $itemData['note'] ?? null,
-                    'status' => $user->role === 'kasir' ? 'cooking' : 'pending',
-                    'cooking_at' => $user->role === 'kasir' ? now() : null,
-                ]);
-                $total += $subtotal;
-            }
+                return response()->json($order->load('items'));
+            });
+        } catch (\Symfony\Component\HttpFoundation\Exception\UnsupportedMediaTypeHttpException $e) {
+            $user = auth()->user();
+            $raw = (string) $request->getContent();
 
-            $order->update([
-                'table_id' => $validated['table_id'],
-                'customer_name' => $validated['reservation_name'] ?? $validated['customer_name'] ?? $order->customer_name ?? 'Guest',
-                'subtotal' => $total,
-                'total' => $total,
-                'guest_category' => $validated['guest_category'] ?? $order->guest_category,
-                'order_type' => $validated['order_type'] ?? $order->order_type,
-                'reservation_name' => $validated['reservation_name'] ?? $order->reservation_name,
-                'reservation_code' => $validated['reservation_code'] ?? $order->reservation_code,
-                'merged_table_ids' => $validated['merged_table_ids'] ?? $order->merged_table_ids,
+            Log::error('Terminal storeOrder unsupported media type', [
+                'userId' => $user?->id,
+                'contentType' => $request->header('Content-Type'),
+                'accept' => $request->header('Accept'),
+                'rawPreview' => mb_substr($raw, 0, 500),
+                'message' => $e->getMessage(),
             ]);
 
-            // Sync table status
-            $this->syncTableStatuses($order);
-
-            return response()->json($order->load('items'));
-        });
+            return response()->json([
+                'error' => 'Unsupported Media Type. Please send JSON with Content-Type: application/json',
+            ], 415);
+        }
     }
 
     private function syncTableStatuses($order)
@@ -519,6 +597,15 @@ class TerminalController extends Controller
      */
     public function submitToCashier(Order $order)
     {
+        $user = auth()->user();
+        Log::error('Terminal submitToCashier hit (debug)', [
+            'userId' => $user?->id,
+            'role' => $user?->role,
+            'orderId' => $order?->id,
+            'orderStage' => $order?->stage,
+            'waiterId' => $order?->waiter_id,
+        ]);
+
         if ($order->stage !== 'DRAFT') {
             return response()->json(['error' => 'Pesanan bukan dalam status DRAFT'], 400);
         }
@@ -708,6 +795,7 @@ class TerminalController extends Controller
         $user = auth()->user();
         $validated = $request->validate([
             'status' => 'required|in:ready,served',
+            'qty' => 'nullable|integer|min:1',
         ]);
 
         if ($order->id !== $item->order_id) {
@@ -715,38 +803,90 @@ class TerminalController extends Controller
         }
 
         $newStatus = $validated['status'];
+        $qty = $validated['qty'] ?? null;
 
-        return DB::transaction(function () use ($order, $item, $newStatus) {
+        Log::info('Terminal updateItemStatus called', [
+            'userId' => $user?->id,
+            'orderId' => $order->id,
+            'itemId' => $item->id,
+            'newStatus' => $newStatus,
+            'qty' => $qty,
+        ]);
+
+        return DB::transaction(function () use ($order, $item, $newStatus, $qty) {
+            // Support partial qty operations by splitting items when needed.
             if ($newStatus === 'ready') {
-                // Kitchen marks item as ready
-                $item->update([
-                    'status' => 'ready',
-                    'ready_at' => now()
-                ]);
+                // Kitchen marks item (or part of it) as ready
+                if ($qty === null || $qty >= $item->qty) {
+                    $item->update([
+                        'status' => 'ready',
+                        'ready_at' => now()
+                    ]);
+                    Log::info('Marked full item ready', ['orderId' => $order->id, 'itemId' => $item->id, 'qty' => $item->qty]);
+                } else {
+                    // Partial: reduce original item qty and create a new ready item record
+                    $applyQty = min($qty, $item->qty);
+                    $item->decrement('qty', $applyQty);
+
+                    $newItem = OrderItem::create([
+                        'order_id' => $order->id,
+                        'menu_item_id' => $item->menu_item_id,
+                        'menu_name' => $item->menu_name,
+                        'qty' => $applyQty,
+                        'price' => $item->price,
+                        'note' => $item->note,
+                        'status' => 'ready',
+                        'ready_at' => now(),
+                    ]);
+
+                    Log::info('Marked partial qty ready (split)', ['orderId' => $order->id, 'originalItemId' => $item->id, 'newItemId' => $newItem->id, 'appliedQty' => $applyQty, 'remainingQty' => $item->qty]);
+                }
             } elseif ($newStatus === 'served') {
-                // Waiter marks item as served
+                // Waiter marks item (or part of it) as served — only allowed from READY
                 if ($item->status !== 'ready') {
                     return response()->json(['error' => 'Hanya item berstatus READY yang bisa di-serve'], 400);
                 }
-                $item->update([
-                    'status' => 'served',
-                    'served_at' => now()
-                ]);
+
+                if ($qty === null || $qty >= $item->qty) {
+                    $item->update([
+                        'status' => 'served',
+                        'served_at' => now()
+                    ]);
+                    Log::info('Marked full item served', ['orderId' => $order->id, 'itemId' => $item->id, 'qty' => $item->qty]);
+                } else {
+                    $applyQty = min($qty, $item->qty);
+                    $item->decrement('qty', $applyQty);
+
+                    $newItem = OrderItem::create([
+                        'order_id' => $order->id,
+                        'menu_item_id' => $item->menu_item_id,
+                        'menu_name' => $item->menu_name,
+                        'qty' => $applyQty,
+                        'price' => $item->price,
+                        'note' => $item->note,
+                        'status' => 'served',
+                        'served_at' => now(),
+                    ]);
+
+                    Log::info('Marked partial qty served (split)', ['orderId' => $order->id, 'originalItemId' => $item->id, 'newItemId' => $newItem->id, 'appliedQty' => $applyQty, 'remainingQty' => $item->qty]);
+                }
             }
 
-            // Check if all items are served to auto-update order stage
+            // Recompute order stage using summed quantities (supports split records)
             $order->refresh();
-            $totalItems = $order->items()->where('status', '!=', 'void')->count();
-            $servedItems = $order->items()->where('status', 'served')->count();
-            $readyItems = $order->items()->where('status', 'ready')->count();
+            $totalQty = (int) $order->items()->where('status', '!=', 'void')->sum('qty');
+            $servedQty = (int) $order->items()->where('status', 'served')->sum('qty');
+            $readyQty = (int) $order->items()->where('status', 'ready')->sum('qty');
 
-            if ($servedItems === $totalItems && $totalItems > 0) {
+            if ($totalQty > 0 && $servedQty === $totalQty) {
                 $order->update(['stage' => 'SERVED', 'status' => 'served', 'served_at' => now()]);
-            } elseif ($readyItems + $servedItems === $totalItems && $totalItems > 0) {
+                Log::info('Order moved to SERVED (all served)', ['orderId' => $order->id, 'totalQty' => $totalQty]);
+            } elseif ($totalQty > 0 && ($readyQty + $servedQty) === $totalQty) {
                 $order->update(['stage' => 'READY']);
+                Log::info('Order moved to READY (all ready/served)', ['orderId' => $order->id, 'readyQty' => $readyQty, 'servedQty' => $servedQty, 'totalQty' => $totalQty]);
             }
 
-            return response()->json(['success' => true, 'item' => $item, 'order_stage' => $order->stage]);
+            return response()->json(['success' => true, 'item' => $item->fresh(), 'order_stage' => $order->stage]);
         });
     }
 
@@ -1021,7 +1161,7 @@ class TerminalController extends Controller
         return DB::transaction(function () use ($order) {
             $order->update([
                 'order_type' => 'TAKE_AWAY',
-                'table_id' => null, 
+                'table_id' => null,
             ]);
 
             $this->syncTableStatuses($order);
@@ -1092,17 +1232,17 @@ class TerminalController extends Controller
     public function getActiveDiscounts(Request $request)
     {
         $user = auth()->user();
-        
+
         // Fetch all coupons for this warung (if applicable) that are not used/expired
         $query = \App\Models\Coupon::query();
-        
+
         if (\Schema::hasColumn('coupons', 'warung_id')) {
             $query->where('warung_id', $user->warung_id);
         }
 
         $coupons = $query->where('is_used', false)->get();
 
-        return response()->json($coupons->map(function($c) {
+        return response()->json($coupons->map(function ($c) {
             return [
                 'id' => $c->id,
                 'kode_diskon' => $c->code,

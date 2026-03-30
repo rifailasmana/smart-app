@@ -60,7 +60,22 @@
     <table class="mb-2">
         <tr>
             <td>Tgl</td>
-            <td class="text-right">{{ $order->paid_at ? $order->paid_at->format('d/m/Y H:i') : ($order->created_at ? $order->created_at->format('d/m/Y H:i') : now()->format('d/m/Y H:i')) }}</td>
+            @php
+                $receiptDateRaw = $order->paid_at ?? $order->created_at ?? now();
+                // Ensure we always end up with a Carbon instance (not a plain string/empty value)
+                try {
+                    $receiptDate = $receiptDateRaw instanceof \Carbon\CarbonInterface
+                        ? $receiptDateRaw
+                        : \Illuminate\Support\Carbon::parse($receiptDateRaw);
+
+                    if (!is_object($receiptDate) || !method_exists($receiptDate, 'format')) {
+                        $receiptDate = now();
+                    }
+                } catch (\Throwable $e) {
+                    $receiptDate = now();
+                }
+            @endphp
+            <td class="text-right">{{ $receiptDate->format('d/m/Y H:i') }}</td>
         </tr>
         <tr>
             <td>Order</td>

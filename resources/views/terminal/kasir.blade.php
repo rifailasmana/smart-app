@@ -16,28 +16,36 @@
         .fluid-text-h1 {
             font-size: clamp(1.5rem, 4vw, 2.5rem);
         }
+
         .fluid-text-h2 {
             font-size: clamp(1.25rem, 3vw, 2rem);
         }
+
         .fluid-text-body {
             font-size: clamp(0.875rem, 2vw, 1rem);
         }
+
         .fluid-icon {
             font-size: clamp(1.5rem, 4vw, 2.5rem);
         }
+
         .fluid-card-padding {
             padding: clamp(0.75rem, 1.5vw, 1rem);
         }
+
         .custom-scrollbar::-webkit-scrollbar {
             width: 4px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-track {
             background: transparent;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #e2e8f0;
             border-radius: 10px;
         }
+
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -92,9 +100,6 @@
                     style={ { transform: 'translateX(' + offsetX + 'px)' } }
                 >
                     {children}
-                </div>
-                <div className="absolute inset-y-0 right-0 w-20 flex items-center justify-center text-white pointer-events-none">
-                    <i className="bi bi-trash3-fill text-xl"></i>
                 </div>
             </div>
         );

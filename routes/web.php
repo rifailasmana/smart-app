@@ -327,8 +327,8 @@ Route::middleware('auth')->group(function () {
         return match ($user->role) {
             'owner' => redirect()->route('dashboard.owner'),
             'kasir' => redirect()->route('terminal.kasir'),
-            'waiter' => redirect()->route('/terminal/waiter'),
-            'dapur', 'kitchen' => redirect()->route('/terminal/kitchen'),
+            'waiter' => redirect()->route('terminal.waiter'),
+            'dapur', 'kitchen' => redirect()->route('terminal.kitchen'),
             'hrd' => redirect()->route('dashboard.hrd'),
             'manager' => redirect()->route('dashboard.manager'),
             'inventory' => redirect()->route('dashboard.inventory'),
@@ -620,7 +620,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/tables', [App\Http\Controllers\TerminalController::class, 'getTables']);
         Route::get('/tables/{table}/draft', [App\Http\Controllers\TerminalController::class, 'getTableDraft']);
         Route::get('/discounts/active', [App\Http\Controllers\TerminalController::class, 'getActiveDiscounts']);
-        Route::post('/orders', [App\Http\Controllers\TerminalController::class, 'storeOrder']);
         Route::post('/orders/{order}/submit-to-cashier', [App\Http\Controllers\TerminalController::class, 'submitToCashier']);
         Route::post('/orders/{order}/split', [App\Http\Controllers\TerminalController::class, 'splitOrder']);
         Route::post('/orders/{order}/merge', [App\Http\Controllers\TerminalController::class, 'mergeOrder']);

@@ -30,34 +30,44 @@
         .fluid-text-h1 {
             font-size: clamp(1.5rem, 4vw, 2.5rem);
         }
+
         .fluid-text-h2 {
             font-size: clamp(1.25rem, 3vw, 2rem);
         }
+
         .fluid-text-body {
             font-size: clamp(0.875rem, 2vw, 1rem);
         }
+
         .fluid-icon {
             font-size: clamp(1.25rem, 3vw, 2rem);
         }
+
         .fluid-card-padding {
             padding: clamp(0.75rem, 1.5vw, 1rem);
         }
+
         .custom-scrollbar::-webkit-scrollbar {
             width: 4px;
         }
+
         .custom-scrollbar::-webkit-scrollbar-track {
             background: transparent;
         }
+
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #e2e8f0;
             border-radius: 10px;
         }
+
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
     </style>
     <script type="text/babel" data-presets="env,react" data-plugins="proposal-optional-chaining,proposal-nullish-coalescing-operator">
     const { useState, useEffect, useMemo, useCallback } = React;
+
+    console.log('terminal/waiter debug marker v1: JS loaded');
 
     // --- Components ---
 
@@ -279,7 +289,7 @@
         </div>
     );
 
-    const MenuView = ({ menuItems, categories, orderType, selectedTable, guestCount, onBack, onShowToast }) => {
+    const MenuView = ({ menuItems, categories, orderType, selectedTable, guestCount, onBack, onShowToast, onOrderSubmitted }) => {
         const [activeCategory, setActiveCategory] = useState('Semua');
         const [cart, setCart] = useState([]);
         const [searchQuery, setSearchQuery] = useState('');
@@ -315,7 +325,35 @@
 
         const subtotal = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
 
+        /**
+         * Send a waiter-created order draft to cashier approval.
+         * Backend will move order stage to WAITING_CASHIER, then cashier can approve via `/approve`.
+         */
+        const sendOrderToKasirForApproval = async (orderId) => {
+            const submitRes = await fetch(`/terminal/orders/${orderId}/submit-to-cashier`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                // no extra body needed; backend uses route-model binding + current user
+                body: JSON.stringify({}),
+            });
+
+            // Try to parse JSON; fallback to text for non-JSON errors
+            let submitData = null;
+            try { submitData = await submitRes.json(); } catch {}
+            if (!submitRes.ok) {
+                const details = submitData?.error || submitData?.message || submitData || submitRes.status;
+                throw new Error(`HTTP ${submitRes.status} submit-to-cashier: ${typeof details === 'string' ? details : JSON.stringify(details).slice(0, 200)}`);
+            }
+            return submitData;
+        };
+
         const handleConfirmOrder = async () => {
+        console.log("button clicked");
+
             if (cart.length === 0) return;
             if (!customerName.trim()) {
                 onShowToast('Nama Pelanggan wajib diisi', 'error');
@@ -325,44 +363,60 @@
 
             setSubmitting(true);
             try {
+                const payload = {
+                    table_id: selectedTable ? selectedTable.id : 1,
+                    customer_name: customerName,
+                    guest_category: customerCategory,
+                    order_type: orderType,
+                    items: cart.map(i => ({
+                        menu_item_id: i.id,
+                        qty: i.qty,
+                        note: ''
+                    }))
+                };
+
+                // Helpful during debugging: if this payload is wrong/empty, we will see it in console.
+                console.log('POST /terminal/orders payload:', payload);
+
                 const res = await fetch('/terminal/orders', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify({
-                        table_id: selectedTable ? selectedTable.id : 1,
-                        customer_name: customerName,
-                        guest_category: customerCategory,
-                        order_type: orderType,
-                        items: cart.map(i => ({
-                            menu_item_id: i.id,
-                            qty: i.qty,
-                            note: ''
-                        }))
-                    })
+                    body: JSON.stringify(payload)
                 });
                 
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(`HTTP ${res.status} /terminal/orders: ${text}`);
+                }
+
                 const data = await res.json();
                 if (data.id) {
-                    const submitRes = await fetch(`/terminal/orders/${data.id}/submit-to-cashier`, {
-                        method: 'POST',
-                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-                    });
-                    
-                    if (submitRes.ok) {
+                    try {
+                        await sendOrderToKasirForApproval(data.id);
                         onShowToast('Pesanan berhasil dikirim ke Kasir!');
-                        setTimeout(() => window.location.reload(), 1500);
-                    } else {
-                        onShowToast('Gagal mengirim ke kasir', 'error');
+                        // SPA flow: navigate to order status view without full page reload
+                        if (typeof onOrderSubmitted === 'function') onOrderSubmitted();
+                    } catch (submitErr) {
+                        console.error(submitErr);
+                        onShowToast(submitErr?.message ? String(submitErr.message).slice(0, 200) : 'Gagal mengirim ke kasir', 'error');
                     }
                 } else {
                     onShowToast(data.error || 'Gagal memproses pesanan', 'error');
                 }
             } catch (e) {
                 console.error(e);
-                onShowToast('Terjadi kesalahan sistem.', 'error');
+                // Surface the real backend response when possible.
+                let msg = '';
+                if (e instanceof Error) msg = e.message;
+                if (!msg) {
+                    try { msg = JSON.stringify(e); } catch {}
+                }
+                if (!msg) msg = String(e);
+                onShowToast((msg ? String(msg).slice(0, 300) : 'Terjadi kesalahan sistem.'), 'error');
             } finally {
                 setSubmitting(false);
                 setShowConfirm(false);
@@ -621,6 +675,7 @@
                             guestCount={guestCount}
                             onBack={handleBack}
                             onShowToast={onShowToast}
+                            onOrderSubmitted={() => setView('ORDER_STATUS')}
                         />
                     );
                 case 'ORDER_TYPE':
@@ -649,8 +704,6 @@
             </div>
         );
     };
-
-    // --- Order Status & History Components ---
 
     const OrderStatusView = ({ role, onBack, onShowToast }) => {
         const [orders, setOrders] = useState([]);
